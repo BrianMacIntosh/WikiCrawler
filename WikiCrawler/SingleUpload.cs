@@ -1,0 +1,61 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Net;
+using System.IO;
+
+namespace WikiCrawler
+{
+	class SingleUpload
+	{
+		public static void Do()
+		{
+			//Download
+			if (!Directory.Exists("images"))
+				Directory.CreateDirectory("images");
+			//foreach (string s in Directory.GetFiles("images"))
+			//    File.Delete(s);
+
+			string[] files = Directory.GetFiles("queue");
+
+			Console.WriteLine("Logging in...");
+			Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
+			Api.LogIn();
+
+			while (files.Length > 0)
+			{
+				StreamReader reader = new StreamReader(files[0], Encoding.Default);
+				string path = reader.ReadLine();
+				string title = reader.ReadLine();
+				string content = reader.ReadToEnd();
+				reader.Close();
+
+				if (path.StartsWith("file://"))
+				{
+					path = path.Substring(7);
+				}
+				else
+				{
+					Console.WriteLine("Downloading");
+					WebClient client = new WebClient();
+					string newpath = Path.Combine("images", "tempA" + Path.GetExtension(path));
+					client.DownloadFile(path, newpath);
+					path = newpath;
+				}
+
+				//Upload
+				Console.WriteLine(path);
+				Wikimedia.Article art = new Wikimedia.Article();
+				art.title = title;
+				art.revisions = new Wikimedia.Revision[1];
+				art.revisions[0] = new Wikimedia.Revision();
+				art.revisions[0].text = content;
+				Api.UploadFromLocal(art, path, "", false);
+
+				File.Delete(files[0]);
+				files = Directory.GetFiles("queue");
+			}
+		}
+	}
+}
