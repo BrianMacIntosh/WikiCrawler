@@ -18,8 +18,8 @@ namespace WikiCrawler
 
 	class UWash
 	{
-		private const string url = "http://digitalcollections.lib.washington.edu/cdm/singleitem/collection/nowell/id/{0}";
-		private const string imageUrl = "http://digitalcollections.lib.washington.edu/utils/ajaxhelper/?CISOROOT=nowell&action=2&CISOPTR={0}&DMSCALE=100&DMWIDTH=99999&DMHEIGHT=99999&DMX=0&DMY=0&DMTEXT=&REC=1&DMTHUMB=0&DMROTATE=0";
+		private const string url = "http://digitalcollections.lib.washington.edu/cdm/singleitem/collection/chandless/id/{0}";
+		private const string imageUrl = "http://digitalcollections.lib.washington.edu/utils/ajaxhelper/?CISOROOT=chandless&action=2&CISOPTR={0}&DMSCALE=100&DMWIDTH=99999&DMHEIGHT=99999&DMX=0&DMY=0&DMTEXT=&REC=1&DMTHUMB=0&DMROTATE=0";
 
 		private static Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
 		private static Wikimedia.WikiApi WikidataApi = new Wikimedia.WikiApi(new Uri("http://wikidata.org/"));
@@ -54,6 +54,7 @@ namespace WikiCrawler
 			"Digital Collection",
 			"Photographer's Reference Number",
 			"Repository Collection Guide",
+			"Citation Information",
 
 			/*"Subject",
 			"Image Date",
@@ -103,18 +104,18 @@ namespace WikiCrawler
 		private static Dictionary<string, string> data = new Dictionary<string, string>();
 		private static bool parseSuccessful = false;
 
-		private const int minIndex = 5;
-		private const int maxIndex = 281;
+		private const int minIndex = 0;
+		private const int maxIndex = 332;
 
 		//configuration
 		private const bool remapCategories = false;
 		private const bool mapCategories = true;
-		private const bool allowUpload = true;
+		private const bool allowUpload = false;
 		private const bool allowDataDownload = true;
 		private const bool createCreators = false;
 		private static int maxFailed = int.MaxValue;
 		private static int maxNew = int.MaxValue;
-		private static int maxSuccesses = int.MaxValue;
+		private static int maxSuccesses = 1;// int.MaxValue;
 		private static int saveOutInterval = 5;
 		private static bool allowFailedCreators = true;
 
@@ -567,7 +568,7 @@ namespace WikiCrawler
 				captionTitle = captionTitle.Remove(lastWordEnd + 1);
 			}
 			Wikimedia.Article art = new Wikimedia.Article();
-			art.title = captionTitle.Replace("/", "") + " (NOWELL " + current + ")";
+			art.title = captionTitle.Replace("/", "") + " (CHANDLESS " + current + ")";
 			art.revisions = new Wikimedia.Revision[1];
 			art.revisions[0] = new Wikimedia.Revision();
 
@@ -721,20 +722,20 @@ namespace WikiCrawler
 				content.AppendLine("|medium={{en|" + data["Physical Description"] + "}}");
 			}
 			content.AppendLine("|institution={{Institution:University of Washington}}");
-			content.AppendLine("|source={{UWASH-NOWELL-source}}"); //was department, for Artwork
-			content.AppendLine("|accession number={{UWASH-digital-accession|nowell|" + current + "}}");
+			content.AppendLine("|source={{UWASH-CHANDLESS-source}}"); //was department, for Artwork
+			content.AppendLine("|accession number={{UWASH-digital-accession|chandless|" + current + "}}");
 			if (author == "{{unknown|author}}" || author == "{{anonymous}}")
 			{
 				content.AppendLine("|permission={{PD-anon-1923}}");
 			}
 			else
 			{
-				content.AppendLine("|permission={{PD-old-auto-1923|deathyear=1950}}");
+				content.AppendLine("|permission={{PD-old-auto-1923|deathyear=1951}}");
 			}
 			content.AppendLine("|other_fields={{Information field|name=Order Number|value=" + data["Order Number"] + "}}");
 			content.AppendLine("}}");
 			content.AppendLine();
-			content.AppendLine("[[Category:Images from the Frank H. Nowell Photographs of Alaska Collection to check]]");
+			content.AppendLine("[[Category:Images from the Robert Henry Chandless Photographs of China Collection to check]]");
 
 			foreach (string s in categories)
 			{
