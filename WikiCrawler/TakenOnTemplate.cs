@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace WikiCrawler
 {
-	class TakenOnTemplate
+	public class TakenOnTemplate
 	{
 		private static string[] categories = new string[]
         {

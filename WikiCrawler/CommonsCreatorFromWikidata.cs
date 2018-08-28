@@ -45,7 +45,7 @@ namespace WikiCrawler
 			{
 				if (s_DoBotCat)
 				{
-					foreach (Wikimedia.Article article in commonsApi.GetCategoryPages("Category:Creator templates to be created by a bot"))
+					foreach (Wikimedia.Article article in commonsApi.GetCategorySubcats("Category:Creator templates to be created by a bot"))
 					{
 						Console.WriteLine("Checking verified '" + article.title + "'...");
 
@@ -75,7 +75,7 @@ namespace WikiCrawler
 
 				if (s_DoNormalCat)
 				{
-					foreach (Wikimedia.Article article in commonsApi.GetCategoryPages("Category:People by name", normalCatLastPage))
+					foreach (Wikimedia.Article article in commonsApi.GetCategorySubcats("Category:People by name", normalCatLastPage))
 					{
 						Console.WriteLine("----- Checking '" + article.title + "'...");
 
@@ -416,7 +416,7 @@ namespace WikiCrawler
 
 					string suffix = " deaths";
 					string decade = dateData.GetString(Wikimedia.DateTime.DecadePrecision) + "s";
-					string century = Utility.FormatOrdinal(dateData.GetCentury()) + "-century";
+					string century = StringUtility.FormatOrdinal(dateData.GetCentury()) + "-century";
 
 					bool hasYear = Wikimedia.WikiUtils.HasCategory(year + suffix, text);
 					bool hasDecade = Wikimedia.WikiUtils.HasCategory(decade + suffix, text);
@@ -463,7 +463,7 @@ namespace WikiCrawler
 
 					string suffix = " births";
 					string decade = dateData.GetString(Wikimedia.DateTime.DecadePrecision) + "s";
-					string century = Utility.FormatOrdinal(dateData.GetCentury()) + "-century";
+					string century = StringUtility.FormatOrdinal(dateData.GetCentury()) + "-century";
 
 					bool hasYear = Wikimedia.WikiUtils.HasCategory(year + suffix, text);
 					bool hasDecade = Wikimedia.WikiUtils.HasCategory(decade + suffix, text);

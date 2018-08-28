@@ -1,14 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 
 namespace WikiCrawler
 {
-    class Program
+	class Program
     {
         static void Main(string[] args)
         {
+			//string croppath = "uwash_images/53_cropped.jpg";
+			//ImageUtils.AutoCropJpg("uwash_images/53.jpg", croppath, 0xffffffff, 0.97f, 5);
+
 			try
 			{
 				Console.Write("Task>");
@@ -16,20 +17,23 @@ namespace WikiCrawler
 
 				switch (task)
 				{
+					case "dropbox":
+						DropboxDownloader.Do();
+						break;
+					case "catmove":
+						RequestMassCatMove.Do();
+						break;
 					case "nsrw":
 						NsrwFollowup.Do();
 						break;
 					case "uwash_cleancache":
-						UWash.CacheCleanup();
-						break;
-					case "uwash_cleancreators":
-						UWash.CreatorCleanup();
+						UWash.UWashController.CacheCleanup();
 						break;
 					case "uwash_rebuildfailures":
-						UWash.RebuildFailures();
+						UWash.UWashController.RebuildFailures();
 						break;
 					case "uwash":
-						UWash.Harvest();
+						UWash.UWashController.Harvest();
 						break;
 					case "taxoncat":
 						TaxonCategoryUpdate.Do();
@@ -49,6 +53,9 @@ namespace WikiCrawler
 						break;
 					case "pdold":
 						PdOldAuto.Do();
+						break;
+					case "massdownload":
+						MassDownloader.Do();
 						break;
 					default:
 						Console.WriteLine("No such task.");

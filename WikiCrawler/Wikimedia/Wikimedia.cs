@@ -355,18 +355,20 @@ namespace Wikimedia
 			Uri.TryCreate(domain, "w/api.php", out UrlApi);
 		}
 
-		public bool LogIn()
+		public bool LogIn(string user = null, string pass = null)
 		{
 			Console.WriteLine("Logging in to '" + Domain + "':");
-			Console.Write("u>");
-			string user = Console.ReadLine();
-			Console.Write("p>");
-			string pass = Console.ReadLine();
-			return LogIn(user, pass);
-		}
+			if (string.IsNullOrEmpty(user))
+			{
+				Console.Write("u>");
+				user = Console.ReadLine();
+			}
+			if (string.IsNullOrEmpty(pass))
+			{
+				Console.Write("p>");
+				pass = Console.ReadLine();
+			}
 
-        public bool LogIn(string user, string pass)
-        {
             string data =
 				"action=login" +
                 "&format=json" +
@@ -892,11 +894,26 @@ namespace Wikimedia
 
 		public IEnumerable<Article> GetCategoryPages(string category, string startFrom = "")
 		{
+			return GetCategoryEntries(category, "page|subcat|file", startFrom);
+		}
+
+		public IEnumerable<Article> GetCategorySubcats(string category, string startFrom = "")
+		{
+			return GetCategoryEntries(category, "subcat", startFrom);
+		}
+
+		public IEnumerable<Article> GetCategoryFiles(string category, string startFrom = "")
+		{
+			return GetCategoryEntries(category, "file", startFrom);
+		}
+
+		public IEnumerable<Article> GetCategoryEntries(string category, string cmtype, string startFrom = "")
+		{
 			string basedata =
 				"action=query" +
 				"&list=categorymembers" +
 				"&format=json" +
-				//"&cmtype=page" + //|subcat
+				"&cmtype=" + cmtype +
 				"&cmtitle=" + UrlEncode(category);
 			if (!string.IsNullOrEmpty(startFrom))
 			{

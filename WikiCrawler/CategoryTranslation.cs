@@ -57,8 +57,11 @@ namespace WikiCrawler
 
 				for (int c = 0; c < split.Length; c++)
 				{
-					split[c] = split[c].Replace("(state)", "").Trim();
-					split[c] = split[c].Replace("(State)", "").Trim();
+					if (!split[c].StartsWith("Washington", StringComparison.CurrentCultureIgnoreCase))
+					{
+						split[c] = split[c].Replace("(state)", "").Trim();
+						split[c] = split[c].Replace("(State)", "").Trim();
+					}
 				}
 
 				foreach (string s in seperatorReplacements)

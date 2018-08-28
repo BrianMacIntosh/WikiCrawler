@@ -5,8 +5,6 @@ using WikiCrawler;
 
 namespace DateTests
 {
-    
-    
     /// <summary>
     ///This is a test class for TakenOnTemplateTest and is intended
     ///to contain all TakenOnTemplateTest Unit Tests
@@ -14,8 +12,6 @@ namespace DateTests
 	[TestClass()]
 	public class TakenOnTemplateTest
 	{
-
-
 		private TestContext testContextInstance;
 
 		/// <summary>

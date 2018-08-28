@@ -38,11 +38,16 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FreeImageNET">
-      <HintPath>..\..\..\..\..\..\..\..\Manual Program Files\FreeImage.NET\FreeImageNET.dll</HintPath>
+      <HintPath>E:\Manual Program Files\FreeImage\Wrapper\FreeImage.NET\cs\Library\bin\Release\FreeImageNET.dll</HintPath>
     </Reference>
-    <Reference Include="MySql.Data, Version=6.9.6.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
-    <Reference Include="MySql.Data.Entity, Version=6.9.6.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
-    <Reference Include="MySql.Web, Version=6.9.6.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
+    <Reference Include="MySql.Data, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
+    <Reference Include="MySql.Data.Entity.EF5, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
+    <Reference Include="MySql.Data.Entity.EF6, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
+    <Reference Include="MySql.Fabric.Plugin, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
+    <Reference Include="MySql.Web, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>E:\Manual Program Files\JSON.NET\Bin\net40\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.configuration" />
     <Reference Include="System.Core" />
@@ -56,11 +61,21 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Backend\ImageUtils.cs" />
-    <Compile Include="Backend\Utility.cs" />
+    <Compile Include="Credentials.cs" />
+    <Compile Include="MassDownloader.cs" />
+    <Compile Include="Utility\Dimensions.cs" />
+    <Compile Include="Utility\StringUtility.cs" />
     <Compile Include="CategoryTranslation.cs" />
     <Compile Include="CommonsCreatorFromWikidata.cs" />
     <Compile Include="DetectLanguage.cs" />
+    <Compile Include="DropboxDownloader.cs" />
+    <Compile Include="RequestMassCatMove.cs" />
     <Compile Include="Tropenmuseum.cs" />
+    <Compile Include="UWash\DataStructures\UWashConfig.cs" />
+    <Compile Include="UWash\DataStructures\UWashCreator.cs" />
+    <Compile Include="UWash\DataStructures\UWashFailure.cs" />
+    <Compile Include="UWash\DataStructures\UWashProjectConfig.cs" />
+    <Compile Include="UWash\UWashCountry.cs" />
     <Compile Include="Wikimedia\Date.cs" />
     <Compile Include="Wikimedia\DotNetWikiBot.cs" />
     <Compile Include="Old\Dsea.cs" />
@@ -81,9 +96,9 @@
     <Compile Include="TaxonCategoryUpdate.cs" />
     <Compile Include="UploadFromWeb.cs" />
     <Compile Include="UploadFromZorger.cs" />
-    <Compile Include="UWash.cs" />
-    <Compile Include="UWashCats.cs" />
-    <Compile Include="UWashLang.cs" />
+    <Compile Include="UWash\UWash.cs" />
+    <Compile Include="UWash\UWashCats.cs" />
+    <Compile Include="UWash\UWashLang.cs" />
     <Compile Include="Wikimedia\Wikidata.cs" />
     <Compile Include="WikidataCreatorPropagation.cs" />
     <Compile Include="Wikimedia\Wikimedia.cs" />

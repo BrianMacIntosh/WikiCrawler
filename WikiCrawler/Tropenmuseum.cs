@@ -121,7 +121,7 @@ namespace WikiCrawler
 			{
 				date = date.Substring(0, date.Length - "T00:00:00Z".Length);
 			}
-			return UWash.ParseDate(date);
+			return UWash.UWashController.ParseDate(date);
 		}
 
 		private static string ParseDimensions(string dimensions)
