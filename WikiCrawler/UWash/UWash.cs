@@ -11,8 +11,6 @@ namespace UWash
 {
 	static class UWashController
 	{
-		private const string homeDirectory = "E:/WikiData";
-
 		private static string url
 		{
 			get { return "http://digitalcollections.lib.washington.edu/cdm/singleitem/collection/" + projectConfig.digitalCollectionsKey + "/id/{0}"; }
@@ -75,6 +73,9 @@ namespace UWash
 			"Rights URI",
 			"Geographic Coverage",
 
+			//manually added by operator
+			"Art",
+
 			/*"Subject",
 			"Image Date",
 			"Image Source Author",
@@ -108,7 +109,7 @@ namespace UWash
 		private static char[] punctuation = { '.', ' ', '\t', '\n', ',', '-' };
 		private static string[] categorySplitters = { "|", ";", "<br/>", "<br />", "<br>" };
 		private static char[] pipe = { '|' };
-		private static string[] lineBreak = { "|", "<br/>", "<br />", "<br>" }; //TEMP: pipe is item
+		private static string[] lineBreak = { "|", "<br/>", "<br />", "<br>" }; //TEMP: pipe is temp
 		private static char[] colon = { ':' };
 		public static char[] parens = { '(', ')', ' ' };
 		private static string[] dashdash = new string[] { "--" };
@@ -153,13 +154,13 @@ namespace UWash
 
 		private static bool Initialize()
 		{
-			string homeConfigFile = Path.Combine(homeDirectory, "config.json");
+			string homeConfigFile = Path.Combine(Configuration.DataDirectory, "config.json");
 			config = Newtonsoft.Json.JsonConvert.DeserializeObject<UWashConfig>(
 				File.ReadAllText(homeConfigFile, Encoding.UTF8));
 
 			Console.Write("Project Key>");
 			projectKey = Console.ReadLine();
-			projectDir = Path.Combine(homeDirectory, projectKey);
+			projectDir = Path.Combine(Configuration.DataDirectory, projectKey);
 
 			if (!Directory.Exists(projectDir))
 			{
@@ -318,7 +319,7 @@ namespace UWash
 			}
 
 			//load mapped categories
-			string categoryMappingsFile = Path.Combine(homeDirectory, "category_mappings.txt");
+			string categoryMappingsFile = Path.Combine(Configuration.DataDirectory, "category_mappings.txt");
 			if (File.Exists(categoryMappingsFile))
 			{
 				using (StreamReader reader = new StreamReader(new FileStream(categoryMappingsFile, FileMode.Open)))
@@ -346,7 +347,7 @@ namespace UWash
 				}
 			}
 
-			CategoryTree.Load(Path.Combine(homeDirectory, "category_tree.txt"));
+			CategoryTree.Load(Path.Combine(Configuration.DataDirectory, "category_tree.txt"));
 
 			if (!Directory.Exists(imagesDirectory))
 				Directory.CreateDirectory(imagesDirectory);
@@ -358,18 +359,12 @@ namespace UWash
 				Directory.CreateDirectory(previewDirectory);
 
 			Console.WriteLine("Logging in...");
-			string authFile = Path.Combine(homeDirectory, "auth.json");
-			Credentials credentials = new Credentials();
-			if (File.Exists(authFile))
-			{
-				credentials = Newtonsoft.Json.JsonConvert.DeserializeObject<Credentials>(
-					File.ReadAllText(authFile, Encoding.UTF8));
-			}
+			Credentials credentials = Configuration.LoadCredentials();
 			Api.LogIn(credentials.Username, credentials.Password);
 
 			ValidateCreators();
 
-			string stopFile = Path.Combine(homeDirectory, "STOP");
+			string stopFile = Path.Combine(Configuration.DataDirectory, "STOP");
 			try
 			{
 				//Try to reprocess old things
@@ -476,7 +471,7 @@ namespace UWash
 			}
 
 			//write category map
-			string categoryMappingsFile = Path.Combine(homeDirectory, "category_mappings.txt");
+			string categoryMappingsFile = Path.Combine(Configuration.DataDirectory, "category_mappings.txt");
 			using (StreamWriter writer = new StreamWriter(new FileStream(categoryMappingsFile, FileMode.Create)))
 			{
 				foreach (KeyValuePair<string, string> kv in categoryMap)
@@ -499,7 +494,7 @@ namespace UWash
 				Newtonsoft.Json.JsonConvert.SerializeObject(creatorData, Newtonsoft.Json.Formatting.Indented),
 				Encoding.UTF8);
 
-			CategoryTree.Save(Path.Combine(homeDirectory, "category_tree.txt"));
+			CategoryTree.Save(Path.Combine(Configuration.DataDirectory, "category_tree.txt"));
 		}
 
 		private static void Process(int current)
@@ -695,6 +690,10 @@ namespace UWash
 			{
 				pubCountry = UWashCountry.Parse(pubCountry);
 			}
+			else
+			{
+				pubCountry = projectConfig.defaultPubCountry;
+			}
 
 			// check license
 			string licenseTag = "";
@@ -715,19 +714,31 @@ namespace UWash
 				throw new UWashException("not PD? (pub: " + pubCountry + " " + latestYearRaw + ")");
 			}
 
+			if (latestYearRaw < 1897 && author == "{{Creator:Asahel Curtis}}")
+			{
+				throw new UWashException("Curtis - check author");
+			}
+
 			//======== BUILD PAGE TEXT
 
 			StringBuilder content = new StringBuilder();
 
 			content.AppendLine(GetCheckCategoriesTag(categories.Count));
 
+			string informationTemplate = projectConfig.informationTemplate;
+			if (data.ContainsKey("Art"))
+			{
+				informationTemplate = "Artwork";
+				licenseTag = "{{PD-Art|" + licenseTag.Trim('{', '}') + "}}";
+			}
+
 			content.AppendLine("=={{int:filedesc}}==");
-			content.AppendLine("{{" + projectConfig.informationTemplate);
-			if (projectConfig.informationTemplate == "Photograph")
+			content.AppendLine("{{" + informationTemplate);
+			if (informationTemplate == "Photograph")
 			{
 				content.AppendLine("|photographer=" + author);
 			}
-			else if (projectConfig.informationTemplate == "Artwork")
+			else if (informationTemplate == "Artwork")
 			{
 				content.AppendLine("|artist=" + author);
 			}
@@ -749,6 +760,13 @@ namespace UWash
 			{
 				//TEMP: pipe replace is temp
 				notes = StringUtility.Join("<br/>\n", notes, data["Notes"].Replace("|", "<br/>\n"));
+
+				//TEMP:
+				if (notes.IndexOf("original", StringComparison.CurrentCultureIgnoreCase) >= 0
+					 && author == "{{Creator:Asahel Curtis}}")
+				{
+					throw new UWashException("Curtis - check author");
+				}
 			}
 			if (data.ContainsKey("Contextual Notes"))
 			{
@@ -920,12 +938,15 @@ namespace UWash
 
 			// try to crop the image
 			string croppath = GetImageCroppedFilename(current);
-			ImageUtils.CropUwashWatermark(imagepath, croppath);
-			ImageUtils.AutoCropJpg(croppath, croppath, 0xffffffff, 0.92f, 22, ImageUtils.Side.Left | ImageUtils.Side.Right);
-			System.Threading.Thread.Sleep(50);
-			if (!File.Exists(croppath))
+			//if (!File.Exists(croppath))
 			{
-				throw new UWashException("crop failed");
+				ImageUtils.CropUwashWatermark(imagepath, croppath);
+				ImageUtils.AutoCropJpg(croppath, croppath, 0xffffffff, 0.92f, 22, ImageUtils.Side.Left | ImageUtils.Side.Right);
+				System.Threading.Thread.Sleep(50);
+				if (!File.Exists(croppath))
+				{
+					throw new UWashException("crop failed");
+				}
 			}
 
 			if (!projectConfig.allowUpload)
@@ -1277,6 +1298,14 @@ namespace UWash
 		/// </summary>
 		private static string GetAuthor(Dictionary<string, string> data, string lang, out UWashCreator creator)
 		{
+			string notes;
+			if (data.TryGetValue("Notes", out notes)
+				&& notes.Contains("Original photographer unknown"))
+			{
+				creator = null;
+				return "{{unknown|author}}";
+			}
+
 			if (data.ContainsKey("Photographer"))
 			{
 				return GetAuthor(data["Photographer"], lang, out creator);
@@ -1461,6 +1490,8 @@ namespace UWash
 
 		public static string ParseDate(string date, out int latestYear)
 		{
+			date = date.Trim('.');
+
 			if (string.IsNullOrEmpty(date))
 			{
 				latestYear = 9999;
@@ -1472,7 +1503,7 @@ namespace UWash
 				if (!int.TryParse(yearStr, out latestYear)) latestYear = 9999;
 				return "{{other date|ca|" + yearStr + "}}";
 			}
-			else if (date.StartsWith("ca."))
+			else if (date.StartsWith("ca.", StringComparison.InvariantCultureIgnoreCase))
 			{
 				int rml = "ca.".Length;
 				string yearStr = date.Substring(rml, date.Length - rml).Trim();
@@ -1496,7 +1527,7 @@ namespace UWash
 			else
 			{
 				string[] dashsplit = date.Split('-');
-				if (dashdash.Length == 2 && dashsplit[0].Length == 4
+				if (dashsplit.Length == 2 && dashsplit[0].Length == 4
 					&& dashsplit[1].Length == 4)
 				{
 					if (!int.TryParse(dashsplit[1], out latestYear)) latestYear = 9999;
@@ -1504,7 +1535,7 @@ namespace UWash
 				}
 				else
 				{
-					string[] dateSplit = date.Split(new char[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries);
+					string[] dateSplit = date.Split(new char[] { ' ', ',', '.' }, StringSplitOptions.RemoveEmptyEntries);
 					if (dateSplit.Length == 3)
 					{
 						int year, month, day;

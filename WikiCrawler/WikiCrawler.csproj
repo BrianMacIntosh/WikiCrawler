@@ -61,7 +61,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Backend\ImageUtils.cs" />
+    <Compile Include="Configuration.cs" />
     <Compile Include="Credentials.cs" />
+    <Compile Include="LinksNullEditor.cs" />
     <Compile Include="MassDownloader.cs" />
     <Compile Include="Utility\Dimensions.cs" />
     <Compile Include="Utility\StringUtility.cs" />

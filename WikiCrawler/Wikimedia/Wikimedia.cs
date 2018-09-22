@@ -355,6 +355,19 @@ namespace Wikimedia
 			Uri.TryCreate(domain, "w/api.php", out UrlApi);
 		}
 
+		internal HttpWebRequest CreateWebRequest()
+		{
+			return CreateWebRequest(UrlApi);
+		}
+
+		internal HttpWebRequest CreateWebRequest(Uri uri)
+		{
+			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
+			request.UserAgent = UserAgent;
+			request.CookieContainer = cookies;
+			return request;
+		}
+
 		public bool LogIn(string user = null, string pass = null)
 		{
 			Console.WriteLine("Logging in to '" + Domain + "':");
@@ -376,11 +389,10 @@ namespace Wikimedia
                 "&lgpassword=" + UrlEncode(pass);
 
             //Upload stream
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(UrlApi);
-            request.UserAgent = UserAgent;
-            cookies = request.CookieContainer = new CookieContainer();
+            cookies = new CookieContainer();
+			HttpWebRequest request = CreateWebRequest(UrlApi);
 
-            //Read response
+			//Read response
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.Post(request, data)))
 			{
@@ -398,9 +410,7 @@ namespace Wikimedia
             {
                 //Send request again, adding lgtoken from "token"
                 data += "&lgtoken=" + UrlEncode((string)login["token"]);
-                request = (HttpWebRequest)WebRequest.Create(UrlApi);
-                request.UserAgent = UserAgent;
-                request.CookieContainer = cookies;
+                request = CreateWebRequest(UrlApi);
 
                 //Read response
 				using (StreamReader read = new StreamReader(EasyWeb.Post(request, data)))
@@ -437,23 +447,23 @@ namespace Wikimedia
         /// </summary>
         public Article[] GetPages(IList<string> inpages, string prop = "info|revisions")
         {
+			string[] props = prop.Split('|');
 			if (inpages.Count == 0) return new Article[0];
 
             //Encode page names
             for (int c = 0; c < inpages.Count; c++) inpages[c] = UrlEncode(inpages[c]);
 
-            //Download stream
-            Uri url = new Uri(
-                UrlApi +
-                "?format=json" +
-                "&action=query" +
-                "&titles=" + string.Join("|", inpages) +
-                "&prop=" + prop +
-                //"&intoken=edit" +
-                "&rvprop=content");
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.UserAgent = UserAgent;
-            request.CookieContainer = cookies;
+			//Download stream
+			string parameters = "?format=json" +
+				"&action=query" +
+				"&titles=" + string.Join("|", inpages) +
+				"&prop=" + prop;
+			if (props.Contains("revisions"))
+			{
+				parameters += "&rvprop=content";
+			}
+			Uri url = new Uri(UrlApi + parameters);
+            HttpWebRequest request = CreateWebRequest(url);
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
@@ -506,9 +516,7 @@ namespace Wikimedia
                 "&token=" + UrlEncode(newpage.edittoken) +
 				"&assert=bot";
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(UrlApi);
-            request.UserAgent = UserAgent;
-            request.CookieContainer = cookies;
+            HttpWebRequest request = CreateWebRequest(UrlApi);
 
             //Read response
 			string json;
@@ -529,6 +537,38 @@ namespace Wikimedia
             return true;
         }
 
+		public bool PurgePages(IList<Article> inpages)
+		{
+			List<string> pagenames = inpages.Select(page => page.title).ToList();
+			return PurgePages(pagenames);
+		}
+
+		public bool PurgePages(IList<string> inpages)
+		{
+			if (inpages.Count == 0) return true;
+
+			//Encode page names
+			for (int c = 0; c < inpages.Count; c++) inpages[c] = UrlEncode(inpages[c]);
+
+			//Download stream
+			string parameters = "format=json" +
+				"&action=purge" +
+				"&titles=" + string.Join("|", inpages) +
+				"&forcelinkupdate";
+			HttpWebRequest request = CreateWebRequest(UrlApi);
+
+			string json;
+			using (StreamReader read = new StreamReader(EasyWeb.Post(request, parameters)))
+			{
+				json = read.ReadToEnd();
+			}
+
+			//Parse and read
+			Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+
+			return true;
+		}
+
 		/// <summary>
 		/// Searches for entities with the specified title.
 		/// </summary>
@@ -542,9 +582,7 @@ namespace Wikimedia
 				"&type=item" + 
 				"&language=en" +
 				"&search=" + UrlEncode(query));
-			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-			request.UserAgent = UserAgent;
-			request.CookieContainer = cookies;
+			HttpWebRequest request = CreateWebRequest(url);
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
@@ -578,9 +616,7 @@ namespace Wikimedia
 				"&token=" + UrlEncode(GetCsrfToken()) +
 				"&assert=bot";
 
-			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(UrlApi);
-			request.UserAgent = UserAgent;
-			request.CookieContainer = cookies;
+			HttpWebRequest request = CreateWebRequest(UrlApi);
 
 			//Read response
 			string json;
@@ -638,9 +674,7 @@ namespace Wikimedia
 				"?format=json" +
 				"&action=wbgetentities" +
 				"&ids=" + string.Join("|", ids));
-			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-			request.UserAgent = UserAgent;
-			request.CookieContainer = cookies;
+			HttpWebRequest request = CreateWebRequest(url);
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
@@ -685,9 +719,7 @@ namespace Wikimedia
 				data += "&text=" + UrlEncode(newpage.revisions[0].text);
 			}
 
-			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(UrlApi);
-			request.UserAgent = UserAgent;
-			request.CookieContainer = cookies;
+			HttpWebRequest request = CreateWebRequest(UrlApi);
 
 			//Read response
 			string json;
@@ -726,9 +758,7 @@ namespace Wikimedia
                 data["text"] = newpage.revisions[0].text;
             }
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(UrlApi);
-            request.UserAgent = UserAgent;
-            request.CookieContainer = cookies;
+            HttpWebRequest request = CreateWebRequest(UrlApi);
 
             string filetype = "application/octet-stream";
 			switch (Path.GetExtension(path))
@@ -822,9 +852,7 @@ namespace Wikimedia
             //Download stream
             Uri url = new Uri(
                 UrlApi + "?format=json&action=query&list=allimages&prop=imageinfo&aisha1=" + shaHex);
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.UserAgent = UserAgent;
-            request.CookieContainer = cookies;
+            HttpWebRequest request = CreateWebRequest(url);
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
@@ -846,9 +874,7 @@ namespace Wikimedia
             //Download stream
             Uri url = new Uri(
                 UrlApi + "?format=json&action=query&meta=tokens&type=csrf");
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.UserAgent = UserAgent;
-            request.CookieContainer = cookies;
+            HttpWebRequest request = CreateWebRequest(url);
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
@@ -914,7 +940,8 @@ namespace Wikimedia
 				"&list=categorymembers" +
 				"&format=json" +
 				"&cmtype=" + cmtype +
-				"&cmtitle=" + UrlEncode(category);
+				"&cmtitle=" + UrlEncode(category) +
+				"&cmlimit=500";
 			if (!string.IsNullOrEmpty(startFrom))
 			{
 				basedata += "&cmstartsortkeyprefix=" + UrlEncode(startFrom);
@@ -925,9 +952,7 @@ namespace Wikimedia
 
 			do
 			{
-				HttpWebRequest request = (HttpWebRequest)WebRequest.Create(UrlApi);
-				request.UserAgent = UserAgent;
-				request.CookieContainer = cookies;
+				HttpWebRequest request = CreateWebRequest(UrlApi);
 
 				//Read response
 				string json;
@@ -961,7 +986,7 @@ namespace Wikimedia
 			return GetCategoryPages(category).ToArray();
         }
 
-        private static string UrlEncode(string str)
+        internal static string UrlEncode(string str)
         {
             return System.Web.HttpUtility.UrlEncode(str);
         }
@@ -1314,10 +1339,16 @@ namespace Wikimedia
         public string starttimestamp;
         public string edittoken;
         public Revision[] revisions;
+		public Article[] links;
 
 		public Article()
 		{
 
+		}
+
+		public Article(string title)
+		{
+			this.title = title;
 		}
 
 		public Article(Dictionary<string, object> json)
@@ -1335,15 +1366,88 @@ namespace Wikimedia
 					length = (int)(json["length"]);
 				if (json.ContainsKey("revisions"))
 				{
-					object[] revisionJson = (object[])(json["revisions"]);
-					revisions = new Revision[revisionJson.Length];
+					object[] revisionsJson = (object[])(json["revisions"]);
+					revisions = new Revision[revisionsJson.Length];
 					for (int c = 0; c < revisions.Length; c++)
 					{
-						Dictionary<string, object> revJson = (Dictionary<string, object>)revisionJson[c];
+						Dictionary<string, object> revJson = (Dictionary<string, object>)revisionsJson[c];
 						revisions[c] = new Revision(revJson);
 					}
 				}
+				if (json.ContainsKey("links"))
+				{
+					links = ReadArticleArray(json, "links");
+				}
 			}
+		}
+
+		private static Article[] ReadArticleArray(Dictionary<string, object> json, string key)
+		{
+			object[] articlesJson = (object[])(json[key]);
+			Article[] articles = new Article[articlesJson.Length];
+			for (int c = 0; c < articles.Length; c++)
+			{
+				Dictionary<string, object> revJson = (Dictionary<string, object>)articlesJson[c];
+				articles[c] = new Article(revJson);
+			}
+			return articles;
+		}
+
+		/// <summary>
+		/// Returns an enumerator over all pages that link to this one.
+		/// </summary>
+		public IEnumerable<Article> GetLinksHere(WikiApi api)
+		{
+			//Download stream
+			string basedata = "format=json" +
+				"&action=query" +
+				"&titles=" + WikiApi.UrlEncode(title) +
+				"&prop=linkshere" +
+				"&lhlimit=5000";
+
+			string data = basedata + "&continue=";
+
+			bool lhcontinue = false;
+
+			do
+			{
+				HttpWebRequest request = api.CreateWebRequest();
+
+				//Read response
+				string json;
+				using (StreamReader read = new StreamReader(EasyWeb.Post(request, data)))
+				{
+					json = read.ReadToEnd();
+				}
+
+				Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+				Dictionary<string, object> query = (Dictionary<string, object>)deser["query"];
+				Dictionary<string, object> pages = (Dictionary<string, object>)query["pages"];
+				foreach (KeyValuePair<string, object> page in pages)
+				{
+					Dictionary<string, object> jsonData = (Dictionary<string, object>)page.Value;
+					if (jsonData.ContainsKey("invalid"))
+					{
+						continue;
+					}
+					foreach (Dictionary<string, object> linkhere in (object[])jsonData["linkshere"])
+					{
+						yield return new Article(linkhere);
+					}
+				}
+
+				lhcontinue = deser.ContainsKey("continue");
+				if (lhcontinue)
+				{
+					Dictionary<string, object> continueData = (Dictionary<string, object>)deser["continue"];
+					data = basedata;
+					foreach (KeyValuePair<string, object> kv in continueData)
+					{
+						data += "&" + kv.Key + "=" + (string)kv.Value;
+					}
+				}
+			}
+			while (lhcontinue);
 		}
 
 		public static bool IsNullOrEmpty(Article article)

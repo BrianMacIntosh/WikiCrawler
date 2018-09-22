@@ -18,11 +18,11 @@ public static class ImageUtils
 	/// </summary>
 	/// <param name="sourceFile"></param>
 	/// <returns></returns>
-	public static void AutoCropJpgSolid(string sourceFile, string outFile, uint color, float percentage = 1f)
+	public static bool AutoCropJpgSolid(string sourceFile, string outFile, uint color, float percentage = 1f)
 	{
 		RGBQUAD rgbColor = new RGBQUAD();
 		rgbColor.uintValue = color;
-		AutoCropJpg(sourceFile, outFile, rgbColor, percentage, 0, Side.Top | Side.Left | Side.Right | Side.Bottom);
+		return AutoCropJpg(sourceFile, outFile, rgbColor, percentage, 0, Side.Top | Side.Left | Side.Right | Side.Bottom);
 	}
 
 	/// <summary>
@@ -65,9 +65,9 @@ public static class ImageUtils
 		}
 	}
 
-	public static void AutoCropJpg(string sourceFile, string outFile, RGBQUAD target, float percentage, int leeway)
+	public static bool AutoCropJpg(string sourceFile, string outFile, RGBQUAD target, float percentage, int leeway)
 	{
-		AutoCropJpg(sourceFile, outFile, target, percentage, leeway, Side.Left | Side.Right | Side.Top | Side.Bottom);
+		return AutoCropJpg(sourceFile, outFile, target, percentage, leeway, Side.Left | Side.Right | Side.Top | Side.Bottom);
 	}
 
 	/// <summary>
@@ -78,7 +78,7 @@ public static class ImageUtils
 	/// <param name="percentage">The ratio of a row or column that must be solid white for crop to detect</param>
 	/// <param name="leeway">Difference allowed in each color channel to still detect as a match against target.</param>
 	/// <param name="sides"></param>
-	public static void AutoCropJpg(string sourceFile, string outFile, RGBQUAD target, float percentage, int leeway, Side sides)
+	public static bool AutoCropJpg(string sourceFile, string outFile, RGBQUAD target, float percentage, int leeway, Side sides)
 	{
 		FIBITMAP raw = FreeImage.Load(FREE_IMAGE_FORMAT.FIF_JPEG, sourceFile, FREE_IMAGE_LOAD_FLAGS.DEFAULT);
 		FIBITMAP bitmap = FreeImage.ConvertTo32Bits(raw);
@@ -115,10 +115,7 @@ public static class ImageUtils
 			left = GetLeftBorder(bitmap, target, percentage, leeway);
 		}
 
-		if (!FreeImage.JPEGCrop(sourceFile, outFile, left, height - top, right, height - bottom))
-		{
-			throw new Exception("Crop failed");
-		}
+		return FreeImage.JPEGCrop(sourceFile, outFile, left, height - top, right, height - bottom);
 	}
 
 	private static int GetTopBorder(FIBITMAP image, RGBQUAD target, float percentage, int leeway)

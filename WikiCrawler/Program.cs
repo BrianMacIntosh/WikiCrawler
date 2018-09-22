@@ -57,6 +57,9 @@ namespace WikiCrawler
 					case "massdownload":
 						MassDownloader.Do();
 						break;
+					case "nulleditlinks":
+						LinksNullEditor.Do();
+						break;
 					default:
 						Console.WriteLine("No such task.");
 						break;

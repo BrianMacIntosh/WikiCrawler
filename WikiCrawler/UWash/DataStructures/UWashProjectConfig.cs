@@ -10,6 +10,7 @@ namespace UWash
 	{
 		public string informationTemplate = "Photograph";
 		public string defaultAuthor;
+		public string defaultPubCountry;
 		public string masterCategory;
 		public string checkCategory;
 		public string filenameSuffix;
