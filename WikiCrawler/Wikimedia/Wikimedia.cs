@@ -349,6 +349,8 @@ namespace Wikimedia
 
         private CookieContainer cookies;
 
+		private static string edittoken;
+
 		public WikiApi(Uri domain)
 		{
 			Domain = domain;
@@ -537,6 +539,42 @@ namespace Wikimedia
             return true;
         }
 
+		/// <summary>
+		/// Undoes the specified revision.
+		/// </summary>
+		public bool UndoRevision(int pageid, int revisionid, bool bot)
+		{
+			if (string.IsNullOrEmpty(edittoken))
+				edittoken = GetCsrfToken();
+
+			string data =
+				"action=edit" +
+				"&pageid=" + pageid.ToString() +
+				"&undo=" + revisionid.ToString() +
+				"&format=json" +
+				(bot ? "&bot=1" : "") +
+				"&nocreate=1" +
+				"&token=" + UrlEncode(edittoken);
+
+			HttpWebRequest request = CreateWebRequest(UrlApi);
+
+			//Read response
+			string json;
+			using (StreamReader read = new StreamReader(EasyWeb.Post(request, data)))
+			{
+				json = read.ReadToEnd();
+			}
+
+			Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+			if (deser.ContainsKey("error"))
+			{
+				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
+				throw new WikimediaException(error["code"] + ": " + error["info"]);
+			}
+
+			return true;
+		}
+
 		public bool PurgePages(IList<Article> inpages)
 		{
 			List<string> pagenames = inpages.Select(page => page.title).ToList();
@@ -698,6 +736,53 @@ namespace Wikimedia
 			}
 
 			return ret;
+		}
+
+		public IEnumerable<Contribution> GetContributions(string username, string startTime, string endTime)
+		{
+			//Encode page names
+			username = UrlEncode(username);
+			
+			string basedata = "format=json" +
+				"&action=query" +
+				"&list=usercontribs" +
+				"&ucuser=" + username +
+				"&ucstart=" + startTime +
+				"&ucend=" + endTime +
+				"&uclimit=5000";
+			string data = basedata + "&continue=";
+
+			bool uccontinue = false;
+
+			do
+			{
+				HttpWebRequest request = CreateWebRequest(UrlApi);
+
+				//Read response
+				string json;
+				using (StreamReader read = new StreamReader(EasyWeb.Post(request, data)))
+				{
+					json = read.ReadToEnd();
+				}
+
+				Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+				foreach (Dictionary<string, object> page in (object[])((Dictionary<string, object>)deser["query"])["usercontribs"])
+				{
+					yield return new Contribution(page);
+				}
+
+				uccontinue = deser.ContainsKey("continue");
+				if (uccontinue)
+				{
+					Dictionary<string, object> continueData = (Dictionary<string, object>)deser["continue"];
+					data = basedata;
+					foreach (KeyValuePair<string, object> kv in continueData)
+					{
+						data += "&" + kv.Key + "=" + (string)kv.Value;
+					}
+				}
+			}
+			while (uccontinue);
 		}
 
 		public bool UploadFromWeb(Article newpage, string url, string summary, bool bot)
@@ -933,6 +1018,10 @@ namespace Wikimedia
 			return GetCategoryEntries(category, "file", startFrom);
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="cmtype">Type of entries to return. Default: "page|subcat|file"</param>
 		public IEnumerable<Article> GetCategoryEntries(string category, string cmtype, string startFrom = "")
 		{
 			string basedata =
@@ -1321,7 +1410,7 @@ namespace Wikimedia
 
 		public string GetSerialized()
 		{
-			return "{\"id\":\"Q2$5627445f-43cb-ed6d-3adb-760e85bd17ee\",\"type\":\"claim\",\"mainsnak\":{\"snaktype\":\"value\",\"property\":\"P1\",\"datavalue\":{\"value\":\"City\",\"type\":\"string\"}}}";
+			return "{\"id\":\"Q2$5627445f-43cb-ed6d-3adb-760e85bd17ee\",\"type\":\"" + type + "\",\"mainsnak\":{\"snaktype\":\"value\",\"property\":\"P1\",\"datavalue\":{\"value\":\"City\",\"type\":\"string\"}}}";
 		}
 	}
 
@@ -1471,10 +1560,61 @@ namespace Wikimedia
 		}
     }
 
+	public class Contribution
+	{
+		public string user;
+		public int pageid;
+		public int revid;
+		public int ns;
+		public string title;
+		public string timestamp;
+		public string comment;
+
+		public Contribution()
+		{
+
+		}
+
+		public Contribution(Dictionary<string, object> json)
+		{
+			object value;
+
+			if (json.TryGetValue("user", out value))
+			{
+				user = (string)value;
+			}
+			if (json.TryGetValue("pageid", out value))
+			{
+				pageid = (int)value;
+			}
+			if (json.TryGetValue("revid", out value))
+			{
+				revid = (int)value;
+			}
+			if (json.TryGetValue("ns", out value))
+			{
+				ns = (int)value;
+			}
+			if (json.TryGetValue("title", out value))
+			{
+				title = (string)value;
+			}
+			if (json.TryGetValue("timestamp", out value))
+			{
+				timestamp = (string)value;
+			}
+			if (json.TryGetValue("comment", out value))
+			{
+				comment = (string)value;
+			}
+		}
+	}
+
 	public class Revision
 	{
 		public string contentformat;
 		public string contentmodel;
+		public string user;
 		public string text;
 
 		public Revision()
@@ -1484,9 +1624,24 @@ namespace Wikimedia
 
 		public Revision(Dictionary<string, object> json)
 		{
-			//contentformat = (string)json["contentformat"];
-			//contentmodel = (string)json["contentmodel"];
-			text = (string)json["*"];
+			object value;
+
+			if (json.TryGetValue("contentformat", out value))
+			{
+				contentformat = (string)value;
+			}
+			if (json.TryGetValue("contentmodel", out value))
+			{
+				contentmodel = (string)value;
+			}
+			if (json.TryGetValue("user", out value))
+			{
+				user = (string)value;
+			}
+			if (json.TryGetValue("*", out value))
+			{
+				text = (string)value;
+			}
 		}
 	}
 }

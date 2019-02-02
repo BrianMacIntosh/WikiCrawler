@@ -13,11 +13,15 @@ namespace UWash
 		public string defaultPubCountry;
 		public string masterCategory;
 		public string checkCategory;
+		public string[] additionalCategories;
 		public string filenameSuffix;
 		public string digitalCollectionsKey;
 		public string sourceTemplate;
 		public int minIndex;
 		public int maxIndex;
+
+		public bool allowCrop = true;
+		public bool allowFailedCreators = false;
 
 		public bool allowUpload = true;
 		public bool allowDataDownload = true;

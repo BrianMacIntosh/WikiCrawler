@@ -10,8 +10,8 @@ namespace WikiCrawler
 			//string croppath = "uwash_images/53_cropped.jpg";
 			//ImageUtils.AutoCropJpg("uwash_images/53.jpg", croppath, 0xffffffff, 0.97f, 5);
 
-			try
-			{
+			//try
+			//{
 				Console.Write("Task>");
 				string task = Console.ReadLine();
 
@@ -60,6 +60,15 @@ namespace WikiCrawler
 					case "nulleditlinks":
 						LinksNullEditor.Do();
 						break;
+					case "massrevert":
+						LinksNullEditor.Revert();
+						break;
+					case "findcatcreators":
+						FindCategoryCreators.Find();
+						break;
+					case "addcheck":
+						LinksNullEditor.CheckCat();
+						break;
 					default:
 						Console.WriteLine("No such task.");
 						break;
@@ -67,7 +76,7 @@ namespace WikiCrawler
 				//UWashCats.Do();
 				//SingleUpload.Do();
 				//NsrwFollowup.Do();
-			}
+			/*}
 			catch (Exception e)
 			{
 				Console.WriteLine(e);
@@ -75,7 +84,7 @@ namespace WikiCrawler
 				{
 					writer.WriteLine(e.ToString());
 				}
-			}
+			}*/
 
 			Console.WriteLine("Done");
 			Console.ReadLine();

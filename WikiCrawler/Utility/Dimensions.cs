@@ -45,6 +45,11 @@ public struct Dimensions
 		return "{{size|unit=" + Unit + "|width=" + Width.ToString() + "|height=" + Height.ToString() + "}}";
 	}
 
+	public Dimensions Flip()
+	{
+		return new Dimensions(Unit, Height, Width);
+	}
+
 	public static bool TryParse(string text, out Dimensions dimensions)
 	{
 		string[] dimSplit = text.Trim().Split(new string[] { " x " }, StringSplitOptions.None);
