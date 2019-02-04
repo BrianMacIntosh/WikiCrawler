@@ -1,33 +1,341 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-using MySql.Data.MySqlClient;
 
 namespace WikiCrawler
 {
-	static class CategoryTranslation
+	/// <summary>
+	/// Helper functions for translating raw content into categories.
+	/// </summary>
+	public static class CategoryTranslation
 	{
 		//private static MySqlConnection taxonConnection;
 
-		private static bool m_Init = false;
+		private static Wikimedia.WikiApi s_commonsApi = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
+		private static Wikimedia.WikiApi s_wikidataApi = new Wikimedia.WikiApi(new Uri("http://wikidata.org/"));
 
+		/// <summary>
+		/// Cached tree structure of Commons categories.
+		/// </summary>
+		public static readonly Wikimedia.CategoryTree CategoryTree = new Wikimedia.CategoryTree(s_commonsApi);
+
+		/// <summary>
+		/// Tags mapped to Commons categories.
+		/// </summary>
+		private static Dictionary<string, string> s_categoryMap = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+		
 		private static char[] trim = new char[] { ' ', '\n', '\r', '\t', '-' };
 
-		private static void Init()
+		static CategoryTranslation()
 		{
-			if (m_Init) return;
-
 			/*taxonConnection = new MySqlConnection("server=127.0.0.1;uid=root;pwd=;database=ITIS;");
 			taxonConnection.Open();*/
 
-			m_Init = true;
+			//load mapped categories
+			string categoryMappingsFile = Path.Combine(Configuration.DataDirectory, "category_mappings.txt");
+			if (File.Exists(categoryMappingsFile))
+			{
+				using (StreamReader reader = new StreamReader(new FileStream(categoryMappingsFile, FileMode.Open)))
+				{
+					while (!reader.EndOfStream)
+					{
+						string[] line = reader.ReadLine().Split(StringUtility.Pipe, 2);
+						if (line.Length == 2)
+						{
+							s_categoryMap[line[0]] = line[1];
+						}
+					}
+				}
+			}
+
+			CategoryTree.Load(Path.Combine(Configuration.DataDirectory, "category_tree.txt"));
+		}
+
+		/// <summary>
+		/// Saves out any cached category data to files.
+		/// </summary>
+		public static void SaveOut()
+		{
+			//write category map
+			string categoryMappingsFile = Path.Combine(Configuration.DataDirectory, "category_mappings.txt");
+			using (StreamWriter writer = new StreamWriter(new FileStream(categoryMappingsFile, FileMode.Create)))
+			{
+				foreach (KeyValuePair<string, string> kv in s_categoryMap)
+				{
+					writer.WriteLine(kv.Key + "|" + kv.Value);
+				}
+			}
+
+			CategoryTree.Save(Path.Combine(Configuration.DataDirectory, "category_tree.txt"));
+		}
+
+		/// <summary>
+		/// Check if this input is already mapped to a category.
+		/// </summary>
+		public static string GetMappedCategory(string input)
+		{
+			if (s_categoryMap.ContainsKey(input))
+			{
+				string mappedCat = s_categoryMap[input];
+
+				//verify that the category is good against the live database
+				if (!string.IsNullOrEmpty(mappedCat) && !CategoryTree.AddToTree(mappedCat, 2))
+				{
+					Console.WriteLine("Failed to find mapped cat '" + input + "'.");
+					s_categoryMap[input] = "";
+					return "";
+				}
+
+				return mappedCat;
+			}
+			else
+			{
+				//flag this category as needing manual mapping
+				s_categoryMap[input] = "";
+				return "";
+			}
+		}
+
+		/// <summary>
+		/// Records the category the specified tag has been mapped to.
+		/// </summary>
+		private static string MapCategory(string tag, string category)
+		{
+			if (!string.IsNullOrEmpty(category))
+			{
+				if (!category.StartsWith("Category:")) category = "Category:" + category;
+				s_categoryMap[tag] = category;
+				Console.WriteLine("Mapped '" + tag + "' to '" + category + "'.");
+				return category;
+			}
+			else
+			{
+				// record blank categories so we don't check them again
+				if (!s_categoryMap.ContainsKey(tag))
+				{
+					s_categoryMap.Add(tag, category);
+				}
+				return "";
+			}
+		}
+
+		/// <summary>
+		/// Translates a location string into a category name.
+		/// </summary>
+		public static string TranslateLocationCategory(string input)
+		{
+			if (string.IsNullOrEmpty(input)) return "";
+
+			if (s_categoryMap.ContainsKey(input))
+			{
+				return GetMappedCategory(input);
+			}
+
+			//simple mapping
+			string simpleMap = MapCategory(input, CategoryTranslation.TryFetchCategoryName(s_commonsApi, input));
+			if (!string.IsNullOrEmpty(simpleMap))
+			{
+				return simpleMap;
+			}
+
+			string[] pieces = input.Split(StringUtility.DashDash, StringSplitOptions.RemoveEmptyEntries);
+
+			for (int c = 0; c < pieces.Length; c++)
+			{
+				pieces[c] = pieces[c].Replace("(state)", "").Trim();
+				pieces[c] = pieces[c].Replace("(State)", "").Trim();
+			}
+
+			Console.WriteLine("Attempting to map location '" + input + "'.");
+
+			if (pieces.Length >= 2)
+			{
+				//try flipping last two, with a comma
+				string attempt = pieces[pieces.Length - 1].Trim() + ", " + pieces[pieces.Length - 2].Trim();
+				string translate = MapCategory(input, CategoryTranslation.TryFetchCategoryName(s_commonsApi, attempt));
+				if (!string.IsNullOrEmpty(translate))
+					return translate;
+			}
+
+			//check for only the last on wikidata
+			string[] entities = s_wikidataApi.SearchEntities(pieces.Last());
+			for (int d = 0; d < Math.Min(5, entities.Length); d++)
+			{
+				Wikimedia.Entity place = s_wikidataApi.GetEntity(entities[d]);
+
+				//get country for place
+				if (place.HasClaim("P17"))
+				{
+					IEnumerable<Wikimedia.Entity> parents = place.GetClaimValuesAsEntity("P17", s_wikidataApi);
+					if (place.HasClaim("P131"))
+					{
+						parents = parents.Concat(place.GetClaimValuesAsEntity("P131", s_wikidataApi));
+					}
+					foreach (Wikimedia.Entity parent in parents)
+					{
+						//look for the parent in the earlier pieces
+						for (int c = 0; c < pieces.Length - 1; c++)
+						{
+							bool countrySuccess = false;
+							if (parent.aliases != null && parent.aliases.ContainsKey("en"))
+							{
+								foreach (string s in parent.aliases["en"])
+								{
+									if (string.Compare(pieces[c], s, true) == 0)
+										countrySuccess = true;
+								}
+							}
+							if (parent.labels != null && parent.labels.ContainsKey("en")
+								&& string.Compare(pieces[c], parent.labels["en"], true) == 0)
+								countrySuccess = true;
+
+							if (countrySuccess)
+							{
+								if (place.HasClaim("P373"))
+								{
+									return MapCategory(input, place.GetClaimValueAsString("P373"));
+								}
+								else
+								{
+									//Wikidata has no commons cat :(
+									return "";
+								}
+							}
+						}
+					}
+				}
+			}
+
+			return "";
+		}
+
+		private static HashSet<string> s_personsFailed = new HashSet<string>();
+
+		public static string TranslatePersonCategory(string input, bool allowFailedCreators)
+		{
+			if (string.IsNullOrEmpty(input)) return "";
+
+			//TODO: don't recheck on reexecute? See TranslateTagCategory
+			string cached = GetMappedCategory(input);
+			if (!string.IsNullOrEmpty(cached))
+			{
+				return cached;
+			}
+
+			if (s_personsFailed.Contains(input))
+			{
+				if (allowFailedCreators)
+					return input;
+				else
+					return "";
+			}
+
+			//simple mapping
+			string simpleMap = MapCategory(input, TryFetchCategoryName(s_commonsApi, input));
+			if (!string.IsNullOrEmpty(simpleMap))
+			{
+				return simpleMap;
+			}
+
+			Console.WriteLine("Attempting to map person '" + input + "'.");
+
+			//make sure creator is created
+			Creator creator;
+			CreatorUtility.TryGetCreator(input, out creator);
+
+			//If they have a creator template, use that
+			if (CreatorUtility.TryGetCreator(input, out creator))
+			{
+				if (!string.IsNullOrEmpty(creator.Author))
+				{
+					string creatorPage = creator.Author;
+					creatorPage = creatorPage.Trim('{').Trim('}');
+					string homeCategory;
+					if (CreatorUtility.TryGetHomeCategory(creatorPage, out homeCategory))
+					{
+						return homeCategory;
+					}
+					else
+					{
+						//try to find creator template's homecat param
+						Wikimedia.Article creatorArticle = s_commonsApi.GetPage(creatorPage);
+						if (creatorArticle != null && !creatorArticle.missing)
+						{
+							foreach (string s in creatorArticle.revisions[0].text.Split('|'))
+							{
+								if (s.TrimStart().StartsWith("homecat", StringComparison.InvariantCultureIgnoreCase))
+								{
+									string homecat = s.Split(StringUtility.Equal, 2)[1].Trim();
+									if (!string.IsNullOrEmpty(homecat))
+									{
+										if (!homecat.StartsWith("Category:")) homecat = "Category:" + homecat;
+										CreatorUtility.SetHomeCategory(creatorPage, homecat);
+										return homecat;
+									}
+								}
+							}
+						}
+
+						//failed to find homecat, use name
+						string creatorName = creatorPage;
+						if (creatorName.StartsWith("Creator:")) creatorName = creatorName.Substring(8);
+						string cat = "Category:" + creatorName;
+						CreatorUtility.SetHomeCategory(creatorPage, "");
+						s_categoryMap[input] = cat;
+						return cat;
+					}
+				}
+				else
+				{
+					return "";
+				}
+			}
+
+			s_personsFailed.Add(input);
+			if (allowFailedCreators)
+				return input;
+			else
+				return "";
+		}
+
+		public static string TranslateTagCategory(string input)
+		{
+			if (string.IsNullOrEmpty(input)) return "";
+
+			if (s_categoryMap.ContainsKey(input))
+			{
+				return GetMappedCategory(input);
+			}
+
+			//does it look like it has a parent?
+			if (input.Contains('(') && input.EndsWith(")"))
+			{
+				string switched = "";
+				for (int c = input.Length - 1; c >= 0; c--)
+				{
+					if (input[c] == '(')
+					{
+						string inParen = input.Substring(c + 1, input.Length - c - 2);
+						switched = inParen.Trim() + "--" + input.Substring(0, c).Trim();
+						break;
+					}
+				}
+				if (!string.IsNullOrEmpty(switched))
+				{
+					string mapping = TranslateLocationCategory(switched);
+					if (!string.IsNullOrEmpty(mapping))
+						return MapCategory(input, mapping);
+				}
+			}
+
+			//try to create a mapping
+			Console.WriteLine("Attempting to map tag '" + input + "'.");
+			return MapCategory(input, CategoryTranslation.TranslateCategory(s_commonsApi, input));
 		}
 
 		public static string TranslateCategory(Wikimedia.WikiApi api, string input)
 		{
-			Init();
-
 			string catname = input.Trim(trim);
 
 			//Check if this category exists literally

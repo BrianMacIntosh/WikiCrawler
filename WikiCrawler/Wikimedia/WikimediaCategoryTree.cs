@@ -7,7 +7,7 @@ using System.Web;
 
 namespace Wikimedia
 {
-	class CategoryTree
+	public class CategoryTree
 	{
 		private static Dictionary<string, List<string>> s_CategoriesByCategory;
 

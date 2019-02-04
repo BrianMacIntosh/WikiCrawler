@@ -1,6 +1,6 @@
-﻿namespace UWash
+﻿namespace WikiCrawler
 {
-	public class UWashCreator
+	public class Creator
 	{
 		public string Author = "";
 		public string Category = "";
