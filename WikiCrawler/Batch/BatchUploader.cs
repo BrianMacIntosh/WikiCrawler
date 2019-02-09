@@ -12,33 +12,29 @@ public abstract class BatchUploader : BatchTask
 {
 	protected Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
 
-	private HashSet<string> s_succeeded = new HashSet<string>();
-
 	protected string PreviewDirectory
 	{
 		get { return Path.Combine(ProjectDataDirectory, "preview"); }
 	}
 
-	public BatchUploader(string key, ProjectConfig config)
-		: base(key, config)
+	protected string GetPreviewFileFilename(string key)
+	{
+		return Path.Combine(PreviewDirectory, key + ".txt");
+	}
+
+	private static WebClient s_client = new WebClient();
+
+	public BatchUploader(string key)
+		: base(key)
 	{
 		if (!Directory.Exists(PreviewDirectory))
+		{
 			Directory.CreateDirectory(PreviewDirectory);
+		}
 
 		Console.WriteLine("Logging in...");
 		Credentials credentials = Configuration.LoadCredentials();
 		Api.LogIn(credentials.Username, credentials.Password);
-
-		// load already-succeeded uploads
-		string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
-		if (File.Exists(succeededFile))
-		{
-			string[] succeeded = JsonConvert.DeserializeObject<string[]>(File.ReadAllText(succeededFile, Encoding.UTF8));
-			foreach (string suc in succeeded)
-			{
-				s_succeeded.Add(suc);
-			}
-		}
 	}
 
 	/// <summary>
@@ -48,51 +44,20 @@ public abstract class BatchUploader : BatchTask
 	{
 		string stopFile = Path.Combine(Configuration.DataDirectory, "STOP");
 
+		StreamWriter errorsWriter = new StreamWriter(new FileStream(Path.Combine(ProjectDataDirectory, "failed.txt"), FileMode.Create, FileAccess.Write));
 		try
 		{
 			foreach (string metadataFile in Directory.GetFiles(MetadataCacheDirectory))
 			{
 				string key = Path.GetFileNameWithoutExtension(metadataFile);
-				Dictionary<string, string> metadata
-					= JsonConvert.DeserializeObject<Dictionary<string, string>>(
-						File.ReadAllText(metadataFile, Encoding.UTF8));
 
-				Wikimedia.Article art = new Wikimedia.Article();
-				art.title = GetTitle(key, metadata);
-				art.revisions = new Wikimedia.Revision[1];
-				art.revisions[0] = new Wikimedia.Revision();
-				art.revisions[0].text = BuildPage(key, metadata);
-
-				if (!m_config.allowUpload)
-				{
-					throw new UWashException("upload disabled");
-				}
-
-				string imagePath = GetUploadImagePath(key, metadata);
-
-			reupload:
-				bool uploadSuccess;
 				try
 				{
-					uploadSuccess = Api.UploadFromLocal(art, imagePath, "(BOT) batch upload", true);
+					Upload(metadataFile);
 				}
-				catch (WebException e)
+				catch (UWashException e)
 				{
-					if (e.Status == WebExceptionStatus.ProtocolError
-						&& ((HttpWebResponse)e.Response).StatusCode == HttpStatusCode.ServiceUnavailable)
-					{
-						System.Threading.Thread.Sleep(60000);
-						goto reupload;
-					}
-					else
-					{
-						uploadSuccess = false;
-					}
-				}
-
-				if (!uploadSuccess)
-				{
-					throw new UWashException("upload failed");
+					errorsWriter.WriteLine(key + "\t\t" + e.Message);
 				}
 
 				if (File.Exists(stopFile))
@@ -105,8 +70,66 @@ public abstract class BatchUploader : BatchTask
 		}
 		finally
 		{
+			errorsWriter.Close();
 			SaveOut();
 		}
+	}
+
+	public void Upload(string metadataFile)
+	{
+		string key = Path.GetFileNameWithoutExtension(metadataFile);
+
+		Console.WriteLine("== BUILDING " + key);
+
+		Dictionary<string, string> metadata
+			= JsonConvert.DeserializeObject<Dictionary<string, string>>(
+				File.ReadAllText(metadataFile, Encoding.UTF8));
+
+		Wikimedia.Article art = new Wikimedia.Article();
+		art.title = GetTitle(key, metadata);
+		art.revisions = new Wikimedia.Revision[1];
+		art.revisions[0] = new Wikimedia.Revision();
+		art.revisions[0].text = BuildPage(key, metadata);
+
+		if (!m_config.allowUpload)
+		{
+			throw new UWashException("upload disabled");
+		}
+
+		CacheImage(key);
+
+		string imagePath = GetUploadImagePath(key, metadata);
+
+		reupload:
+		bool uploadSuccess;
+		try
+		{
+			uploadSuccess = Api.UploadFromLocal(art, imagePath, "(BOT) batch upload", true);
+		}
+		catch (WebException e)
+		{
+			if (e.Status == WebExceptionStatus.ProtocolError
+				&& ((HttpWebResponse)e.Response).StatusCode == HttpStatusCode.ServiceUnavailable)
+			{
+				System.Threading.Thread.Sleep(60000);
+				goto reupload;
+			}
+			else
+			{
+				uploadSuccess = false;
+			}
+		}
+
+		if (uploadSuccess)
+		{
+			m_succeeded.Add(key);
+		}
+		else
+		{
+			throw new UWashException("upload failed");
+		}
+
+		DeleteImageCache(key);
 	}
 
 	/// <summary>
@@ -115,8 +138,58 @@ public abstract class BatchUploader : BatchTask
 	public void SaveOut()
 	{
 		string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
-		File.WriteAllText(succeededFile, JsonConvert.SerializeObject(s_succeeded.ToArray()));
+		File.WriteAllText(succeededFile, JsonConvert.SerializeObject(m_succeeded.ToArray()));
 	}
+
+	/// <summary>
+	/// If the image for the specified item isn't cached, caches it.
+	/// </summary>
+	public void CacheImage(string key)
+	{
+		if (m_config.allowImageDownload)
+		{
+			string imagepath = GetImageCacheFilename(key);
+			if (!File.Exists(imagepath))
+			{
+				Console.WriteLine("Downloading image: " + key);
+				Uri uri = GetImageUri(key);
+				EasyWeb.WaitForDelay(uri);
+				s_client.DownloadFile(uri, imagepath);
+			}
+		}
+	}
+
+	private void DeleteImageCache(string key)
+	{
+		string path = GetImageCacheFilename(key);
+		if (File.Exists(path))
+		{
+			File.Delete(path);
+		}
+
+		path = GetImageCroppedFilename(key);
+		if (File.Exists(path))
+		{
+			File.Delete(path);
+		}
+
+		path = GetMetadataCacheFilename(key);
+		if (File.Exists(path))
+		{
+			File.Delete(path);
+		}
+
+		path = GetPreviewFileFilename(key);
+		if (File.Exists(path))
+		{
+			File.Delete(path);
+		}
+	}
+
+	/// <summary>
+	/// Returns the URL for the item with the specified key.
+	/// </summary>
+	protected abstract Uri GetImageUri(string key);
 
 	/// <summary>
 	/// Returns the title of the uploaded page for the specified metadata.
@@ -320,6 +393,21 @@ public abstract class BatchUploader : BatchTask
 			if (!int.TryParse(yearStr, out latestYear)) latestYear = 9999;
 			return "{{other date|before|" + yearStr + "}}";
 		}
+		else if (date.StartsWith("between "))
+		{
+			string[] components = date.Substring("between ".Length).Split(new string[] { " and " }, StringSplitOptions.None);
+			if (components.Length == 2)
+			{
+				string a = ParseSingleDate(components[0], out latestYear);
+				string b = ParseSingleDate(components[1], out latestYear);
+				return "{{other date|between|" + a + "|" + b + "}}";
+			}
+			else
+			{
+				latestYear = 9999;
+				return date;
+			}
+		}
 		else
 		{
 			string[] dashsplit = date.Split('-');
@@ -331,42 +419,47 @@ public abstract class BatchUploader : BatchTask
 			}
 			else
 			{
-				string[] dateSplit = date.Split(new char[] { ' ', ',', '.' }, StringSplitOptions.RemoveEmptyEntries);
-				if (dateSplit.Length == 3)
-				{
-					int year, month, day;
-					if (TryParseMonth(dateSplit[0], out month)
-						&& int.TryParse(dateSplit[1], out day)
-						&& int.TryParse(dateSplit[2], out year))
-					{
-						latestYear = year;
-						return year.ToString() + "-" + month.ToString("00") + "-" + day.ToString("00");
-					}
-				}
-				else if (dateSplit.Length == 2)
-				{
-					int year, month;
-					if (TryParseMonth(dateSplit[0], out month)
-						&& int.TryParse(dateSplit[1], out year))
-					{
-						latestYear = year;
-						return year.ToString() + "-" + month.ToString("00");
-					}
-				}
-				else if (dateSplit.Length == 1)
-				{
-					int year;
-					if (int.TryParse(dateSplit[0], out year))
-					{
-						latestYear = year;
-						return year.ToString();
-					}
-				}
-
-				latestYear = 9999;
-				return date;
+				return ParseSingleDate(date, out latestYear);
 			}
 		}
+	}
+
+	public static string ParseSingleDate(string date, out int latestYear)
+	{
+		string[] dateSplit = date.Split(new char[] { ' ', ',', '.' }, StringSplitOptions.RemoveEmptyEntries);
+		if (dateSplit.Length == 3)
+		{
+			int year, month, day;
+			if (TryParseMonth(dateSplit[0], out month)
+				&& int.TryParse(dateSplit[1], out day)
+				&& int.TryParse(dateSplit[2], out year))
+			{
+				latestYear = year;
+				return year.ToString() + "-" + month.ToString("00") + "-" + day.ToString("00");
+			}
+		}
+		else if (dateSplit.Length == 2)
+		{
+			int year, month;
+			if (TryParseMonth(dateSplit[0], out month)
+				&& int.TryParse(dateSplit[1], out year))
+			{
+				latestYear = year;
+				return year.ToString() + "-" + month.ToString("00");
+			}
+		}
+		else if (dateSplit.Length == 1)
+		{
+			int year;
+			if (int.TryParse(dateSplit[0], out year))
+			{
+				latestYear = year;
+				return year.ToString();
+			}
+		}
+
+		latestYear = 9999;
+		return date;
 	}
 
 	/// <summary>

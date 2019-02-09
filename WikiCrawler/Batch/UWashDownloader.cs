@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace UWash
 {
@@ -10,25 +12,19 @@ namespace UWash
 			get { return "http://digitalcollections.lib.washington.edu/cdm/singleitem/collection/" + UWashConfig.digitalCollectionsKey + "/id/{0}"; }
 		}
 
-		private string ImageUrlFormat
-		{
-			get
-			{
-				return "http://digitalcollections.lib.washington.edu/utils/ajaxhelper/?CISOROOT="
-					+ UWashConfig.digitalCollectionsKey
-					+ "&action=2&CISOPTR={0}&DMSCALE=100&DMWIDTH=99999&DMHEIGHT=99999&DMX=0&DMY=0&DMTEXT=&REC=1&DMTHUMB=0&DMROTATE=0";
-			}
-		}
-
 		private UWashProjectConfig UWashConfig
 		{
 			get { return (UWashProjectConfig)m_config; }
 		}
 
-		public UWashDownloader(string key, UWashProjectConfig config)
-			: base(key, config)
+		public UWashDownloader(string key)
+			: base(key)
 		{
-			EasyWeb.SetDelayForDomain(new Uri(ImageUrlFormat), 15f);
+			//HACK:
+			m_config = JsonConvert.DeserializeObject<UWashProjectConfig>(
+				File.ReadAllText(Path.Combine(ProjectDataDirectory, "config.json")));
+
+			EasyWeb.SetDelayForDomain(new Uri(MetadataUrlFormat), 15f);
 		}
 
 		/// <summary>

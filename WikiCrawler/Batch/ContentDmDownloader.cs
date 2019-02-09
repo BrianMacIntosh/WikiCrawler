@@ -4,8 +4,8 @@ using System.Text.RegularExpressions;
 
 public abstract class ContentDmDownloader : BatchDownloader
 {
-	public ContentDmDownloader(string key, ProjectConfig config)
-		: base(key, config)
+	public ContentDmDownloader(string key)
+		: base(key)
 	{
 
 	}
@@ -36,25 +36,25 @@ public abstract class ContentDmDownloader : BatchDownloader
 			throw new UWashException("Data mysteriously not found.");
 		}
 
-		Dictionary<string, object> item = (Dictionary<string, object>)deser["item"];
+		Newtonsoft.Json.Linq.JObject item = (Newtonsoft.Json.Linq.JObject)deser["item"];
 		if ((string)item["state"] == "notFound")
 		{
 			return null;
 		}
-		item = (Dictionary<string, object>)item["item"];
-		object[] fields = (object[])item["fields"];
+		item = (Newtonsoft.Json.Linq.JObject)item["item"];
+		object[] fields = item["fields"].ToObject<object[]>();
 
 		Dictionary<string, string> data = new Dictionary<string, string>();
 
 		foreach (object field in fields)
 		{
-			Dictionary<string, object> fieldData = (Dictionary<string, object>)field;
+			Newtonsoft.Json.Linq.JObject fieldData = (Newtonsoft.Json.Linq.JObject)field;
 
 			//TODO: CleanHtml?
-			string value = (string)fieldData["value"];
+			string value = fieldData["value"].ToObject<string>();
 			value = value.TrimStart('[').TrimEnd(']');
 
-			data[(string)fieldData["key"]] = value;
+			data[(string)fieldData["label"]] = value;
 		}
 
 		return data;

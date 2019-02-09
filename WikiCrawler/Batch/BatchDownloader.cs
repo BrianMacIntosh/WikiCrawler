@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
-using System.Threading.Tasks;
 using WikiCrawler;
 
 public abstract class BatchDownloader : BatchTask
@@ -13,8 +13,8 @@ public abstract class BatchDownloader : BatchTask
 	/// 
 	/// </summary>
 	/// <param name="key">The name of the directory storing the project data.</param>
-	public BatchDownloader(string key, ProjectConfig config)
-		: base(key, config)
+	public BatchDownloader(string key)
+		: base(key)
 	{
 		if (!Directory.Exists(ImageCacheDirectory))
 			Directory.CreateDirectory(ImageCacheDirectory);
@@ -47,35 +47,59 @@ public abstract class BatchDownloader : BatchTask
 	{
 		string stopFile = Path.Combine(Configuration.DataDirectory, "STOP");
 
-		// load the list of metadata that has already been downloaded
-		HashSet<string> succeededMetadata = new HashSet<string>();
-		foreach (string cachedData in Directory.GetFiles(MetadataCacheDirectory))
+		try
 		{
-			succeededMetadata.Add(Path.GetFileNameWithoutExtension(cachedData));
-		}
-
-		// load metadata
-		foreach (string key in GetKeys())
-		{
-			if (!succeededMetadata.Contains(key))
+			// load the list of metadata that has already been downloaded
+			HashSet<string> succeededMetadata = new HashSet<string>();
+			foreach (string cachedData in Directory.GetFiles(MetadataCacheDirectory))
 			{
-				Console.WriteLine("Downloading metadata: " + key);
-				Uri url = GetItemUri(key);
-				string content = Download(url);
-				Dictionary<string, string> metadata = ParseMetadata(content);
-				File.WriteAllText(
-					GetMetadataCacheFilename(key),
-					Newtonsoft.Json.JsonConvert.SerializeObject(metadata, Newtonsoft.Json.Formatting.Indented),
-					Encoding.UTF8);
+				succeededMetadata.Add(Path.GetFileNameWithoutExtension(cachedData));
 			}
 
-			if (File.Exists(stopFile))
+			// load metadata
+			foreach (string key in GetKeys())
 			{
-				File.Delete(stopFile);
-				Console.WriteLine("Received STOP signal.");
-				return;
+				// download metadata
+				if (!succeededMetadata.Contains(key) && !m_succeeded.Contains(key))
+				{
+					Console.WriteLine("Downloading metadata: " + key);
+					Uri url = GetItemUri(key);
+					string content = Download(url);
+					Dictionary<string, string> metadata = ParseMetadata(content);
+					if (metadata == null)
+					{
+						m_succeeded.Add(key);
+					}
+					else
+					{
+						File.WriteAllText(
+							GetMetadataCacheFilename(key),
+							JsonConvert.SerializeObject(metadata, Formatting.Indented),
+							Encoding.UTF8);
+					}
+				}
+
+				if (File.Exists(stopFile))
+				{
+					File.Delete(stopFile);
+					Console.WriteLine("Received STOP signal.");
+					return;
+				}
 			}
 		}
+		finally
+		{
+			SaveOut();
+		}
+	}
+
+	/// <summary>
+	/// Saves out progress to a file.
+	/// </summary>
+	public virtual void SaveOut()
+	{
+		string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
+		File.WriteAllText(succeededFile, JsonConvert.SerializeObject(m_succeeded.ToArray()));
 	}
 
 	/// <summary>

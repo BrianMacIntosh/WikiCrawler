@@ -37,6 +37,10 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="FreeImageNET, Version=3.15.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Manual Program Files\FreeImage\Wrapper\FreeImage.NET\cs\Library\bin\Release\FreeImageNET.dll</HintPath>
+    </Reference>
     <Reference Include="MySql.Data, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
     <Reference Include="MySql.Data.Entity.EF5, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
     <Reference Include="MySql.Data.Entity.EF6, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
@@ -62,6 +66,9 @@
     <Compile Include="Batch\BatchTask.cs" />
     <Compile Include="Batch\BatchUploader.cs" />
     <Compile Include="Batch\ContentDmDownloader.cs" />
+    <Compile Include="Batch\NPGallery\NPGalleryAlbumDownloader.cs" />
+    <Compile Include="Batch\NPGallery\NPGalleryDownloader.cs" />
+    <Compile Include="Batch\NPGallery\NPGalleryUploader.cs" />
     <Compile Include="Batch\ProjectConfig.cs" />
     <Compile Include="Batch\UWashDownloader.cs" />
     <Compile Include="Batch\UWashUploader.cs" />
@@ -81,7 +88,6 @@
     <Compile Include="RequestMassCatMove.cs" />
     <Compile Include="Tropenmuseum.cs" />
     <Compile Include="Utility\Wayback.cs" />
-    <Compile Include="UWash\DataStructures\UWashConfig.cs" />
     <Compile Include="Utility\Creator.cs" />
     <Compile Include="UWash\DataStructures\UWashFailure.cs" />
     <Compile Include="UWash\DataStructures\UWashProjectConfig.cs" />
@@ -105,7 +111,7 @@
     <Compile Include="TaxonCategoryUpdate.cs" />
     <Compile Include="UploadFromWeb.cs" />
     <Compile Include="UploadFromZorger.cs" />
-    <Compile Include="UWash\UWash.cs" />
+    <Compile Include="UWash\BatchController.cs" />
     <Compile Include="UWash\UWashCats.cs" />
     <Compile Include="UWash\UWashLang.cs" />
     <Compile Include="Wikimedia\Wikidata.cs" />

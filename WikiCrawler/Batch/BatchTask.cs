@@ -1,4 +1,7 @@
-﻿using System.IO;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using WikiCrawler;
 
 public abstract class BatchTask
@@ -18,11 +21,6 @@ public abstract class BatchTask
 		get { return Path.Combine(Configuration.DataDirectory, m_projectKey); }
 	}
 
-	protected string GetImageUrl(string key)
-	{
-		return string.Format(ImageCacheDirectory, key);
-	}
-
 	protected string GetImageCacheFilename(string key)
 	{
 		return Path.Combine(ImageCacheDirectory, key + ".jpg");
@@ -38,12 +36,26 @@ public abstract class BatchTask
 		return Path.Combine(MetadataCacheDirectory, key + ".json");
 	}
 
-	protected string m_projectKey { get; private set; }
-	protected ProjectConfig m_config { get; private set; }
+	protected HashSet<string> m_succeeded = new HashSet<string>();
 
-	public BatchTask(string key, ProjectConfig config)
+	protected string m_projectKey { get; private set; }
+	protected ProjectConfig m_config { get; set; }
+
+	public BatchTask(string key)
 	{
 		m_projectKey = key;
-		m_config = config;
+		m_config = JsonConvert.DeserializeObject<ProjectConfig>(
+			File.ReadAllText(Path.Combine(ProjectDataDirectory, "config.json")));
+
+		// load already-succeeded uploads
+		string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
+		if (File.Exists(succeededFile))
+		{
+			string[] succeeded = JsonConvert.DeserializeObject<string[]>(File.ReadAllText(succeededFile, Encoding.UTF8));
+			foreach (string suc in succeeded)
+			{
+				m_succeeded.Add(suc);
+			}
+		}
 	}
 }

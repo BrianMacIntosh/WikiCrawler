@@ -26,14 +26,17 @@ namespace WikiCrawler
 					case "nsrw":
 						NsrwFollowup.Do();
 						break;
-					case "uwash_cleancache":
-						UWash.UWashController.CacheCleanup();
+					case "batchrebuild":
+						BatchController.RebuildSuccesses();
 						break;
-					case "uwash_rebuildfailures":
-						UWash.UWashController.RebuildFailures();
+					case "batchdownall":
+						BatchController.DownloadAll();
 						break;
-					case "uwash":
-						UWash.UWashController.Harvest();
+					case "batchdown":
+						BatchController.Download();
+						break;
+					case "batchup":
+						BatchController.Upload();
 						break;
 					case "taxoncat":
 						TaxonCategoryUpdate.Do();

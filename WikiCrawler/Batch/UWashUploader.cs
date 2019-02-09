@@ -1,60 +1,69 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
-using System.Threading.Tasks;
 using WikiCrawler;
 
 namespace UWash
 {
 	public class UWashUploader : BatchUploader
 	{
+		private string ImageUrlFormat
+		{
+			get
+			{
+				return "http://digitalcollections.lib.washington.edu/utils/ajaxhelper/?CISOROOT="
+					+ UWashConfig.digitalCollectionsKey
+					+ "&action=2&CISOPTR={0}&DMSCALE=100&DMWIDTH=99999&DMHEIGHT=99999&DMX=0&DMY=0&DMTEXT=&REC=1&DMTHUMB=0&DMROTATE=0";
+			}
+		}
+
 		private static HashSet<string> s_knownKeys = new HashSet<string>()
 		{
 			//used
-			"title", //Title
-			"creato", //Photographer
-			"date", //Date
-			"descri", //Notes
-			"histori", //Contextual Notes
-			"histor", //Contextual Notes
-			"struct", //Contextual Notes
-			"scrapb", //Scrapbook Notes
-			"albump", //Album/Page
-			"subjec", //Subjects (LCTGM)
-			"lctgm", //Subjects (LCTGM)
-			"subjea", //Subjects (LCSH)
-			"covera", //Location Depicted
-			"order", //Order Number
-			"physic", //Physical Description
-			"publis", //Company/Advertising Agency
-			"publia", //Publisher
-			"type", //Publication Source
-			"place", //Publisher Location
-			"compan", //Geographic Coverage
+			"Title",
+			"Advertisement",
+			"Photographer",
+			"Date",
+			"Publication Date",
+			"Notes",
+			"Contextual Notes",
+			"Scrapbook Notes",
+			"Album/Page",
+			"Subjects (LCTGM)",
+			"Subjects (LCSH)",
+			"Category",
+			"Location Depicted",
+			"Order Number",
+			"Physical Description",
+			"Advertisement Text",
+			"Company/Advertising Agency",
+			"Publisher",
+			"Publication Source",
+			"Publisher Location",
+			"Geographic Coverage",
+			"Digital ID Number",
 
 			"LCSH",
 			"LCTGM",
 
 			// unused
-			"format", //Digital Reproduction Information
-			"righta", //Rights URI
-			"rights", //Restrictions
-			"object", //Object Type
-			"objeca", //Object Type
-			"orderi", //Ordering Information
-			"citati", //Citation Information
-			"reposi", //Repository
-			"conten", //Repository
-			"source", //Repository Collection
-			"digita", //Digital Collection
-			"langua", //Digital Collection
-			"sourca", //Source
-			"negati", //Negative Number
-			"identi", //Photographer's Reference Number
-			"digitb", //Digital ID Number
+			"Brand Name/Product",
+			"Digital Reproduction Information",
+			"Rights URI",
+			"Restrictions",
+			"Object Type",
+			"Ordering Information",
+			"Citation Information",
+			"Repository",
+			"Repository Collection",
+			"Digital Collection",
+			"Source",
+			"Negative Number",
+			"Negative",
+			"Photographer's Reference Number",
 		};
 
 		private UWashProjectConfig UWashConfig
@@ -64,13 +73,21 @@ namespace UWash
 
 		private static char[] s_punctuation = { '.', ' ', '\t', '\n', ',', '-' };
 		private static string[] s_categorySplitters = { "|", ";", "<br/>", "<br />", "<br>" };
+		private static string[] s_captionSplitters = new string[] { "--", "|" };
 
-		private static WebClient s_client = new WebClient();
-
-		public UWashUploader(string key, UWashProjectConfig config)
-			: base(key, config)
+		public UWashUploader(string key)
+			: base(key)
 		{
+			//HACK:
+			m_config = JsonConvert.DeserializeObject<UWashProjectConfig>(
+				File.ReadAllText(Path.Combine(ProjectDataDirectory, "config.json")));
 
+			EasyWeb.SetDelayForDomain(new Uri(ImageUrlFormat), 15f);
+		}
+
+		protected override Uri GetImageUri(string key)
+		{
+			return new Uri(string.Format(ImageUrlFormat, key));
 		}
 
 		/// <summary>
@@ -78,7 +95,12 @@ namespace UWash
 		/// </summary>
 		protected override string GetTitle(string key, Dictionary<string, string> metadata)
 		{
-			string title = metadata["Title"];
+			string title;
+			if (!metadata.TryGetValue("Title", out title)
+				&& !metadata.TryGetValue("Advertisement", out title))
+			{
+				throw new UWashException("No title");
+			}
 
 			title = title.Split(
 				StringUtility.LineBreak,
@@ -104,26 +126,8 @@ namespace UWash
 		/// </summary>
 		protected override string GetUploadImagePath(string key, Dictionary<string, string> metadata)
 		{
-			if (!m_config.allowImageDownload)
-			{
-				throw new UWashException("image download disabled");
-			}
-
-			//Download image
-			string imagepath = GetImageCacheFilename(key);
-			if (!File.Exists(imagepath))
-			{
-				Console.WriteLine("Downloading image.");
-				Uri uri = new Uri(GetImageUrl(key));
-				EasyWeb.WaitForDelay(uri);
-				s_client.DownloadFile(uri, imagepath);
-			}
-			else
-			{
-				Console.WriteLine("Found cached image.");
-			}
-
 			// try to crop the image
+			string imagepath = GetImageCacheFilename(key);
 			string croppath = GetImageCroppedFilename(key);
 			ImageUtils.CropUwashWatermark(imagepath, croppath);
 			if (UWashConfig.allowCrop)
@@ -144,6 +148,8 @@ namespace UWash
 		/// </summary>
 		protected override string BuildPage(string key, Dictionary<string, string> metadata)
 		{
+			metadata = PreprocessMetadata(metadata);
+
 			//check for new, unknown metadata
 			string unused = "";
 			foreach (KeyValuePair<string, string> kv in metadata)
@@ -201,10 +207,11 @@ namespace UWash
 			string temp;
 			if (metadata.TryGetValue("LCTGM", out temp)) catparse += "|" + temp;
 			if (metadata.TryGetValue("LCSH", out temp)) catparse += "|" + temp;
+			if (metadata.TryGetValue("Category", out temp)) catparse += "|" + temp.Replace(StringUtility.LineBreak, "|");
 			/*if (data.ContainsKey("Caption"))
 			{
 				//max 50
-				foreach (string s in data["Caption"].Split(captionSplitters, StringSplitOptions.RemoveEmptyEntries))
+				foreach (string s in data["Caption"].Split(s_captionSplitters, StringSplitOptions.RemoveEmptyEntries))
 				{
 					if (s.Length < 50) catparse += "|" + s;
 				}
@@ -227,7 +234,7 @@ namespace UWash
 			//categories for locations
 			string sureLocation = "";
 			catparse = "";
-			if (metadata.TryGetValue("covera", out temp)) catparse += "|" + temp;
+			if (metadata.TryGetValue("Location Depicted", out temp)) catparse += "|" + temp;
 			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
 			{
 				string cat = CategoryTranslation.TranslateLocationCategory(s.Trim());
@@ -241,10 +248,48 @@ namespace UWash
 				}
 			}
 
-			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
-
 			int latestYearRaw;
 			string dateTag = GetDate(metadata, out latestYearRaw);
+
+			string publisherLocation = "";
+			if (metadata.TryGetValue("Publisher Location", out publisherLocation))
+			{
+				publisherLocation = CategoryTranslation.TranslateLocationCategory(publisherLocation);
+				if (publisherLocation.StartsWith("Category:")) publisherLocation = publisherLocation.Substring("Category:".Length);
+			}
+
+			// advertisement categories
+			if (metadata.ContainsKey("Advertisement") && latestYearRaw != 9999)
+			{
+				string adYearCat = "Category:" + latestYearRaw.ToString() + " advertisements in the United States";
+				Wikimedia.Article existingYearCat = CategoryTranslation.TryFetchCategory(Api, adYearCat);
+				if (existingYearCat == null)
+				{
+					existingYearCat = new Wikimedia.Article(adYearCat);
+					existingYearCat.revisions = new Wikimedia.Revision[1];
+					existingYearCat.revisions[0] = new Wikimedia.Revision();
+					existingYearCat.revisions[0].text = "{{AdvertisUSYear|" + latestYearRaw.ToString().Substring(0, 3)
+						+ "|" + latestYearRaw.ToString().Substring(3) + "}}";
+					Api.SetPage(existingYearCat, "(BOT) creating category", false, true, false);
+				}
+				categories.Add(adYearCat);
+
+				if (!string.IsNullOrEmpty(publisherLocation))
+				{
+					string adLocCat = "Category:Advertisements in " + publisherLocation.Split(',')[0];
+					Wikimedia.Article existingLocCat = CategoryTranslation.TryFetchCategory(Api, adLocCat);
+					if (existingLocCat != null)
+					{
+						categories.Add(existingLocCat.title);
+					}
+					else
+					{
+						//throw new UWashException("No adloc cat: " + adLocCat);
+					}
+				}
+			}
+
+			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
 
 			// must have been published before author's death
 			int latestYear;
@@ -333,32 +378,21 @@ namespace UWash
 			StringBuilder descText = new StringBuilder();
 
 			string notes = "";
-			if (metadata.TryGetValue("descri", out temp))
-			{
-				//TEMP: pipe replace is temp (only used in napoleon)
-				notes = StringUtility.Join("</p>\n<p>", notes, temp.Trim().Replace("|", "</p>\n<p>"));
-			}
-			if (metadata.TryGetValue("histori", out temp))
-			{
-				//TEMP: pipe replace is temp (only used in napoleon)
-				notes = StringUtility.Join("</p>\n<p>", notes, temp.Trim().Replace("|", "</p>\n<p>"));
-			}
-			if (metadata.TryGetValue("histor", out temp))
-			{
-				//TEMP: pipe replace is temp (only used in napoleon)
-				notes = StringUtility.Join("</p>\n<p>", notes, temp.Trim().Replace("|", "</p>\n<p>"));
-			}
-			if (metadata.TryGetValue("struct", out temp))
+			if (metadata.TryGetValue("Notes", out temp))
 			{
 				notes = StringUtility.Join("</p>\n<p>", notes, temp.Trim());
 			}
-			if (metadata.TryGetValue("scrapb", out temp))
+			if (metadata.TryGetValue("Contextual Notes", out temp))
+			{
+				notes = StringUtility.Join("</p>\n<p>", notes, temp.Trim());
+			}
+			if (metadata.TryGetValue("Scrapbook Notes", out temp))
 			{
 				notes = StringUtility.Join("</p>\n<p>", notes, temp.Trim());
 			}
 			descText.AppendLine("<p>" + notes + "</p>");
 
-			if (metadata.TryGetValue("compan", out temp))
+			if (metadata.TryGetValue("Geographic Coverage", out temp))
 			{
 				descText.AppendLine("*Geographic coverage: " + temp.Trim());
 			}
@@ -369,6 +403,10 @@ namespace UWash
 			if (metadata.TryGetValue("LCSH", out temp))
 			{
 				descText.AppendLine("*Subjects (LCSH): " + temp.Replace("|", "; "));
+			}
+			if (metadata.TryGetValue("Category", out temp))
+			{
+				descText.AppendLine("*Categories: " + temp.Replace(StringUtility.LineBreak, "; "));
 			}
 
 			if (descText.Length > 0)
@@ -383,7 +421,7 @@ namespace UWash
 				if (sureLocation.StartsWith("Category:")) sureLocation = sureLocation.Substring("Category:".Length);
 				content.AppendLine("|depicted place=" + sureLocation);
 			}
-			else if (metadata.TryGetValue("covera", out temp))
+			else if (metadata.TryGetValue("Location Depicted", out temp))
 			{
 				content.AppendLine("|depicted place={{" + lang + "|" + temp + "}}");
 			}
@@ -413,11 +451,11 @@ namespace UWash
 			}
 
 			content.AppendLine("|date=" + dateTag);
-			if (metadata.ContainsKey("physic"))
+			if (metadata.ContainsKey("Physical Description"))
 			{
 				string medium;
 				Dimensions dimensions;
-				ParsePhysicalDescription(metadata["physic"], out medium, out dimensions);
+				ParsePhysicalDescription(metadata["Physical Description"], out medium, out dimensions);
 				if (!string.IsNullOrEmpty(medium))
 				{
 					content.AppendLine("|medium={{en|" + medium + "}}");
@@ -431,30 +469,41 @@ namespace UWash
 				}
 			}
 
-			//TODO: need to be Information Field for Information
-			content.AppendLine("|institution={{Institution:University of Washington}}");
-			content.AppendLine("|department={{UWASH-Special-Collections}}");
-			content.AppendLine("|accession number={{UWASH-digital-accession|" + UWashConfig.digitalCollectionsKey + "|" + key + "}}");
-
-			content.AppendLine("|source=" + UWashConfig.sourceTemplate); //was department, for Artwork
-
-			content.AppendLine("|permission=" + licenseTag);
-
 			string otherFields = "";
 
+			if (m_config.informationTemplate == "Information")
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Institution|value={{Institution:University of Washington}}}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Department|value={{UWASH-Special-Collections}}}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Accession number|value={{UWASH-digital-accession|" + UWashConfig.digitalCollectionsKey + "|" + key + "}}}}");
+			}
+			else
+			{
+				content.AppendLine("|institution={{Institution:University of Washington}}");
+				content.AppendLine("|department={{UWASH-Special-Collections}}");
+				content.AppendLine("|accession number={{UWASH-digital-accession|" + UWashConfig.digitalCollectionsKey + "|" + key + "}}");
+			}
+
+			content.AppendLine("|source=" + UWashConfig.sourceTemplate); //was department, for Artwork
+			content.AppendLine("|permission=" + licenseTag);
+
+			if (metadata.TryGetValue("Advertisement Text", out temp))
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Inscriptions|value={{Inscription|" + temp + "|type=text|language=en}}}}");
+			}
 			if (metadata.TryGetValue("Publisher", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publisher|value=" + temp + "}}");
 			}
-			if (metadata.TryGetValue("order", out temp))
+			if (metadata.TryGetValue("Order Number", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Order Number|value=" + temp + "}}");
 			}
-			if (metadata.TryGetValue("albump", out temp))
+			if (metadata.TryGetValue("Album/Page", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Album/Page|value=" + temp + "}}");
 			}
-			if (metadata.TryGetValue("digitb", out temp))
+			if (metadata.TryGetValue("Digital ID Number", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Digital ID Number|value=" + temp + "}}");
 			}
@@ -462,23 +511,17 @@ namespace UWash
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=UW Reference Number|value=" + temp + "}}");
 			}
-			if (metadata.TryGetValue("publis", out temp))
+			if (metadata.TryGetValue("Company/Advertising Agency", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Company/Advertising Agency|value=" + temp + "}}");
 			}
-			if (metadata.TryGetValue("publia", out temp))
+			if (!string.IsNullOrEmpty(publisherLocation))
 			{
-				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publisher|value=" + temp + "}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publisher Location|value=" + publisherLocation + "}}");
 			}
-			if (metadata.TryGetValue("place", out temp))
+			if (metadata.TryGetValue("Publication Source", out temp))
 			{
-				temp = CategoryTranslation.TranslateLocationCategory(temp);
-				if (temp.StartsWith("Category:")) temp = temp.Substring("Category:".Length);
-				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publisher Location|value=" + temp + "}}");
-			}
-			if (metadata.TryGetValue("type", out temp))
-			{
-				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Original Source|value=" + temp + "}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publication Source|value=" + temp + "}}");
 			}
 
 			if (!string.IsNullOrEmpty(otherFields))
@@ -488,10 +531,10 @@ namespace UWash
 
 			content.AppendLine("}}");
 			content.AppendLine();
-			if (latestYear == 1923)
+			/*if (latestYear == 1923)
 			{
 				content.AppendLine("[[Category:Media uploaded for Public Domain Day 2019]]");
-			}
+			}*/
 			if (!string.IsNullOrEmpty(m_config.checkCategory))
 			{
 				content.AppendLine("[[" + m_config.checkCategory + "]]");
@@ -516,7 +559,7 @@ namespace UWash
 					content.AppendLine("[[" + s + "]]");
 			}
 
-			string previewFile = Path.Combine(PreviewDirectory, key + ".txt");
+			string previewFile = GetPreviewFileFilename(key);
 			using (StreamWriter writer = new StreamWriter(new FileStream(previewFile, FileMode.Create)))
 			{
 				writer.Write(content.ToString());
@@ -528,6 +571,68 @@ namespace UWash
 			}
 
 			return content.ToString();
+		}
+
+		private static Dictionary<string, string> PreprocessMetadata(Dictionary<string, string> data)
+		{
+			string lctgm, lcsh;
+
+			if (!data.TryGetValue("LCTGM", out lctgm))
+			{
+				lctgm = "";
+			}
+			if (!data.TryGetValue("LCSH", out lcsh))
+			{
+				lcsh = "";
+			}
+
+			string temp;
+			if (data.TryGetValue("Subjects (LCTGM)", out temp))
+			{
+				lctgm = StringUtility.Join("|", lctgm, temp);
+				data.Remove("Subjects (LCTGM)");
+			}
+			if (data.TryGetValue("Subjects(LCTGM)", out temp))
+			{
+				lctgm = StringUtility.Join("|", lctgm, temp);
+				data.Remove("Subjects(LCTGM)");
+			}
+			if (data.TryGetValue("Subjects (LCTGM)", out temp))
+			{
+				lctgm = StringUtility.Join("|", lctgm, temp);
+				data.Remove("Subjects (LCTGM)");
+			}
+			if (data.TryGetValue("Subjects (LCTGM)", out temp))
+			{
+				lctgm = StringUtility.Join("|", lctgm, temp);
+				data.Remove("Subjects (LCTGM)");
+			}
+			if (data.TryGetValue("Subjects (LCSH)", out temp))
+			{
+				lcsh = StringUtility.Join("|", lcsh, temp);
+				data.Remove("Subjects (LCSH)");
+			}
+			if (data.TryGetValue("Subject (LCSH)", out temp))
+			{
+				lcsh = StringUtility.Join("|", lcsh, temp);
+				data.Remove("Subject (LCSH)");
+			}
+			if (data.TryGetValue("Subjects (LCSH)", out temp))
+			{
+				lcsh = StringUtility.Join("|", lcsh, temp);
+				data.Remove("Subjects (LCSH)");
+			}
+
+			if (!string.IsNullOrEmpty(lcsh))
+			{
+				data["LCSH"] = lcsh.Replace(StringUtility.LineBreak, "|");
+			}
+			if (!string.IsNullOrEmpty(lctgm))
+			{
+				data["LCTGM"] = lctgm.Replace(StringUtility.LineBreak, "|");
+			}
+
+			return data;
 		}
 
 		private bool GetSource(Dictionary<string, string> data, out string result)
@@ -622,7 +727,7 @@ namespace UWash
 		private string GetAuthor(Dictionary<string, string> data, string lang, out Creator creator)
 		{
 			string notes;
-			if (data.TryGetValue("descri", out notes)
+			if (data.TryGetValue("Notes", out notes)
 				&& notes.Contains("Original photographer unknown"))
 			{
 				creator = null;
@@ -631,9 +736,9 @@ namespace UWash
 
 			string author;
 			//TODO: support multiples
-			if (data.TryGetValue("creato", out author)
-				|| data.TryGetValue("publis", out author)
-				|| data.TryGetValue("publia", out author))
+			if (data.TryGetValue("Photographer", out author)
+				|| data.TryGetValue("Company/Advertising Agency", out author)
+				|| data.TryGetValue("Publisher", out author))
 			{
 				return GetAuthor(author, lang, out creator);
 			}
@@ -646,7 +751,8 @@ namespace UWash
 		private string GetDate(Dictionary<string, string> data, out int latestYear)
 		{
 			string date;
-			if (!data.TryGetValue("date", out date))
+			if (!data.TryGetValue("Date", out date)
+				&& !data.TryGetValue("Publication Date", out date))
 			{
 				latestYear = 9999;
 				return "{{unknown|date}}";
@@ -658,7 +764,7 @@ namespace UWash
 			if (date == latestYear.ToString())
 			{
 				string title;
-				if (data.TryGetValue("title", out title))
+				if (data.TryGetValue("Title", out title))
 				{
 					int commaIndex = title.IndexOf(',');
 					while (commaIndex >= 0)
@@ -681,18 +787,18 @@ namespace UWash
 		private static string GetDesc(Dictionary<string, string> metadata)
 		{
 			string title;
-			if (!metadata.TryGetValue("title", out title))
+			if (!metadata.TryGetValue("Title", out title))
 			{
 				throw new UWashException("no title");
 			}
 
 			List<string> raw = title.Split(StringUtility.LineBreak, StringSplitOptions.RemoveEmptyEntries).ToList();
 			string temp;
-			if (metadata.TryGetValue("descri", out temp))
+			if (metadata.TryGetValue("Notes", out temp))
 			{
 				raw.AddRange(temp.Split(StringUtility.LineBreak, StringSplitOptions.RemoveEmptyEntries));
 			}
-			if (metadata.TryGetValue("histori", out temp))
+			if (metadata.TryGetValue("Contextual Notes", out temp))
 			{
 				raw.AddRange(temp.Split(StringUtility.LineBreak, StringSplitOptions.RemoveEmptyEntries));
 			}

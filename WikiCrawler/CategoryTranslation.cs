@@ -301,6 +301,8 @@ namespace WikiCrawler
 
 		public static string TranslateTagCategory(string input)
 		{
+			input = input.Trim();
+
 			if (string.IsNullOrEmpty(input)) return "";
 
 			if (s_categoryMap.ContainsKey(input))
@@ -331,7 +333,7 @@ namespace WikiCrawler
 
 			//try to create a mapping
 			Console.WriteLine("Attempting to map tag '" + input + "'.");
-			return MapCategory(input, CategoryTranslation.TranslateCategory(s_commonsApi, input));
+			return MapCategory(input, TranslateCategory(s_commonsApi, input));
 		}
 
 		public static string TranslateCategory(Wikimedia.WikiApi api, string input)
