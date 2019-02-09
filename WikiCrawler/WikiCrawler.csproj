@@ -37,8 +37,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FreeImageNET">
-      <HintPath>E:\Manual Program Files\FreeImage\Wrapper\FreeImage.NET\cs\Library\bin\Release\FreeImageNET.dll</HintPath>
+    <Reference Include="FreeImageNET, Version=3.15.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Manual Program Files\FreeImage\Wrapper\FreeImage.NET\cs\Library\bin\Release\FreeImageNET.dll</HintPath>
     </Reference>
     <Reference Include="MySql.Data, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
     <Reference Include="MySql.Data.Entity.EF5, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
@@ -46,7 +47,7 @@
     <Reference Include="MySql.Fabric.Plugin, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
     <Reference Include="MySql.Web, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL" />
     <Reference Include="Newtonsoft.Json">
-      <HintPath>E:\Manual Program Files\JSON.NET\Bin\net40\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\..\..\Manual Program Files\JSON.NET\Bin\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.configuration" />
@@ -61,12 +62,24 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Backend\ImageUtils.cs" />
+    <Compile Include="Batch\BatchDownloader.cs" />
+    <Compile Include="Batch\BatchTask.cs" />
+    <Compile Include="Batch\BatchUploader.cs" />
+    <Compile Include="Batch\ContentDmDownloader.cs" />
+    <Compile Include="Batch\NPGallery\NPGalleryAlbumDownloader.cs" />
+    <Compile Include="Batch\NPGallery\NPGalleryDownloader.cs" />
+    <Compile Include="Batch\NPGallery\NPGalleryUploader.cs" />
+    <Compile Include="Batch\ProjectConfig.cs" />
+    <Compile Include="Batch\UWashDownloader.cs" />
+    <Compile Include="Batch\UWashUploader.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Credentials.cs" />
     <Compile Include="FindCategoryCreators.cs" />
     <Compile Include="LinksNullEditor.cs" />
     <Compile Include="MassDownloader.cs" />
+    <Compile Include="Utility\CreatorUtility.cs" />
     <Compile Include="Utility\Dimensions.cs" />
+    <Compile Include="Utility\LicenseUtility.cs" />
     <Compile Include="Utility\StringUtility.cs" />
     <Compile Include="CategoryTranslation.cs" />
     <Compile Include="CommonsCreatorFromWikidata.cs" />
@@ -75,11 +88,9 @@
     <Compile Include="RequestMassCatMove.cs" />
     <Compile Include="Tropenmuseum.cs" />
     <Compile Include="Utility\Wayback.cs" />
-    <Compile Include="UWash\DataStructures\UWashConfig.cs" />
-    <Compile Include="UWash\DataStructures\UWashCreator.cs" />
+    <Compile Include="Utility\Creator.cs" />
     <Compile Include="UWash\DataStructures\UWashFailure.cs" />
     <Compile Include="UWash\DataStructures\UWashProjectConfig.cs" />
-    <Compile Include="UWash\UWashCountry.cs" />
     <Compile Include="Wikimedia\Date.cs" />
     <Compile Include="Wikimedia\DotNetWikiBot.cs" />
     <Compile Include="Old\Dsea.cs" />
@@ -100,7 +111,7 @@
     <Compile Include="TaxonCategoryUpdate.cs" />
     <Compile Include="UploadFromWeb.cs" />
     <Compile Include="UploadFromZorger.cs" />
-    <Compile Include="UWash\UWash.cs" />
+    <Compile Include="UWash\BatchController.cs" />
     <Compile Include="UWash\UWashCats.cs" />
     <Compile Include="UWash\UWashLang.cs" />
     <Compile Include="Wikimedia\Wikidata.cs" />

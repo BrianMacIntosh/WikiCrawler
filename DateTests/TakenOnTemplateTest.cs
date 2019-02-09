@@ -1,14 +1,12 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
 using System.Collections.Generic;
-using WikiCrawler;
 
 namespace DateTests
 {
-    /// <summary>
-    ///This is a test class for TakenOnTemplateTest and is intended
-    ///to contain all TakenOnTemplateTest Unit Tests
-    ///</summary>
+	/// <summary>
+	///This is a test class for TakenOnTemplateTest and is intended
+	///to contain all TakenOnTemplateTest Unit Tests
+	///</summary>
 	[TestClass()]
 	public class TakenOnTemplateTest
 	{
@@ -94,7 +92,7 @@ namespace DateTests
 			foreach (ToISOTest test in testCases)
 			{
 				bool actualHasDay;
-				string actual = TakenOnTemplate.DateToISO(test.input, out actualHasDay);
+				string actual = WikiCrawler.TakenOnTemplate.DateToISO(test.input, out actualHasDay);
 				Assert.AreEqual(test.hasDay, actualHasDay);
 				Assert.AreEqual(test.date, actual);
 			}
