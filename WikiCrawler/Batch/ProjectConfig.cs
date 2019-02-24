@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 public class ProjectConfig
 {
 	public string informationTemplate = "Photograph";
-	public string defaultAuthor;
+	public string defaultAuthor = "unknown";
 	public string defaultPubCountry;
 	public string masterCategory;
 	public string checkCategory;

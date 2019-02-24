@@ -237,9 +237,13 @@ public abstract class BatchUploader : BatchTask
 		string finalResult = "";
 		foreach (string author in ParseAuthor(name))
 		{
-			if (string.Equals(author, "Anonymous", StringComparison.InvariantCultureIgnoreCase))
+			if (string.Equals(author, "Anonymous", StringComparison.CurrentCultureIgnoreCase))
 			{
 				return "{{anonymous}}";
+			}
+			else if (string.Equals(author, "Unknown", StringComparison.CurrentCultureIgnoreCase))
+			{
+				return "{{unknown|author}}";
 			}
 			//Check for a Creator template
 			else if (CreatorUtility.TryGetCreator(author, out creator))
@@ -359,18 +363,16 @@ public abstract class BatchUploader : BatchTask
 			latestYear = 9999;
 			return "{{unknown|date}}";
 		}
-		else if (date.EndsWith("~"))
+		else if (date.EndsWith("~") || date.EndsWith("?"))
 		{
-			string yearStr = date.Substring(0, date.Length - 1);
-			if (!int.TryParse(yearStr, out latestYear)) latestYear = 9999;
-			return "{{other date|ca|" + yearStr + "}}";
+			string dateStr = ParseDate(date.Substring(0, date.Length - 1).Trim(), out latestYear);
+			return "{{other date|ca|" + dateStr + "}}";
 		}
 		else if (date.StartsWith("ca.", StringComparison.InvariantCultureIgnoreCase))
 		{
 			int rml = "ca.".Length;
-			string yearStr = date.Substring(rml, date.Length - rml).Trim();
-			if (!int.TryParse(yearStr, out latestYear)) latestYear = 9999;
-			return "{{other date|ca|" + yearStr + "}}";
+			string dateStr = ParseDate(date.Substring(rml, date.Length - rml).Trim(), out latestYear);
+			return "{{other date|ca|" + dateStr + "}}";
 		}
 		else if (date.StartsWith("circa", StringComparison.InvariantCultureIgnoreCase))
 		{
@@ -398,8 +400,8 @@ public abstract class BatchUploader : BatchTask
 			string[] components = date.Substring("between ".Length).Split(new string[] { " and " }, StringSplitOptions.None);
 			if (components.Length == 2)
 			{
-				string a = ParseSingleDate(components[0], out latestYear);
-				string b = ParseSingleDate(components[1], out latestYear);
+				string a = ParseDate(components[0], out latestYear);
+				string b = ParseDate(components[1], out latestYear);
 				return "{{other date|between|" + a + "|" + b + "}}";
 			}
 			else
@@ -414,8 +416,9 @@ public abstract class BatchUploader : BatchTask
 			if (dashsplit.Length == 2 && dashsplit[0].Length == 4
 				&& dashsplit[1].Length == 4)
 			{
-				if (!int.TryParse(dashsplit[1], out latestYear)) latestYear = 9999;
-				return "{{other date|between|" + dashsplit[0] + "|" + dashsplit[1] + "}}";
+				string a = ParseDate(dashsplit[0], out latestYear);
+				string b = ParseDate(dashsplit[1], out latestYear);
+				return "{{other date|between|" + a + "|" + b + "}}";
 			}
 			else
 			{

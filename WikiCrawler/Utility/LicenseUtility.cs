@@ -82,10 +82,32 @@ public static class LicenseUtility
 		}
 	}
 
-	/// <summary>
+	// <summary>
 	/// Returns the best applicable license tag for an item with an unknown author.
 	/// </summary>
 	public static string GetPdLicenseTagUnknownAuthor(int pubYear, string pubCountry)
+	{
+		if (pubCountry == "USA")
+		{
+			if (pubYear < (DateTime.Now.Year - 95))
+			{
+				return "{{PD-US-expired}}";
+			}
+			else
+			{
+				return "";
+			}
+		}
+		else
+		{
+			return "";
+		}
+	}
+
+	/// <summary>
+	/// Returns the best applicable license tag for an item with an anonymous author.
+	/// </summary>
+	public static string GetPdLicenseTagAnonymousAuthor(int pubYear, string pubCountry)
 	{
 		if (UseEUNoAuthor(pubCountry))
 		{
@@ -100,7 +122,7 @@ public static class LicenseUtility
 		}
 		else if (pubCountry == "USA")
 		{
-			if (pubYear <= 1922)
+			if (pubYear < (DateTime.Now.Year - 95))
 			{
 				return "{{PD-anon-expired}}";
 			}
