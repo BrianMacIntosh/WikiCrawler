@@ -30,6 +30,7 @@ namespace UWash
 			"Publication Date",
 			"Notes",
 			"Contextual Notes",
+			"Historical Notes",
 			"Scrapbook Notes",
 			"Album/Page",
 			"Subjects (LCTGM)",
@@ -116,6 +117,12 @@ namespace UWash
 				}
 				title = title.Remove(lastWordEnd + 1);
 			}
+
+			if (string.IsNullOrEmpty(m_config.filenameSuffix))
+			{
+				throw new UWashException("Missing required config filenameSuffix");
+			}
+
 			title = title.Replace("/", "") + " (" + m_config.filenameSuffix + " " + key + ")";
 
 			return title;
@@ -314,9 +321,13 @@ namespace UWash
 
 			// check license
 			string licenseTag = "";
-			if (author == "{{unknown|author}}" || author == "{{anonymous}}")
+			if (author == "{{unknown|author}}")
 			{
 				licenseTag = LicenseUtility.GetPdLicenseTagUnknownAuthor(latestYear, pubCountry);
+			}
+			else if (author == "{{anonymous}}")
+			{
+				licenseTag = LicenseUtility.GetPdLicenseTagAnonymousAuthor(latestYear, pubCountry);
 			}
 			else if (creator != null)
 			{
@@ -383,6 +394,10 @@ namespace UWash
 				notes = StringUtility.Join("</p>\n<p>", notes, temp.Trim());
 			}
 			if (metadata.TryGetValue("Contextual Notes", out temp))
+			{
+				notes = StringUtility.Join("</p>\n<p>", notes, temp.Trim());
+			}
+			if (metadata.TryGetValue("Historical Notes", out temp))
 			{
 				notes = StringUtility.Join("</p>\n<p>", notes, temp.Trim());
 			}
@@ -537,6 +552,10 @@ namespace UWash
 			}*/
 			if (!string.IsNullOrEmpty(m_config.checkCategory))
 			{
+				if (!m_config.checkCategory.StartsWith("Category:"))
+				{
+					m_config.checkCategory = "Category:" + m_config.checkCategory;
+				}
 				content.AppendLine("[[" + m_config.checkCategory + "]]");
 			}
 			if (m_config.additionalCategories != null)
