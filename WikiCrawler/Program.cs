@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 
 namespace WikiCrawler
 {
@@ -9,6 +10,12 @@ namespace WikiCrawler
         {
 			//string croppath = "uwash_images/53_cropped.jpg";
 			//ImageUtils.AutoCropJpg("uwash_images/53.jpg", croppath, 0xffffffff, 0.97f, 5);
+
+			ServicePointManager.Expect100Continue = true;
+			ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls
+				   | SecurityProtocolType.Tls11
+				   | SecurityProtocolType.Tls12
+				   | SecurityProtocolType.Ssl3;
 
 			try
 			{

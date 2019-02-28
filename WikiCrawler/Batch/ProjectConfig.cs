@@ -9,8 +9,11 @@ using System.Threading.Tasks;
 /// </summary>
 public class ProjectConfig
 {
+	public string downloader = "UWash";
+	public string uploader = "UWash";
+
 	public string informationTemplate = "Photograph";
-	public string defaultAuthor;
+	public string defaultAuthor = "";
 	public string defaultPubCountry;
 	public string masterCategory;
 	public string checkCategory;

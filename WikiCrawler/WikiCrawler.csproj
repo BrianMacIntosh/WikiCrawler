@@ -70,6 +70,7 @@
     <Compile Include="Batch\NPGallery\NPGalleryDownloader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryUploader.cs" />
     <Compile Include="Batch\ProjectConfig.cs" />
+    <Compile Include="Batch\RedownloadException.cs" />
     <Compile Include="Batch\UWashDownloader.cs" />
     <Compile Include="Batch\UWashUploader.cs" />
     <Compile Include="Configuration.cs" />

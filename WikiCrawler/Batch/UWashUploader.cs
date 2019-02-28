@@ -781,6 +781,9 @@ namespace UWash
 				}
 			}
 
+			// if the date has an accurate month, day, and year, use {{taken on|}}
+			//TODO:
+
 			return date;
 		}
 

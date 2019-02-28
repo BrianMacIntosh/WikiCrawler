@@ -33,7 +33,7 @@ public abstract class ContentDmDownloader : BatchDownloader
 		if (!deser.ContainsKey("item"))
 		{
 			// that's weird. Try again.
-			throw new UWashException("Data mysteriously not found.");
+			throw new RedownloadException();
 		}
 
 		Newtonsoft.Json.Linq.JObject item = (Newtonsoft.Json.Linq.JObject)deser["item"];

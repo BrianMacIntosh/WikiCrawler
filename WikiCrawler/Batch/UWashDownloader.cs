@@ -24,7 +24,7 @@ namespace UWash
 			m_config = JsonConvert.DeserializeObject<UWashProjectConfig>(
 				File.ReadAllText(Path.Combine(ProjectDataDirectory, "config.json")));
 
-			EasyWeb.SetDelayForDomain(new Uri(MetadataUrlFormat), 15f);
+			EasyWeb.SetDelayForDomain(new Uri(MetadataUrlFormat), 5f);
 		}
 
 		/// <summary>

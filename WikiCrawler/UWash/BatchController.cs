@@ -32,7 +32,22 @@ namespace WikiCrawler
 				return;
 			}
 
-			UWash.UWashDownloader downloader = new UWash.UWashDownloader(projectKey);
+			//TODO: don't deserialize this twice
+			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
+				File.ReadAllText(Path.Combine(projectDir, "config.json")));
+
+			BatchDownloader downloader;
+			switch (config.downloader)
+			{
+				case "UWash":
+					downloader = new UWash.UWashDownloader(projectKey);
+					break;
+				case "NPGallery":
+					downloader = new NPGalleryDownloader(projectKey);
+					break;
+				default:
+					throw new NotImplementedException("Downloader '" + "'.");
+			}
 			downloader.DownloadAll();
 		}
 
@@ -48,7 +63,22 @@ namespace WikiCrawler
 				return;
 			}
 
-			UWash.UWashUploader uploader = new UWash.UWashUploader(projectKey);
+			//TODO: don't deserialize this twice
+			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
+				File.ReadAllText(Path.Combine(projectDir, "config.json")));
+
+			BatchUploader uploader;
+			switch (config.uploader)
+			{
+				case "UWash":
+					uploader = new UWash.UWashUploader(projectKey);
+					break;
+				case "NPGallery":
+					uploader = new NPGalleryUploader(projectKey);
+					break;
+				default:
+					throw new NotImplementedException("Uploader '" + "'.");
+			}
 			uploader.UploadAll();
 		}
 

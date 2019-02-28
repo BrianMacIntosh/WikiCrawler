@@ -64,18 +64,26 @@ public abstract class BatchDownloader : BatchTask
 				{
 					Console.WriteLine("Downloading metadata: " + key);
 					Uri url = GetItemUri(key);
+				redownload:
 					string content = Download(url);
-					Dictionary<string, string> metadata = ParseMetadata(content);
-					if (metadata == null)
+					try
 					{
-						m_succeeded.Add(key);
+						Dictionary<string, string> metadata = ParseMetadata(content);
+						if (metadata == null)
+						{
+							m_succeeded.Add(key);
+						}
+						else
+						{
+							File.WriteAllText(
+								GetMetadataCacheFilename(key),
+								JsonConvert.SerializeObject(metadata, Formatting.Indented),
+								Encoding.UTF8);
+						}
 					}
-					else
+					catch (RedownloadException)
 					{
-						File.WriteAllText(
-							GetMetadataCacheFilename(key),
-							JsonConvert.SerializeObject(metadata, Formatting.Indented),
-							Encoding.UTF8);
+						goto redownload;
 					}
 				}
 
