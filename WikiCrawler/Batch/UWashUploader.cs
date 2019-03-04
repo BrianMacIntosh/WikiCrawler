@@ -539,6 +539,8 @@ namespace UWash
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publication Source|value=" + temp + "}}");
 			}
 
+			content.AppendLine("|other_versions=");
+
 			if (!string.IsNullOrEmpty(otherFields))
 			{
 				content.AppendLine("|other_fields=\n" + otherFields);
