@@ -121,7 +121,7 @@ namespace WikiCrawler
 			{
 				date = date.Substring(0, date.Length - "T00:00:00Z".Length);
 			}
-			return BatchUploader.ParseDate(date);
+			return DateUtility.ParseDate(date);
 		}
 
 		private static string ParseDimensions(string dimensions)

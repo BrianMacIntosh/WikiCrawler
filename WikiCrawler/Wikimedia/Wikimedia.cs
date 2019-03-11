@@ -9,15 +9,6 @@ using System.Web.Script.Serialization;
 
 namespace Wikimedia
 {
-    class WikimediaException : Exception
-    {
-        public WikimediaException(string msg)
-            : base(msg)
-        {
-
-        }
-    }
-
     /// <summary>
     /// Contains helper methods for manipulating wikitext.
     /// </summary>
@@ -859,10 +850,10 @@ namespace Wikimedia
 			{
 				rawfile = reader.ReadBytes((int)reader.BaseStream.Length);
 			}
-			if (FileAlreadyExists(rawfile))
+			object[] dupes = GetDuplicateFiles(rawfile);
+			if (dupes != null && dupes.Length > 0)
 			{
-				Console.WriteLine(newpage.title + " is a duplicate.");
-				return false;
+				throw new DuplicateFileException(newpage.title, dupes);
 			}
 
 			//Read response
@@ -926,7 +917,11 @@ namespace Wikimedia
             return metadata;
         }
 
-        public bool FileAlreadyExists(byte[] file)
+		/// <summary>
+		/// Checks for already-existing duplicate copies of the file.
+		/// </summary>
+		/// <returns>An array of key-value dictionaries describing the duplicate files(s)</returns>
+        public object[] GetDuplicateFiles(byte[] file)
         {
             SHA1 algo = SHA1.Create();
             byte[] shaData = algo.ComputeHash(file);
@@ -949,9 +944,9 @@ namespace Wikimedia
             Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
             Dictionary<string, object> query = (Dictionary<string, object>)deser["query"];
             if (query.ContainsKey("allimages"))
-                return ((object[])query["allimages"]).Length > 0;
+                return (object[])query["allimages"];
             else
-                return false;
+                return null;
         }
 
         private string GetCsrfToken()

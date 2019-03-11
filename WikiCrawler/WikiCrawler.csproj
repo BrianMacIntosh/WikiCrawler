@@ -66,6 +66,8 @@
     <Compile Include="Batch\BatchTask.cs" />
     <Compile Include="Batch\BatchUploader.cs" />
     <Compile Include="Batch\ContentDmDownloader.cs" />
+    <Compile Include="Batch\Dsal\DsalParseMetadata.cs" />
+    <Compile Include="Batch\Dsal\DsalUploader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryAlbumDownloader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryDownloader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryUploader.cs" />
@@ -78,7 +80,9 @@
     <Compile Include="FindCategoryCreators.cs" />
     <Compile Include="LinksNullEditor.cs" />
     <Compile Include="MassDownloader.cs" />
+    <Compile Include="Utility\CommonsUtility.cs" />
     <Compile Include="Utility\CreatorUtility.cs" />
+    <Compile Include="Utility\DateUtility.cs" />
     <Compile Include="Utility\Dimensions.cs" />
     <Compile Include="Utility\LicenseUtility.cs" />
     <Compile Include="Utility\StringUtility.cs" />
@@ -115,15 +119,18 @@
     <Compile Include="UWash\BatchController.cs" />
     <Compile Include="UWash\UWashCats.cs" />
     <Compile Include="UWash\UWashLang.cs" />
+    <Compile Include="Wikimedia\DuplicateFileException.cs" />
     <Compile Include="Wikimedia\Wikidata.cs" />
     <Compile Include="WikidataCreatorPropagation.cs" />
     <Compile Include="Wikimedia\Wikimedia.cs" />
     <Compile Include="Wikimedia\WikimediaCategoryTree.cs" />
+    <Compile Include="Wikimedia\WikimediaException.cs" />
     <Compile Include="Wikimedia\WikimediaParsedArticle.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

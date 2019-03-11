@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using WikiCrawler;
 
 namespace UWash
@@ -60,6 +61,7 @@ namespace UWash
 			"Citation Information",
 			"Repository",
 			"Repository Collection",
+			"Repository Collection Guide",
 			"Digital Collection",
 			"Source",
 			"Negative Number",
@@ -84,6 +86,7 @@ namespace UWash
 				File.ReadAllText(Path.Combine(ProjectDataDirectory, "config.json")));
 
 			EasyWeb.SetDelayForDomain(new Uri(ImageUrlFormat), 15f);
+			EasyWeb.SetDelayForDomain(new Uri("https://commons.wikimedia.org/"), 0.5f);
 		}
 
 		protected override Uri GetImageUri(string key)
@@ -123,7 +126,7 @@ namespace UWash
 				throw new UWashException("Missing required config filenameSuffix");
 			}
 
-			title = title.Replace("/", "") + " (" + m_config.filenameSuffix + " " + key + ")";
+			title = title + " (" + m_config.filenameSuffix + " " + key + ")";
 
 			return title;
 		}
@@ -239,7 +242,7 @@ namespace UWash
 			}
 
 			//categories for locations
-			string sureLocation = "";
+			string sureLocationCategory = "";
 			catparse = "";
 			if (metadata.TryGetValue("Location Depicted", out temp)) catparse += "|" + temp;
 			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
@@ -249,14 +252,14 @@ namespace UWash
 				{
 					foreach (string catsplit in cat.Split('|'))
 					{
-						if (string.IsNullOrEmpty(sureLocation)) sureLocation = catsplit;
+						if (string.IsNullOrEmpty(sureLocationCategory)) sureLocationCategory = catsplit;
 						if (!categories.Contains(catsplit)) categories.Add(catsplit);
 					}
 				}
 			}
 
-			int latestYearRaw;
-			string dateTag = GetDate(metadata, out latestYearRaw);
+			DateParseMetadata dateParseMetadata;
+			string dateTag = GetDate(metadata, out dateParseMetadata);
 
 			string publisherLocation = "";
 			if (metadata.TryGetValue("Publisher Location", out publisherLocation))
@@ -266,17 +269,18 @@ namespace UWash
 			}
 
 			// advertisement categories
-			if (metadata.ContainsKey("Advertisement") && latestYearRaw != 9999)
+			if (metadata.ContainsKey("Advertisement") && dateParseMetadata.LatestYear != 9999)
 			{
-				string adYearCat = "Category:" + latestYearRaw.ToString() + " advertisements in the United States";
+				string latestYearString = dateParseMetadata.LatestYear.ToString();
+				string adYearCat = "Category:" + latestYearString + " advertisements in the United States";
 				Wikimedia.Article existingYearCat = CategoryTranslation.TryFetchCategory(Api, adYearCat);
 				if (existingYearCat == null)
 				{
 					existingYearCat = new Wikimedia.Article(adYearCat);
 					existingYearCat.revisions = new Wikimedia.Revision[1];
 					existingYearCat.revisions[0] = new Wikimedia.Revision();
-					existingYearCat.revisions[0].text = "{{AdvertisUSYear|" + latestYearRaw.ToString().Substring(0, 3)
-						+ "|" + latestYearRaw.ToString().Substring(3) + "}}";
+					existingYearCat.revisions[0].text = "{{AdvertisUSYear|" + latestYearString.Substring(0, 3)
+						+ "|" + latestYearString.Substring(3) + "}}";
 					Api.SetPage(existingYearCat, "(BOT) creating category", false, true, false);
 				}
 				categories.Add(adYearCat);
@@ -296,17 +300,47 @@ namespace UWash
 				}
 			}
 
+			// some other categories
+			if (!string.IsNullOrEmpty(sureLocationCategory))
+			{
+				string sureLocation = sureLocationCategory.Substring("Category:".Length);
+
+				if (m_config.informationTemplate == "Photograph")
+				{
+					//TODO: check that the image is black and white
+					if (false)
+					{
+						string blackAndWhiteCat = "Category:Black and white photographs of " + sureLocation;
+						Wikimedia.Article existingBwCat = CategoryTranslation.TryFetchCategory(Api, blackAndWhiteCat);
+						if (existingBwCat != null)
+						{
+							categories.Add(existingBwCat.title);
+						}
+					}
+				}
+
+				if (dateParseMetadata.PreciseYear != 0)
+				{
+					string yearLocCat = "Category:" + dateParseMetadata.PreciseYear.ToString() + " in " + sureLocation;
+					Wikimedia.Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
+					if (existingYearLocCat != null)
+					{
+						categories.Add(existingYearLocCat.title);
+					}
+				}
+			}
+
 			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
 
 			// must have been published before author's death
 			int latestYear;
-			if (creator != null && latestYearRaw == 9999)
+			if (creator != null && dateParseMetadata.LatestYear == 9999)
 			{
 				latestYear = creator.DeathYear;
 			}
 			else
 			{
-				latestYear = latestYearRaw;
+				latestYear = dateParseMetadata.LatestYear;
 			}
 
 			string pubCountry;
@@ -320,36 +354,13 @@ namespace UWash
 			}
 
 			// check license
-			string licenseTag = "";
-			if (author == "{{unknown|author}}")
-			{
-				licenseTag = LicenseUtility.GetPdLicenseTagUnknownAuthor(latestYear, pubCountry);
-			}
-			else if (author == "{{anonymous}}")
-			{
-				licenseTag = LicenseUtility.GetPdLicenseTagAnonymousAuthor(latestYear, pubCountry);
-			}
-			else if (creator != null)
-			{
-				if (!string.IsNullOrEmpty(creator.LicenseTemplate))
-				{
-					licenseTag = creator.LicenseTemplate;
-				}
-				else
-				{
-					licenseTag = LicenseUtility.GetPdLicenseTag(latestYear, creator.DeathYear, pubCountry);
-				}
-			}
-			else
-			{
-				licenseTag = LicenseUtility.GetPdLicenseTag(latestYear, null, pubCountry);
-			}
+			string licenseTag = GetLicenseTag(author, creator, latestYear, pubCountry);
 			if (string.IsNullOrEmpty(licenseTag))
 			{
-				throw new UWashException("not PD? (pub: " + pubCountry + " " + latestYearRaw + ")");
+				throw new UWashException("not PD? (pub: " + pubCountry + " " + dateParseMetadata.LatestYear + ")");
 			}
 
-			if (latestYearRaw < 1897 && author == "{{Creator:Asahel Curtis}}")
+			if (dateParseMetadata.LatestYear < 1897 && author == "{{Creator:Asahel Curtis}}")
 			{
 				throw new UWashException("Curtis - check author");
 			}
@@ -431,10 +442,10 @@ namespace UWash
 				content.AppendLine("}}");
 			}
 
-			if (!string.IsNullOrEmpty(sureLocation))
+			if (!string.IsNullOrEmpty(sureLocationCategory))
 			{
-				if (sureLocation.StartsWith("Category:")) sureLocation = sureLocation.Substring("Category:".Length);
-				content.AppendLine("|depicted place=" + sureLocation);
+				if (sureLocationCategory.StartsWith("Category:")) sureLocationCategory = sureLocationCategory.Substring("Category:".Length);
+				content.AppendLine("|depicted place=" + sureLocationCategory);
 			}
 			else if (metadata.TryGetValue("Location Depicted", out temp))
 			{
@@ -580,15 +591,20 @@ namespace UWash
 					content.AppendLine("[[" + s + "]]");
 			}
 
-			string previewFile = GetPreviewFileFilename(key);
-			using (StreamWriter writer = new StreamWriter(new FileStream(previewFile, FileMode.Create)))
-			{
-				writer.Write(content.ToString());
-			}
-
-			if (latestYear >= 9999)
+			if (latestYear == 9999)
 			{
 				throw new UWashException("unknown year");
+			}
+
+			//TODO: this will pass if one of the multiple authors was matched. Fix it.
+			if ((creator == null || string.IsNullOrEmpty(creator.Author))
+				&& !m_config.allowFailedCreators)
+			{
+				if (creator != null)
+				{
+					creator.UploadableUsage++;
+				}
+				throw new UWashException("unrecognized creator");
 			}
 
 			return content.ToString();
@@ -769,20 +785,20 @@ namespace UWash
 			}
 		}
 
-		private string GetDate(Dictionary<string, string> data, out int latestYear)
+		private string GetDate(Dictionary<string, string> data, out DateParseMetadata parseMetadata)
 		{
 			string date;
 			if (!data.TryGetValue("Date", out date)
 				&& !data.TryGetValue("Publication Date", out date))
 			{
-				latestYear = 9999;
+				parseMetadata = DateParseMetadata.Unknown;
 				return "{{unknown|date}}";
 			}
 
-			date = ParseDate(date, out latestYear);
+			date = DateUtility.ParseDate(date, out parseMetadata);
 
 			// if the date is just the year, there may be a more precise date at the end of the title
-			if (date == latestYear.ToString())
+			if (date == parseMetadata.LatestYear.ToString())
 			{
 				string title;
 				if (data.TryGetValue("Title", out title))
@@ -791,9 +807,9 @@ namespace UWash
 					while (commaIndex >= 0)
 					{
 						string possibleDate = title.Substring(commaIndex + 1).Trim();
-						int titleLatestYear;
-						string titleDate = ParseDate(possibleDate, out titleLatestYear);
-						if (titleLatestYear == latestYear)
+						DateParseMetadata titleParseMetadata;
+						string titleDate = DateUtility.ParseDate(possibleDate, out titleParseMetadata);
+						if (titleParseMetadata.LatestYear == parseMetadata.LatestYear)
 						{
 							return titleDate;
 						}
@@ -803,7 +819,11 @@ namespace UWash
 			}
 
 			// if the date has an accurate month, day, and year, use {{taken on|}}
-			//TODO:
+			if (m_config.informationTemplate == "Photograph"
+				&& DateUtility.IsExactDateModern(date))
+			{
+				date = "{{taken on|" + date + "}}";
+			}
 
 			return date;
 		}

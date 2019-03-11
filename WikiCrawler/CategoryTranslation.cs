@@ -133,7 +133,7 @@ namespace WikiCrawler
 			}
 
 			//simple mapping
-			string simpleMap = MapCategory(input, CategoryTranslation.TryFetchCategoryName(s_commonsApi, input));
+			string simpleMap = MapCategory(input, TryFetchCategoryName(s_commonsApi, input));
 			if (!string.IsNullOrEmpty(simpleMap))
 			{
 				return simpleMap;
@@ -153,7 +153,7 @@ namespace WikiCrawler
 			{
 				//try flipping last two, with a comma
 				string attempt = pieces[pieces.Length - 1].Trim() + ", " + pieces[pieces.Length - 2].Trim();
-				string translate = MapCategory(input, CategoryTranslation.TryFetchCategoryName(s_commonsApi, attempt));
+				string translate = MapCategory(input, TryFetchCategoryName(s_commonsApi, attempt));
 				if (!string.IsNullOrEmpty(translate))
 					return translate;
 			}
@@ -183,22 +183,26 @@ namespace WikiCrawler
 								foreach (string s in parent.aliases["en"])
 								{
 									if (string.Compare(pieces[c], s, true) == 0)
+									{
 										countrySuccess = true;
+									}
 								}
 							}
 							if (parent.labels != null && parent.labels.ContainsKey("en")
 								&& string.Compare(pieces[c], parent.labels["en"], true) == 0)
+							{
 								countrySuccess = true;
+							}
 
 							if (countrySuccess)
 							{
+								// find Commons cat from the Wikidata entity
 								if (place.HasClaim("P373"))
 								{
 									return MapCategory(input, place.GetClaimValueAsString("P373"));
 								}
 								else
 								{
-									//Wikidata has no commons cat :(
 									return "";
 								}
 							}
@@ -242,7 +246,6 @@ namespace WikiCrawler
 
 			//make sure creator is created
 			Creator creator;
-			CreatorUtility.TryGetCreator(input, out creator);
 
 			//If they have a creator template, use that
 			if (CreatorUtility.TryGetCreator(input, out creator))

@@ -76,6 +76,9 @@ namespace WikiCrawler
 				case "NPGallery":
 					uploader = new NPGalleryUploader(projectKey);
 					break;
+				case "DSAL":
+					uploader = new Dsal.DsalUploader(projectKey);
+					break;
 				default:
 					throw new NotImplementedException("Uploader '" + "'.");
 			}

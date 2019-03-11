@@ -11,6 +11,7 @@
 		public string LicenseTemplate = "";
 
 		public int Usage = 0;
+		public int UploadableUsage = 0;
 		public int DeathYear = 9999;
 	}
 }

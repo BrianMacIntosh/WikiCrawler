@@ -11,14 +11,14 @@ namespace WikiCrawler
 	{
 		private static Dictionary<string, string> s_creatorHomecats = new Dictionary<string, string>();
 
-		private static Dictionary<string, Creator> s_creatorData = new Dictionary<string, Creator>();
+		private static Dictionary<string, Creator> s_creatorData;
 
 		private static string CacheFile
 		{
 			get { return Path.Combine(Configuration.DataDirectory, "creator_templates.json"); }
 		}
 
-		static CreatorUtility()
+		public static void Initialize(Wikimedia.WikiApi api)
 		{
 			//load known creators
 			string creatorTemplatesFile = CacheFile;
@@ -31,8 +31,12 @@ namespace WikiCrawler
 					creator.Usage = 0;
 				}
 			}
+			else
+			{
+				s_creatorData = new Dictionary<string, Creator>();
+			}
 
-			ValidateCreators();
+			ValidateCreators(api);
 		}
 
 		/// <summary>
@@ -42,13 +46,30 @@ namespace WikiCrawler
 		{
 			//write creators
 			string creatorTemplatesFile = CacheFile;
-			File.WriteAllText(
-				creatorTemplatesFile,
-				Newtonsoft.Json.JsonConvert.SerializeObject(s_creatorData, Newtonsoft.Json.Formatting.Indented),
-				Encoding.UTF8);
+
+			using (StreamWriter writer = new StreamWriter(new FileStream(creatorTemplatesFile, FileMode.Create, FileAccess.Write), Encoding.UTF8))
+			{
+				writer.WriteLine("{");
+				List<KeyValuePair<string, Creator>> creatorsFlat = new List<KeyValuePair<string, Creator>>(s_creatorData);
+				bool first = true;
+				foreach (KeyValuePair<string, Creator> kv in creatorsFlat.OrderByDescending(kv => kv.Value.UploadableUsage))
+				{
+					if (!first)
+					{
+						writer.WriteLine(',');
+					}
+					else
+					{
+						first = false;
+					}
+					writer.Write("\"" + kv.Key + "\":");
+					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Value, Newtonsoft.Json.Formatting.Indented));
+				}
+				writer.WriteLine("}");
+			}
 		}
 
-		private static void ValidateCreators()
+		private static void ValidateCreators(Wikimedia.WikiApi api)
 		{
 			Console.WriteLine("Validating creators...");
 			foreach (KeyValuePair<string, Creator> kv in s_creatorData)
@@ -84,13 +105,19 @@ namespace WikiCrawler
 
 		public static bool TryGetCreator(string key, out Creator creator)
 		{
+			if (s_creatorData == null)
+			{
+				throw new InvalidOperationException("CreatorUtility not initialized");
+			}
+
 			if (s_creatorData.TryGetValue(key, out creator))
 			{
 				return true;
 			}
 			else
 			{
-				s_creatorData.Add(key, new Creator());
+				creator = new Creator();
+				s_creatorData.Add(key, creator);
 				return false;
 			}
 		}
