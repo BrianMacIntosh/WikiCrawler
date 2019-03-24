@@ -120,10 +120,5 @@ namespace Dsal
 		{
 			return metadata["Title"] + " (" + m_config.filenameSuffix + " " + key.Substring(key.Length - 4, 4) + ")";
 		}
-
-		protected override string GetUploadImagePath(string key, Dictionary<string, string> metadata)
-		{
-			return GetImageCacheFilename(key);
-		}
 	}
 }

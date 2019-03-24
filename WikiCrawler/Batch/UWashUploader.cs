@@ -3,9 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using WikiCrawler;
+using Wikimedia;
 
 namespace UWash
 {
@@ -133,25 +135,54 @@ namespace UWash
 		}
 
 		/// <summary>
-		/// Prepares the image for upload and returns the path to the file to upload.
+		/// Run any additional logic after a successful upload (such as uploading a crop).
 		/// </summary>
-		protected override string GetUploadImagePath(string key, Dictionary<string, string> metadata)
+		protected override void PostUpload(string key, Article article)
 		{
+			base.PostUpload(key, article);
+
 			// try to crop the image
-			string imagepath = GetImageCacheFilename(key);
-			string croppath = GetImageCroppedFilename(key);
-			ImageUtils.CropUwashWatermark(imagepath, croppath);
+			string imagePath = GetImageCacheFilename(key);
+			string cropPath = GetImageCroppedFilename(key);
+			bool watermarkCrop = ImageUtils.CropUwashWatermark(imagePath, cropPath);
+			bool otherCrop = false;
 			if (UWashConfig.allowCrop)
 			{
-				ImageUtils.AutoCropJpg(croppath, croppath, 0xffffffff, 0.95f, 16, ImageUtils.Side.Left | ImageUtils.Side.Right);
+				otherCrop = ImageUtils.AutoCropJpg(cropPath, cropPath, 0xffffffff, 0.95f, 16, ImageUtils.Side.Left | ImageUtils.Side.Right);
 				System.Threading.Thread.Sleep(50);
-				if (!File.Exists(croppath))
+				if (!File.Exists(cropPath))
 				{
 					throw new UWashException("crop failed");
 				}
 			}
 
-			return croppath;
+			if (watermarkCrop || otherCrop)
+			{
+				// overwrite with the crop
+				try
+				{
+					string crops = "";
+					if (watermarkCrop)
+					{
+						crops = StringUtility.Join(", ", crops, "watermark");
+					}
+					if (otherCrop)
+					{
+						crops = StringUtility.Join(", ", crops, "horizontal");
+					}
+
+					string comment = "Automatic crop (" + crops + ")";
+					Article overwriteArticle = new Article(article.title);
+					if (!Api.UploadFromLocal(overwriteArticle, cropPath, "automatically cropping", true))
+					{
+						throw new UWashException("Crop upload failed");
+					}
+				}
+				catch (WikimediaException e)
+				{
+					throw new UWashException(e.Message);
+				}
+			}
 		}
 
 		/// <summary>

@@ -121,20 +121,19 @@ public abstract class BatchUploader : BatchTask
 			}
 		}
 
-		// also crops
-		string imagePath = GetUploadImagePath(key, metadata);
-
 		if (!m_config.allowUpload)
 		{
 			throw new UWashException("upload disabled");
 		}
 
+		string imagePath = GetImageCacheFilename(key);
+
 		//TODO: check for existing extension
 		art.title += Path.GetExtension(imagePath);
 
-		PreUpload(art);
-
-		reupload:
+		// creates any pages that the new page will be dependent on
+		PreUpload(key, art);
+		
 		bool uploadSuccess;
 		try
 		{
@@ -144,23 +143,13 @@ public abstract class BatchUploader : BatchTask
 		{
 			throw new UWashException(e.Message);
 		}
-		catch (WebException e)
-		{
-			if (e.Status == WebExceptionStatus.ProtocolError
-				&& ((HttpWebResponse)e.Response).StatusCode == HttpStatusCode.ServiceUnavailable)
-			{
-				System.Threading.Thread.Sleep(60000);
-				goto reupload;
-			}
-			else
-			{
-				uploadSuccess = false;
-			}
-		}
 
 		if (uploadSuccess)
 		{
+			// failures in PostUpload will have to be fixed manually for now
 			m_succeeded.Add(key);
+
+			PostUpload(key, art);
 		}
 		else
 		{
@@ -235,19 +224,14 @@ public abstract class BatchUploader : BatchTask
 	protected abstract string GetTitle(string key, Dictionary<string, string> metadata);
 
 	/// <summary>
-	/// Prepares the image for upload and returns the path to the file to upload.
-	/// </summary>
-	protected abstract string GetUploadImagePath(string key, Dictionary<string, string> metadata);
-
-	/// <summary>
 	/// Builds the wiki page for the object with the specified metadata.
 	/// </summary>
 	protected abstract string BuildPage(string key, Dictionary<string, string> metadata);
 
 	/// <summary>
-	/// Run any additional logic immediately before the article is uploaded.
+	/// Run any additional logic immediately before the article is uploaded (such as creating dependency pages).
 	/// </summary>
-	protected virtual void PreUpload(Article article)
+	protected virtual void PreUpload(string key, Article article)
 	{
 		// create categories for {{taken on}} if present
 		int takenOnIndex = article.revisions[0].text.IndexOf("{{taken on|", StringComparison.CurrentCultureIgnoreCase);
@@ -258,6 +242,14 @@ public abstract class BatchUploader : BatchTask
 			string date = article.revisions[0].text.Substring(dateStart, takenOnCloseIndex - dateStart);
 			CommonsUtility.EnsureTakenOnCategories(Api, date);
 		}
+	}
+
+	/// <summary>
+	/// Run any additional logic after a successful upload (such as uploading a crop).
+	/// </summary>
+	protected virtual void PostUpload(string key, Article article)
+	{
+
 	}
 
 	#region Parse Helpers

@@ -45,7 +45,8 @@ public static class ImageUtils
 	/// <summary>
 	/// 
 	/// </summary>
-	public static void CropUwashWatermark(string sourceFile, string outFile)
+	/// <returns>True if the image was cropped.</returns>
+	public static bool CropUwashWatermark(string sourceFile, string outFile)
 	{
 		FIBITMAP raw = FreeImage.Load(FREE_IMAGE_FORMAT.FIF_JPEG, sourceFile, FREE_IMAGE_LOAD_FLAGS.DEFAULT);
 		FIBITMAP bitmap = FreeImage.ConvertTo32Bits(raw);
@@ -56,12 +57,13 @@ public static class ImageUtils
 		int bottomBorder = GetBottomBorder(bitmap, 0xffffffff, 0.985f, 12);
 		if (bottomBorder >= 4 && bottomBorder <= 9)
 		{
-			FreeImage.JPEGCrop(sourceFile, outFile, 0, 0, width, height - 30);
+			return FreeImage.JPEGCrop(sourceFile, outFile, 0, 0, width, height - 30);
 		}
 		else
 		{
 			if (File.Exists(outFile)) File.Delete(outFile);
 			File.Copy(sourceFile, outFile);
+			return false;
 		}
 	}
 

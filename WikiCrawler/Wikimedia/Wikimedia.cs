@@ -856,13 +856,30 @@ namespace Wikimedia
 				throw new DuplicateFileException(newpage.title, dupes);
 			}
 
-			//Read response
+		reupload:
 			string json;
-			using (FileStream filestream = new FileStream(path, FileMode.Open))
+			try
 			{
-				using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, filestream)))
+				//Read response
+				using (FileStream filestream = new FileStream(path, FileMode.Open))
 				{
-					json = read.ReadToEnd();
+					using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, filestream)))
+					{
+						json = read.ReadToEnd();
+					}
+				}
+			}
+			catch (WebException e)
+			{
+				if (e.Status == WebExceptionStatus.ProtocolError
+					&& ((HttpWebResponse)e.Response).StatusCode == HttpStatusCode.ServiceUnavailable)
+				{
+					System.Threading.Thread.Sleep(60000);
+					goto reupload;
+				}
+				else
+				{
+					return false;
 				}
 			}
 

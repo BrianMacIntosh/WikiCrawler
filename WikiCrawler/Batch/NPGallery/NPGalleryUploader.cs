@@ -30,10 +30,5 @@ namespace WikiCrawler
 		{
 			throw new NotImplementedException();
 		}
-
-		protected override string GetUploadImagePath(string key, Dictionary<string, string> metadata)
-		{
-			throw new NotImplementedException();
-		}
 	}
 }
