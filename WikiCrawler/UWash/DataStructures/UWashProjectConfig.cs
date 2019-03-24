@@ -9,7 +9,6 @@ namespace UWash
 	public class UWashProjectConfig : ProjectConfig
 	{
 		public string digitalCollectionsKey;
-		public string sourceTemplate;
 		public int minIndex;
 		public int maxIndex;
 

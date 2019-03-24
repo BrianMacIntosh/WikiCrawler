@@ -9,6 +9,7 @@ public class ProjectConfig
 	public string uploader = "UWash";
 
 	public string informationTemplate = "Photograph";
+	public string sourceTemplate;
 	public string defaultAuthor = "unknown";
 	public string defaultPubCountry;
 

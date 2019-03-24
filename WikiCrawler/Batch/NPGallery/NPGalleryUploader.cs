@@ -21,7 +21,7 @@ namespace WikiCrawler
 			throw new NotImplementedException();
 		}
 
-		protected override Uri GetImageUri(string key)
+		protected override Uri GetImageUri(string key, Dictionary<string, string> metadata)
 		{
 			return new Uri(string.Format(ImageUriFormat, key));
 		}

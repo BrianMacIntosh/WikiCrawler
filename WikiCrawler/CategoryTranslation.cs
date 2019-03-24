@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace WikiCrawler
 {
@@ -20,12 +22,39 @@ namespace WikiCrawler
 		/// </summary>
 		public static readonly Wikimedia.CategoryTree CategoryTree = new Wikimedia.CategoryTree(s_commonsApi);
 
+		private class CategoryMappingData
+		{
+			public List<string> Cats = new List<string>();
+
+			public int Usage = 1;
+
+			public CategoryMappingData()
+			{
+
+			}
+
+			public CategoryMappingData(string category)
+			{
+				Cats = new List<string>();
+				AddCategory(category);
+				Usage = 0;
+			}
+
+			public void AddCategory(string category)
+			{
+				if (!string.IsNullOrEmpty(category) && !Cats.Contains(category))
+				{
+					Cats.Add(category);
+				}
+			}
+		}
+
 		/// <summary>
 		/// Tags mapped to Commons categories.
 		/// </summary>
-		private static Dictionary<string, string> s_categoryMap = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+		private static Dictionary<string, CategoryMappingData> s_categoryMap = new Dictionary<string, CategoryMappingData>(StringComparer.InvariantCultureIgnoreCase);
 		
-		private static char[] trim = new char[] { ' ', '\n', '\r', '\t', '-' };
+		private static char[] s_trim = new char[] { ' ', '\n', '\r', '\t', '-' };
 
 		static CategoryTranslation()
 		{
@@ -33,20 +62,14 @@ namespace WikiCrawler
 			taxonConnection.Open();*/
 
 			//load mapped categories
-			string categoryMappingsFile = Path.Combine(Configuration.DataDirectory, "category_mappings.txt");
-			if (File.Exists(categoryMappingsFile))
+			string categoryMappingsFile = Path.Combine(Configuration.DataDirectory, "category_mappings.json");
+			string serializedMappings = File.ReadAllText(categoryMappingsFile, Encoding.UTF8);
+			s_categoryMap = JsonConvert.DeserializeObject<Dictionary<string, CategoryMappingData>>(serializedMappings);
+
+			// clear usage
+			foreach (KeyValuePair<string, CategoryMappingData> kv in s_categoryMap)
 			{
-				using (StreamReader reader = new StreamReader(new FileStream(categoryMappingsFile, FileMode.Open)))
-				{
-					while (!reader.EndOfStream)
-					{
-						string[] line = reader.ReadLine().Split(StringUtility.Pipe, 2);
-						if (line.Length == 2)
-						{
-							s_categoryMap[line[0]] = line[1];
-						}
-					}
-				}
+				kv.Value.Usage = 0;
 			}
 
 			CategoryTree.Load(Path.Combine(Configuration.DataDirectory, "category_tree.txt"));
@@ -58,85 +81,121 @@ namespace WikiCrawler
 		public static void SaveOut()
 		{
 			//write category map
-			string categoryMappingsFile = Path.Combine(Configuration.DataDirectory, "category_mappings.txt");
-			using (StreamWriter writer = new StreamWriter(new FileStream(categoryMappingsFile, FileMode.Create)))
+			string categoryMappingsFile = Path.Combine(Configuration.DataDirectory, "category_mappings.json");
+			using (StreamWriter writer = new StreamWriter(new FileStream(categoryMappingsFile, FileMode.Create), Encoding.UTF8))
 			{
-				foreach (KeyValuePair<string, string> kv in s_categoryMap)
+				List<KeyValuePair<string, CategoryMappingData>> flatMap = s_categoryMap.ToList();
+
+				writer.WriteLine("{");
+				bool isFirst = true;
+				foreach (KeyValuePair<string, CategoryMappingData> kv in flatMap.OrderByDescending(kv => kv.Value.Usage))
 				{
-					writer.WriteLine(kv.Key + "|" + kv.Value);
+					if (!isFirst)
+					{
+						writer.WriteLine(",");
+					}
+					writer.WriteLine("\t" + JsonConvert.ToString(kv.Key) + ": { \"Usage\":" + kv.Value.Usage.ToString() + ",");
+					string cats = JsonConvert.SerializeObject(kv.Value.Cats);
+					writer.Write("\t\t\"Cats\": " + cats + "}");
+					isFirst = false;
 				}
+				writer.WriteLine("}");
 			}
 
 			CategoryTree.Save(Path.Combine(Configuration.DataDirectory, "category_tree.txt"));
 		}
 
 		/// <summary>
-		/// Check if this input is already mapped to a category.
+		/// If the specified tag is mapped to categories, returns the categories.
 		/// </summary>
-		public static string GetMappedCategory(string input)
+		public static IEnumerable<string> GetMappedCategories(string tag)
 		{
-			if (s_categoryMap.ContainsKey(input))
+			CategoryMappingData mappedData;
+			if (s_categoryMap.TryGetValue(tag, out mappedData))
 			{
-				string mappedCat = s_categoryMap[input];
-
-				//verify that the category is good against the live database
-				if (!string.IsNullOrEmpty(mappedCat) && !CategoryTree.AddToTree(mappedCat, 2))
+				//verify that the categories are good against the live database
+				for (int i = 0; i < mappedData.Cats.Count; i++)
 				{
-					Console.WriteLine("Failed to find mapped cat '" + input + "'.");
-					s_categoryMap[input] = "";
-					return "";
+					if (!CategoryTree.AddToTree(mappedData.Cats[i], 2))
+					{
+						Console.WriteLine("Failed to find mapped cat '" + mappedData.Cats[i] + "'.");
+						mappedData.Cats.RemoveAt(i);
+					}
 				}
 
-				return mappedCat;
+				mappedData.Usage++;
+				return mappedData.Cats;
 			}
 			else
 			{
 				//flag this category as needing manual mapping
-				s_categoryMap[input] = "";
-				return "";
+				s_categoryMap[tag] = new CategoryMappingData();
+				return null;
 			}
+		}
+
+		/// <summary>
+		/// Records the tag as checked and failed to map.
+		/// </summary>
+		/// <returns>The complete set of mappings for the tag.</returns>
+		private static IEnumerable<string> MapCategory(string tag)
+		{
+			return MapCategory(tag, "");
 		}
 
 		/// <summary>
 		/// Records the category the specified tag has been mapped to.
 		/// </summary>
-		private static string MapCategory(string tag, string category)
+		/// <returns>The complete set of mappings for the tag.</returns>
+		private static IEnumerable<string> MapCategory(string tag, string category)
 		{
 			if (!string.IsNullOrEmpty(category))
 			{
 				if (!category.StartsWith("Category:")) category = "Category:" + category;
-				s_categoryMap[tag] = category;
+				CategoryMappingData categoryData;
+				if (s_categoryMap.TryGetValue(tag, out categoryData))
+				{
+					categoryData.AddCategory(category);
+				}
+				else
+				{
+					categoryData = new CategoryMappingData(category);
+					s_categoryMap.Add(tag, categoryData);
+				}
 				Console.WriteLine("Mapped '" + tag + "' to '" + category + "'.");
-				return category;
+				return categoryData.Cats;
 			}
 			else
 			{
 				// record blank categories so we don't check them again
-				if (!s_categoryMap.ContainsKey(tag))
+				CategoryMappingData categoryData;
+				if (!s_categoryMap.TryGetValue(tag, out categoryData))
 				{
-					s_categoryMap.Add(tag, category);
+					categoryData = new CategoryMappingData();
+					s_categoryMap.Add(tag, categoryData);
 				}
-				return "";
+				return categoryData.Cats;
 			}
 		}
 
 		/// <summary>
-		/// Translates a location string into a category name.
+		/// Translates a location string into a set of categories.
 		/// </summary>
-		public static string TranslateLocationCategory(string input)
+		public static IEnumerable<string> TranslateLocationCategory(string input)
 		{
-			if (string.IsNullOrEmpty(input)) return "";
+			if (string.IsNullOrEmpty(input)) return null;
 
-			if (s_categoryMap.ContainsKey(input))
+			IEnumerable<string> existingMapping = GetMappedCategories(input);
+			if (existingMapping != null)
 			{
-				return GetMappedCategory(input);
+				return existingMapping;
 			}
 
 			//simple mapping
-			string simpleMap = MapCategory(input, TryFetchCategoryName(s_commonsApi, input));
-			if (!string.IsNullOrEmpty(simpleMap))
+			string category = TryFetchCategoryName(s_commonsApi, input);
+			if (!string.IsNullOrEmpty(category))
 			{
-				return simpleMap;
+				return MapCategory(input, category);
 			}
 
 			string[] pieces = input.Split(StringUtility.DashDash, StringSplitOptions.RemoveEmptyEntries);
@@ -153,9 +212,11 @@ namespace WikiCrawler
 			{
 				//try flipping last two, with a comma
 				string attempt = pieces[pieces.Length - 1].Trim() + ", " + pieces[pieces.Length - 2].Trim();
-				string translate = MapCategory(input, TryFetchCategoryName(s_commonsApi, attempt));
-				if (!string.IsNullOrEmpty(translate))
-					return translate;
+				category = TryFetchCategoryName(s_commonsApi, attempt);
+				if (!string.IsNullOrEmpty(category))
+				{
+					return MapCategory(input, category);
+				}
 			}
 
 			//check for only the last on wikidata
@@ -203,7 +264,7 @@ namespace WikiCrawler
 								}
 								else
 								{
-									return "";
+									return MapCategory(input);
 								}
 							}
 						}
@@ -211,35 +272,34 @@ namespace WikiCrawler
 				}
 			}
 
-			return "";
+			return MapCategory(input);
 		}
 
 		private static HashSet<string> s_personsFailed = new HashSet<string>();
 
-		public static string TranslatePersonCategory(string input, bool allowFailedCreators)
+		public static IEnumerable<string> TranslatePersonCategory(string input, bool allowFailedCreators)
 		{
-			if (string.IsNullOrEmpty(input)) return "";
+			if (string.IsNullOrEmpty(input)) return null;
 
-			//TODO: don't recheck on reexecute? See TranslateTagCategory
-			string cached = GetMappedCategory(input);
-			if (!string.IsNullOrEmpty(cached))
+			IEnumerable<string> existingMapping = GetMappedCategories(input);
+			if (existingMapping != null)
 			{
-				return cached;
+				return existingMapping;
 			}
 
 			if (s_personsFailed.Contains(input))
 			{
 				if (allowFailedCreators)
-					return input;
+					return new string[] { input };
 				else
-					return "";
+					return MapCategory(input);
 			}
 
 			//simple mapping
-			string simpleMap = MapCategory(input, TryFetchCategoryName(s_commonsApi, input));
-			if (!string.IsNullOrEmpty(simpleMap))
+			string category = TryFetchCategoryName(s_commonsApi, input);
+			if (!string.IsNullOrEmpty(category))
 			{
-				return simpleMap;
+				return MapCategory(input, category);
 			}
 
 			Console.WriteLine("Attempting to map person '" + input + "'.");
@@ -257,7 +317,7 @@ namespace WikiCrawler
 					string homeCategory;
 					if (CreatorUtility.TryGetHomeCategory(creatorPage, out homeCategory))
 					{
-						return homeCategory;
+						return MapCategory(input, homeCategory);
 					}
 					else
 					{
@@ -274,7 +334,7 @@ namespace WikiCrawler
 									{
 										if (!homecat.StartsWith("Category:")) homecat = "Category:" + homecat;
 										CreatorUtility.SetHomeCategory(creatorPage, homecat);
-										return homecat;
+										return MapCategory(input, homecat);
 									}
 								}
 							}
@@ -284,34 +344,34 @@ namespace WikiCrawler
 						string creatorName = creatorPage;
 						if (creatorName.StartsWith("Creator:")) creatorName = creatorName.Substring(8);
 						string cat = "Category:" + creatorName;
-						CreatorUtility.SetHomeCategory(creatorPage, "");
-						s_categoryMap[input] = cat;
-						return cat;
+						CreatorUtility.SetHomeCategory(creatorPage, cat);
+						return MapCategory(input, cat);
 					}
 				}
 				else
 				{
-					return "";
+					return MapCategory(input);
 				}
 			}
 
 			s_personsFailed.Add(input);
 			if (allowFailedCreators)
-				return input;
+				return new string[] { input };
 			else
-				return "";
+				return MapCategory(input);
 		}
 
-		public static string TranslateTagCategory(string input)
+		public static IEnumerable<string> TranslateTagCategory(string input)
 		{
-			input = input.Trim();
+			if (string.IsNullOrEmpty(input)) return null;
 
-			if (string.IsNullOrEmpty(input)) return "";
-
-			if (s_categoryMap.ContainsKey(input))
+			IEnumerable<string> existingMapping = GetMappedCategories(input);
+			if (existingMapping != null)
 			{
-				return GetMappedCategory(input);
+				return existingMapping;
 			}
+
+			input = input.Trim();
 
 			//does it look like it has a parent?
 			if (input.Contains('(') && input.EndsWith(")"))
@@ -328,9 +388,15 @@ namespace WikiCrawler
 				}
 				if (!string.IsNullOrEmpty(switched))
 				{
-					string mapping = TranslateLocationCategory(switched);
-					if (!string.IsNullOrEmpty(mapping))
-						return MapCategory(input, mapping);
+					IEnumerable<string> location = TranslateLocationCategory(switched);
+					if (location != null)
+					{
+						foreach (string mapped in location)
+						{
+							MapCategory(input, mapped);
+						}
+						return s_categoryMap[input].Cats;
+					}
 				}
 			}
 
@@ -341,7 +407,7 @@ namespace WikiCrawler
 
 		public static string TranslateCategory(Wikimedia.WikiApi api, string input)
 		{
-			string catname = input.Trim(trim);
+			string catname = input.Trim(s_trim);
 
 			//Check if this category exists literally
 			catname = TryMapCategory0(api, input);

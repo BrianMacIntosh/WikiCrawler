@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using WikiCrawler;
 
 namespace Dsal
@@ -27,7 +28,8 @@ namespace Dsal
 			categories.Add(m_config.checkCategory);
 
 			string location = metadata["Location"];
-			string locationCat = CategoryTranslation.TranslateLocationCategory(metadata["Location"]);
+			IEnumerable<string> locationCats = CategoryTranslation.TranslateLocationCategory(metadata["Location"]);
+			string locationCat = locationCats == null ? "" : locationCats.FirstOrDefault();
 			if (!string.IsNullOrEmpty(locationCat))
 			{
 				location = locationCat.Substring("Category:".Length);
@@ -53,10 +55,10 @@ namespace Dsal
 
 			foreach (string subject in metadata["Subject"].Trim('"').Split(','))
 			{
-				string mappedCat = CategoryTranslation.TranslateTagCategory(subject);
-				if (!string.IsNullOrEmpty(mappedCat))
+				IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(subject);
+				if (mappedCats != null)
 				{
-					categories.Add(mappedCat);
+					categories.AddRange(mappedCats);
 				}
 			}
 
@@ -72,6 +74,12 @@ namespace Dsal
 				throw new UWashException("No license?");
 			}
 
+			string otherFields = "";
+			if (!string.IsNullOrEmpty(metadata["OriginalNegativeHeld"]))
+			{
+				otherFields += "\n{{Information field|name=Original Negative Held|value=" + metadata["OriginalNegativeHeld"] + "}}";
+			}
+
 			string page = GetCheckCategoriesTag(categories.Count) + "\n"
 				+ "=={{int:filedesc}}==\n"
 				+ "{{Photograph\n"
@@ -85,12 +93,11 @@ namespace Dsal
 				+ "|depicted place=" + location + "\n"
 				+ "|date=" + date + "\n"
 				+ "|institution={{Institution:Digital South Asia Library, Chicago}}\n"
-				+ "|accession number={{DSAL-BOND-accession|" + key + "}}\n"
-				+ "|source={{DSAL-BOND-source}}\n"
+				+ "|accession number={{DSAL-" + m_projectKey.ToUpper() + "-accession|" + key + "}}\n"
+				+ "|source=" + m_config.sourceTemplate + "\n"
 				+ "|permission=" + licenseTag + "\n"
 				+ "|other_versions=\n"
-				+ "|other_fields=\n"
-				+ "{{Information field|name=Original Negative Held|value=" + metadata["OriginalNegativeHeld"] + "}}\n"
+				+ "|other_fields=" + otherFields + "\n"
 				+ "}}\n"
 				+ "\n";
 
@@ -104,9 +111,9 @@ namespace Dsal
 			return page;
 		}
 
-		protected override Uri GetImageUri(string key)
+		protected override Uri GetImageUri(string key, Dictionary<string, string> metadata)
 		{
-			return new Uri("http://dsal.uchicago.edu/images/bond/images/large/" + key + ".jpg");
+			return new Uri(metadata["ImageUrl"]);
 		}
 
 		protected override string GetTitle(string key, Dictionary<string, string> metadata)

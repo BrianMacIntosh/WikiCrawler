@@ -114,7 +114,8 @@ namespace WikiCrawler
 			}
 
 			string succeededFile = Path.Combine(projectDir, "succeeded.json");
-			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded.ToArray()));
+			succeeded.Sort();
+			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded));
 		}
 	}
 }

@@ -3,10 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
 using WikiCrawler;
 using Wikimedia;
 
@@ -106,14 +104,9 @@ public abstract class BatchUploader : BatchTask
 			writer.Write(art.revisions[0].text);
 		}
 
-		if (!m_config.allowUpload)
-		{
-			throw new UWashException("upload disabled");
-		}
-
 		try
 		{
-			CacheImage(key);
+			CacheImage(key, metadata);
 		}
 		catch (WebException e)
 		{
@@ -128,7 +121,13 @@ public abstract class BatchUploader : BatchTask
 			}
 		}
 
+		// also crops
 		string imagePath = GetUploadImagePath(key, metadata);
+
+		if (!m_config.allowUpload)
+		{
+			throw new UWashException("upload disabled");
+		}
 
 		//TODO: check for existing extension
 		art.title += Path.GetExtension(imagePath);
@@ -174,17 +173,16 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Saves out progress to a file.
 	/// </summary>
-	public void SaveOut()
+	protected override void SaveOut()
 	{
-		string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
-		File.WriteAllText(succeededFile, JsonConvert.SerializeObject(m_succeeded.ToArray()));
+		base.SaveOut();
 		CreatorUtility.SaveOut();
 	}
 
 	/// <summary>
 	/// If the image for the specified item isn't cached, caches it.
 	/// </summary>
-	public void CacheImage(string key)
+	public void CacheImage(string key, Dictionary<string, string> metadata)
 	{
 		if (m_config.allowImageDownload)
 		{
@@ -192,7 +190,7 @@ public abstract class BatchUploader : BatchTask
 			if (!File.Exists(imagepath))
 			{
 				Console.WriteLine("Downloading image: " + key);
-				Uri uri = GetImageUri(key);
+				Uri uri = GetImageUri(key, metadata);
 				EasyWeb.WaitForDelay(uri);
 				s_client.DownloadFile(uri, imagepath);
 			}
@@ -227,9 +225,9 @@ public abstract class BatchUploader : BatchTask
 	}
 
 	/// <summary>
-	/// Returns the URL for the item with the specified key.
+	/// Returns the URL for the item with the specified data.
 	/// </summary>
-	protected abstract Uri GetImageUri(string key);
+	protected abstract Uri GetImageUri(string key, Dictionary<string, string> metadata);
 
 	/// <summary>
 	/// Returns the title of the uploaded page for the specified metadata.

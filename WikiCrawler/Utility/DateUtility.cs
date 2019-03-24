@@ -109,11 +109,7 @@ public static class DateUtility
 		{
 			int rml = "circa".Length;
 			string yearStr = date.Substring(rml, date.Length - rml).Trim();
-			int yearInt;
-			parseMetadata = int.TryParse(yearStr, out yearInt)
-				? new DateParseMetadata(yearInt)
-				: DateParseMetadata.Unknown;
-			return "{{other date|ca|" + yearStr + "}}";
+			return "{{other date|ca|" + ParseDate(yearStr, out parseMetadata) + "}}";
 		}
 		else if (date.StartsWith("before"))
 		{

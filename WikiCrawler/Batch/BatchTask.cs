@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using WikiCrawler;
 
@@ -57,5 +58,13 @@ public abstract class BatchTask
 				m_succeeded.Add(suc);
 			}
 		}
+	}
+
+	protected virtual void SaveOut()
+	{
+		string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
+		List<string> succeeded = m_succeeded.ToList();
+		succeeded.Sort();
+		File.WriteAllText(succeededFile, JsonConvert.SerializeObject(m_succeeded, Formatting.Indented));
 	}
 }

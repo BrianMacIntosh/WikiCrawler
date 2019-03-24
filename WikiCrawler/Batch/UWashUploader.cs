@@ -36,6 +36,7 @@ namespace UWash
 			"Album/Page",
 			"Subjects (LCTGM)",
 			"Subjects (LCSH)",
+			"Subjects (TGM)",
 			"Category",
 			"Location Depicted",
 			"Order Number",
@@ -89,7 +90,7 @@ namespace UWash
 			EasyWeb.SetDelayForDomain(new Uri("https://commons.wikimedia.org/"), 0.5f);
 		}
 
-		protected override Uri GetImageUri(string key)
+		protected override Uri GetImageUri(string key, Dictionary<string, string> metadata)
 		{
 			return new Uri(string.Format(ImageUrlFormat, key));
 		}
@@ -142,7 +143,7 @@ namespace UWash
 			ImageUtils.CropUwashWatermark(imagepath, croppath);
 			if (UWashConfig.allowCrop)
 			{
-				ImageUtils.AutoCropJpg(croppath, croppath, 0xffffffff, 0.92f, 22, ImageUtils.Side.Left | ImageUtils.Side.Right);
+				ImageUtils.AutoCropJpg(croppath, croppath, 0xffffffff, 0.95f, 16, ImageUtils.Side.Left | ImageUtils.Side.Right);
 				System.Threading.Thread.Sleep(50);
 				if (!File.Exists(croppath))
 				{
@@ -228,15 +229,12 @@ namespace UWash
 			}*/
 			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
 			{
-				string cat = CategoryTranslation.TranslateTagCategory(s.Trim());
-				if (!string.IsNullOrEmpty(cat))
+				IEnumerable<string> cats = CategoryTranslation.TranslateTagCategory(s.Trim());
+				if (cats != null)
 				{
-					if (cat != "N/A")
+					foreach (string catsplit in cats)
 					{
-						foreach (string catsplit in cat.Split('|'))
-						{
-							if (!categories.Contains(catsplit)) categories.Add(catsplit);
-						}
+						if (!categories.Contains(catsplit)) categories.Add(catsplit);
 					}
 				}
 			}
@@ -247,10 +245,10 @@ namespace UWash
 			if (metadata.TryGetValue("Location Depicted", out temp)) catparse += "|" + temp;
 			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
 			{
-				string cat = CategoryTranslation.TranslateLocationCategory(s.Trim());
-				if (!string.IsNullOrEmpty(cat) && cat != "N/A")
+				IEnumerable<string> cats = CategoryTranslation.TranslateLocationCategory(s.Trim());
+				if (cats != null)
 				{
-					foreach (string catsplit in cat.Split('|'))
+					foreach (string catsplit in cats)
 					{
 						if (string.IsNullOrEmpty(sureLocationCategory)) sureLocationCategory = catsplit;
 						if (!categories.Contains(catsplit)) categories.Add(catsplit);
@@ -264,7 +262,8 @@ namespace UWash
 			string publisherLocation = "";
 			if (metadata.TryGetValue("Publisher Location", out publisherLocation))
 			{
-				publisherLocation = CategoryTranslation.TranslateLocationCategory(publisherLocation);
+				IEnumerable<string> pubLocCats = CategoryTranslation.TranslateLocationCategory(publisherLocation);
+				publisherLocation = pubLocCats == null ? "" : pubLocCats.FirstOrDefault();
 				if (publisherLocation.StartsWith("Category:")) publisherLocation = publisherLocation.Substring("Category:".Length);
 			}
 
@@ -455,9 +454,8 @@ namespace UWash
 			string placeOfCreation;
 			if (metadata.TryGetValue("Place of Publication", out placeOfCreation))
 			{
-				string placeOfCreationCat = CategoryTranslation.TranslateLocationCategory(placeOfCreation)
-					.Split(StringUtility.Pipe)
-					.FirstOrDefault();
+				IEnumerable<string> locCats = CategoryTranslation.TranslateLocationCategory(placeOfCreation);
+				string placeOfCreationCat = locCats == null ? "" : locCats.FirstOrDefault();
 				if (placeOfCreationCat.StartsWith("Category:")) placeOfCreationCat = placeOfCreationCat.Substring("Category:".Length);
 				if (!string.IsNullOrEmpty(placeOfCreationCat))
 				{
@@ -624,6 +622,11 @@ namespace UWash
 			}
 
 			string temp;
+			if (data.TryGetValue("Subjects (TGM)", out temp))
+			{
+				lctgm = StringUtility.Join("|", lctgm, temp);
+				data.Remove("Subjects (TGM)");
+			}
 			if (data.TryGetValue("Subjects (LCTGM)", out temp))
 			{
 				lctgm = StringUtility.Join("|", lctgm, temp);

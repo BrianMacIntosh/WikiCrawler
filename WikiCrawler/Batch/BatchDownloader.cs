@@ -102,15 +102,6 @@ public abstract class BatchDownloader : BatchTask
 	}
 
 	/// <summary>
-	/// Saves out progress to a file.
-	/// </summary>
-	public virtual void SaveOut()
-	{
-		string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
-		File.WriteAllText(succeededFile, JsonConvert.SerializeObject(m_succeeded.ToArray()));
-	}
-
-	/// <summary>
 	/// Downloads the specified URL.
 	/// </summary>
 	private string Download(Uri url)
