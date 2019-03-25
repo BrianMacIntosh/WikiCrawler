@@ -827,6 +827,7 @@ namespace Wikimedia
             data["token"] = GetCsrfToken();
             data["ignorewarnings"] = "1";
 			data["summary"] = summary;
+			data["comment"] = summary;
 			if (bot) data["bot"] = "1";
 
             if (newpage.revisions != null && newpage.revisions.Length > 0)

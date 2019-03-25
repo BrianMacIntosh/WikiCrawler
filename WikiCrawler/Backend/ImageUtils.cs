@@ -117,7 +117,14 @@ public static class ImageUtils
 			left = GetLeftBorder(bitmap, target, percentage, leeway);
 		}
 
-		return FreeImage.JPEGCrop(sourceFile, outFile, left, height - top, right, height - bottom);
+		if (left == 0 && right == width && bottom == 0 && top == height)
+		{
+			return false;
+		}
+		else
+		{
+			return FreeImage.JPEGCrop(sourceFile, outFile, left, height - top, right, height - bottom);
+		}
 	}
 
 	private static int GetTopBorder(FIBITMAP image, RGBQUAD target, float percentage, int leeway)

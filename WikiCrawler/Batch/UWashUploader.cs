@@ -173,7 +173,7 @@ namespace UWash
 
 					string comment = "Automatic crop (" + crops + ")";
 					Article overwriteArticle = new Article(article.title);
-					if (!Api.UploadFromLocal(overwriteArticle, cropPath, "automatically cropping", true))
+					if (!Api.UploadFromLocal(overwriteArticle, cropPath, comment, true))
 					{
 						throw new UWashException("Crop upload failed");
 					}
