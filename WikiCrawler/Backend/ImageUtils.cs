@@ -54,7 +54,7 @@ public static class ImageUtils
 		int width = (int)FreeImage.GetWidth(bitmap);
 		int height = (int)FreeImage.GetHeight(bitmap);
 
-		int bottomBorder = GetBottomBorder(bitmap, 0xffffffff, 0.985f, 12);
+		int bottomBorder = GetBottomBorder(bitmap, 0xffffffff, 0.985f, 15);
 		if (bottomBorder >= 4 && bottomBorder <= 9)
 		{
 			return FreeImage.JPEGCrop(sourceFile, outFile, 0, 0, width, height - 30);

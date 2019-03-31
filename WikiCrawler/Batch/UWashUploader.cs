@@ -171,7 +171,7 @@ namespace UWash
 						crops = StringUtility.Join(", ", crops, "horizontal");
 					}
 
-					string comment = "Automatic crop (" + crops + ")";
+					string comment = "Automatic lossless crop (" + crops + ")";
 					Article overwriteArticle = new Article(article.title);
 					if (!Api.UploadFromLocal(overwriteArticle, cropPath, comment, true))
 					{
