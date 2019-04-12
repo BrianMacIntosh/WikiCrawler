@@ -133,7 +133,7 @@ public static class DateUtility
 		}
 		else if (date.StartsWith("between "))
 		{
-			string[] components = date.Substring("between ".Length).Split(new string[] { " and " }, StringSplitOptions.None);
+			string[] components = date.Substring("between ".Length).Split(new string[] { " and ", "-" }, StringSplitOptions.None);
 			if (components.Length == 2)
 			{
 				DateParseMetadata parseA, parseB;

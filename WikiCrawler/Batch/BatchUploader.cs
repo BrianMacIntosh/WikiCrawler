@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using WikiCrawler;
@@ -139,6 +140,22 @@ public abstract class BatchUploader : BatchTask
 		{
 			uploadSuccess = Api.UploadFromLocal(art, imagePath, "(BOT) batch upload", true);
 		}
+		catch (DuplicateFileException e)
+		{
+			if (e.Duplicates.Length == 1 && e.IsSelfDuplicate)
+			{
+				// It looks like we already did this one
+				uploadSuccess = true;
+			}
+			else if (e.Duplicates.Length == 1 && TryAddDuplicate(e.DuplicateTitles.First(), key, metadata))
+			{
+				uploadSuccess = true;
+			}
+			else
+			{
+				throw new UWashException(e.Message);
+			}
+		}
 		catch (WikimediaException e)
 		{
 			throw new UWashException(e.Message);
@@ -227,6 +244,16 @@ public abstract class BatchUploader : BatchTask
 	/// Builds the wiki page for the object with the specified metadata.
 	/// </summary>
 	protected abstract string BuildPage(string key, Dictionary<string, string> metadata);
+
+	/// <summary>
+	/// Attempts to merge this new page's information with an existing duplicate.
+	/// </summary>
+	/// <param name="targetPage">The existing page to merge into.</param>
+	/// <returns>True on success.</returns>
+	protected virtual bool TryAddDuplicate(string targetPage, string key, Dictionary<string, string> metadata)
+	{
+		return false;
+	}
 
 	/// <summary>
 	/// Run any additional logic immediately before the article is uploaded (such as creating dependency pages).

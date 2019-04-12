@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WikiCrawler
 {
@@ -13,7 +10,7 @@ namespace WikiCrawler
 		public NPGalleryDownloader(string key)
 			: base(key)
 		{
-
+			
 		}
 
 		private const string MetadataUriFormat = "https://npgallery.nps.gov/AssetDetail/{0}";

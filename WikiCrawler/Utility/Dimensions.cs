@@ -106,8 +106,16 @@ public struct Dimensions
 
 			if (!string.IsNullOrEmpty(divisee))
 			{
-				number = decimal.Parse(whole) + decimal.Parse(divisee) / decimal.Parse(divisor);
-				return true;
+				try
+				{
+					number = decimal.Parse(whole) + decimal.Parse(divisee) / decimal.Parse(divisor);
+					return true;
+				}
+				catch (FormatException)
+				{
+					number = 0m;
+					return false;
+				}
 			}
 		}
 

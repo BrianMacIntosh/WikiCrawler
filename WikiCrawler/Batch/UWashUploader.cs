@@ -29,6 +29,7 @@ namespace UWash
 			"Title",
 			"Advertisement",
 			"Photographer",
+			"Original Creator",
 			"Date",
 			"Publication Date",
 			"Notes",
@@ -173,9 +174,23 @@ namespace UWash
 
 					string comment = "Automatic lossless crop (" + crops + ")";
 					Article overwriteArticle = new Article(article.title);
-					if (!Api.UploadFromLocal(overwriteArticle, cropPath, comment, true))
+					try
 					{
-						throw new UWashException("Crop upload failed");
+						if (!Api.UploadFromLocal(overwriteArticle, cropPath, comment, true))
+						{
+							throw new UWashException("Crop upload failed");
+						}
+					}
+					catch (DuplicateFileException e)
+					{
+						if (e.Duplicates.Length == 1 && e.IsSelfDuplicate)
+						{
+							// It looks like we already did this one, and that's fine
+						}
+						else
+						{
+							throw new UWashException(e.Message);
+						}
 					}
 				}
 				catch (WikimediaException e)
@@ -639,6 +654,41 @@ namespace UWash
 			return content.ToString();
 		}
 
+		protected override bool TryAddDuplicate(string targetPage, string key, Dictionary<string, string> metadata)
+		{
+			Console.WriteLine("Checking to record duplicate " + key + " with existing page '" + targetPage + "'");
+
+			// Fetch the target duplicate
+			Article targetArticle = Api.GetPage(targetPage);
+			string text = targetArticle.revisions[0].text;
+
+			// Check that it's one of ours
+			if (!text.Contains("|source=" + m_config.sourceTemplate))
+			{
+				return false;
+			}
+
+			// Insert a link to the duplicate file
+			int accessionPropIndex = text.IndexOf("|accession number=");
+			if (accessionPropIndex < 0)
+			{
+				return false;
+			}
+
+			int insertionPoint = text.IndexOf('\n', accessionPropIndex);
+			if (insertionPoint < 0)
+			{
+				return false;
+			}
+
+			string accession = "{{UWASH-digital-accession|" + UWashConfig.digitalCollectionsKey + "|" + key + "}}";
+			text = text.Substring(0, insertionPoint) + " " + accession + text.Substring(insertionPoint);
+
+			// submit the edit
+			targetArticle.revisions[0].text = text;
+			return Api.SetPage(targetArticle, "(BOT) recording duplicate image from UWash collection", false, true);
+		}
+
 		private static Dictionary<string, string> PreprocessMetadata(Dictionary<string, string> data)
 		{
 			string lctgm, lcsh;
@@ -807,7 +857,8 @@ namespace UWash
 
 			string author;
 			//TODO: support multiples
-			if (data.TryGetValue("Photographer", out author)
+			if (data.TryGetValue("Original Creator", out author)
+				|| data.TryGetValue("Photographer", out author)
 				|| data.TryGetValue("Company/Advertising Agency", out author)
 				|| data.TryGetValue("Publisher", out author))
 			{

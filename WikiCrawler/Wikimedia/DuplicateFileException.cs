@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Wikimedia
 {
@@ -8,6 +8,11 @@ namespace Wikimedia
 		public readonly string FileName;
 
 		public readonly object[] Duplicates;
+
+		public bool IsSelfDuplicate
+		{
+			get { return DuplicateTitles.Contains(FileName); }
+		}
 
 		public DuplicateFileException(string fileName, object[] duplicates)
 		{
@@ -21,6 +26,17 @@ namespace Wikimedia
 			{
 				string dupe = (string)((Dictionary<string, object>)Duplicates[0])["title"];
 				return "'" + FileName + "' is a duplicate of '" + dupe + "'.";
+			}
+		}
+
+		public IEnumerable<string> DuplicateTitles
+		{
+			get
+			{
+				foreach (object dupeObj in Duplicates)
+				{
+					yield return (string)((Dictionary<string, object>)Duplicates[0])["title"];
+				}
 			}
 		}
 	}

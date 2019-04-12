@@ -56,6 +56,9 @@ public abstract class BatchDownloader : BatchTask
 				succeededMetadata.Add(Path.GetFileNameWithoutExtension(cachedData));
 			}
 
+			int saveOutInterval = 10;
+			int saveOutTimer = saveOutInterval;
+
 			// load metadata
 			foreach (string key in GetKeys())
 			{
@@ -85,6 +88,8 @@ public abstract class BatchDownloader : BatchTask
 					{
 						goto redownload;
 					}
+
+					saveOutTimer--;
 				}
 
 				if (File.Exists(stopFile))
@@ -92,6 +97,12 @@ public abstract class BatchDownloader : BatchTask
 					File.Delete(stopFile);
 					Console.WriteLine("Received STOP signal.");
 					return;
+				}
+				
+				if (saveOutTimer <= 0)
+				{
+					SaveOut();
+					saveOutTimer = saveOutInterval;
 				}
 			}
 		}

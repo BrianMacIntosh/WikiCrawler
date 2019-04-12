@@ -24,6 +24,12 @@ namespace WikiCrawler
 
 				switch (task)
 				{
+					case "nptest":
+						{
+							NPGalleryAlbumDownloader albumDl = new NPGalleryAlbumDownloader("npgallery");
+							albumDl.DownloadAll();
+						}
+						break;
 					case "dropbox":
 						DropboxDownloader.Do();
 						break;

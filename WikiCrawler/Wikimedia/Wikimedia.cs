@@ -819,6 +819,11 @@ namespace Wikimedia
         /// <returns>Success</returns>
         public bool UploadFromLocal(Article newpage, string path, string summary, bool bot)
         {
+			if (!newpage.title.StartsWith("File:"))
+			{
+				newpage.title = "File:" + newpage.title;
+			}
+
             //Download stream
             Dictionary<string, string> data = new Dictionary<string, string>();
             data["format"] = "json";

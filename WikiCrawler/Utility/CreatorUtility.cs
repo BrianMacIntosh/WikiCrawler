@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace WikiCrawler
 {
@@ -29,6 +28,7 @@ namespace WikiCrawler
 				foreach (Creator creator in s_creatorData.Values)
 				{
 					creator.Usage = 0;
+					creator.UploadableUsage = 0;
 				}
 			}
 			else
