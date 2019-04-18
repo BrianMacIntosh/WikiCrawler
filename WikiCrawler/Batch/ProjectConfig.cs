@@ -8,6 +8,7 @@ public class ProjectConfig
 	public string downloader = "UWash";
 	public string uploader = "UWash";
 
+	public string displayName = "";
 	public string informationTemplate = "Photograph";
 	public string sourceTemplate;
 	public string defaultAuthor = "unknown";
@@ -53,6 +54,14 @@ public class ProjectConfig
 			if (string.IsNullOrEmpty(checkCategory))
 			{
 				checkCategory = "Category:Images from the " + collectionName + " to check";
+			}
+		}
+
+		if (string.IsNullOrEmpty(displayName))
+		{
+			if (downloader == "UWash")
+			{
+				displayName = "<a href=\"https://commons.wikimedia.org/wiki/Commons:Batch_uploading/University_of_Washington_Digital_Collections\">UWash</a> - " + collectionName;
 			}
 		}
 	}

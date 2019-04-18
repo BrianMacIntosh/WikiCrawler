@@ -71,7 +71,7 @@ namespace Dsal
 
 			if (string.IsNullOrEmpty(licenseTag))
 			{
-				throw new UWashException("No license?");
+				throw new LicenseException();
 			}
 
 			string otherFields = "";

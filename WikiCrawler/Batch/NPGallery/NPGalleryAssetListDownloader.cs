@@ -2,36 +2,18 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace WikiCrawler
+namespace NPGallery
 {
-	public class NPGalleryAlbumDownloader : BatchDownloader
+	public class NPGalleryAssetListDownloader : BatchDownloader
 	{
-		private class NPGalleryAsset
-		{
-			public string AssetID;
-			public string AssetType;
-			public string PrimaryType;
-		}
-
-		private class NPGallerySearchResult
-		{
-			public NPGalleryAsset Asset;
-			public int ItemNumber;
-		}
-
-		private class NPGallerySearchResults
-		{
-			public NPGallerySearchResult[] Results;
-		}
-
 		private List<NPGalleryAsset> m_allAssets = new List<NPGalleryAsset>();
 
-		private const string MetadataUriFormat = "https://npgallery.nps.gov/SearchResults/86bf834852ce4c7a881bf76ae04a2f47?page={0}&showfilters=false&filterUnitssc=10&view=grid";
+		private const string MetadataUriFormat = "https://npgallery.nps.gov/SearchResults/86bf834852ce4c7a881bf76ae04a2f47?page={0}&showfilters=false&filterUnitssc=10&view=grid&sort=date-desc";
 
-		public NPGalleryAlbumDownloader(string key)
+		public NPGalleryAssetListDownloader(string key)
 			: base(key)
 		{
-			EasyWeb.SetDelayForDomain(new Uri(MetadataUriFormat), 8f);
+			EasyWeb.SetDelayForDomain(new Uri(MetadataUriFormat), 6f);
 
 			// load existing assetlist
 			string assetlistFile = Path.Combine(ProjectDataDirectory, "assetlist.json");
@@ -54,7 +36,7 @@ namespace WikiCrawler
 
 		protected override IEnumerable<string> GetKeys()
 		{
-			for (int page = 1; page <= 6709; page++)
+			for (int page = 1; page <= 6712; page++)
 			{
 				yield return page.ToString();
 			}

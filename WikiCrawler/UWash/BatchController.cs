@@ -43,7 +43,7 @@ namespace WikiCrawler
 					downloader = new UWash.UWashDownloader(projectKey);
 					break;
 				case "NPGallery":
-					downloader = new NPGalleryDownloader(projectKey);
+					downloader = new NPGallery.NPGalleryDownloader(projectKey);
 					break;
 				default:
 					throw new NotImplementedException("Downloader '" + "'.");
@@ -74,7 +74,7 @@ namespace WikiCrawler
 					uploader = new UWash.UWashUploader(projectKey);
 					break;
 				case "NPGallery":
-					uploader = new NPGalleryUploader(projectKey);
+					uploader = new NPGallery.NPGalleryUploader(projectKey);
 					break;
 				case "DSAL":
 					uploader = new Dsal.DsalUploader(projectKey);

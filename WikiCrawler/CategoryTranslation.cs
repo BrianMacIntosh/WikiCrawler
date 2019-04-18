@@ -47,13 +47,23 @@ namespace WikiCrawler
 					Cats.Add(category);
 				}
 			}
+
+			public void MergeFrom(CategoryMappingData other)
+			{
+				foreach (string cat in other.Cats)
+				{
+					AddCategory(cat);
+				}
+			}
 		}
 
 		/// <summary>
 		/// Tags mapped to Commons categories.
 		/// </summary>
 		private static Dictionary<string, CategoryMappingData> s_categoryMap = new Dictionary<string, CategoryMappingData>(StringComparer.InvariantCultureIgnoreCase);
-		
+
+		private static Dictionary<string, Wikimedia.Article> s_extantCategories = new Dictionary<string, Wikimedia.Article>();
+
 		private static char[] s_trim = new char[] { ' ', '\n', '\r', '\t', '-' };
 
 		static CategoryTranslation()
@@ -64,11 +74,19 @@ namespace WikiCrawler
 			//load mapped categories
 			string categoryMappingsFile = Path.Combine(Configuration.DataDirectory, "category_mappings.json");
 			string serializedMappings = File.ReadAllText(categoryMappingsFile, Encoding.UTF8);
-			s_categoryMap = JsonConvert.DeserializeObject<Dictionary<string, CategoryMappingData>>(serializedMappings);
-
-			// clear usage
-			foreach (KeyValuePair<string, CategoryMappingData> kv in s_categoryMap)
+			Dictionary<string, CategoryMappingData> readMap = JsonConvert.DeserializeObject<Dictionary<string, CategoryMappingData>>(serializedMappings);
+			
+			foreach (KeyValuePair<string, CategoryMappingData> kv in readMap)
 			{
+				CategoryMappingData existingData;
+				if (s_categoryMap.TryGetValue(kv.Key, out existingData))
+				{
+					existingData.MergeFrom(kv.Value);
+				}
+				else
+				{
+					s_categoryMap[kv.Key] = kv.Value;
+				}
 				kv.Value.Usage = 0;
 			}
 
@@ -376,7 +394,8 @@ namespace WikiCrawler
 			//does it look like it has a parent?
 			if (input.Contains('(') && input.EndsWith(")"))
 			{
-				string switched = "";
+				//TODO: make me faster
+				/*string switched = "";
 				for (int c = input.Length - 1; c >= 0; c--)
 				{
 					if (input[c] == '(')
@@ -397,7 +416,7 @@ namespace WikiCrawler
 						}
 						return s_categoryMap[input].Cats;
 					}
-				}
+				}*/
 			}
 
 			//try to create a mapping
@@ -588,6 +607,12 @@ namespace WikiCrawler
 		{
 			if (!cat.StartsWith("Category:")) cat = "Category:" + cat;
 
+			Wikimedia.Article extant;
+			if (s_extantCategories.TryGetValue(cat, out extant))
+			{
+				return extant;
+			}
+
 			Console.WriteLine("FETCH: '" + cat + "'");
 
 			Wikimedia.Article art = GetCategory(api, ref cat);
@@ -616,16 +641,20 @@ namespace WikiCrawler
 					cat = arttext.Substring(catstart, arttext.IndexOf("}}", catstart) - catstart);
 					cat = cat.Split('|')[0];
 					if (cat.Contains("=")) cat = cat.Split('=')[1];
-					return TryFetchCategory(api, cat);
+					Wikimedia.Article redir = TryFetchCategory(api, cat);
+					s_extantCategories[cat] = redir;
+					return redir;
 				}
 				else
 				{
 					//no redirect, just return
+					s_extantCategories[cat] = art;
 					return art;
 				}
 			}
 			else
 			{
+				s_extantCategories[cat] = null;
 				return null;
 			}
 		}

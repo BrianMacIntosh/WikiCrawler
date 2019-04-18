@@ -367,7 +367,7 @@ namespace UWash
 				if (dateParseMetadata.PreciseYear != 0)
 				{
 					string yearLocCat = "Category:" + dateParseMetadata.PreciseYear.ToString() + " in " + sureLocation;
-					Wikimedia.Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
+					Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
 					if (existingYearLocCat != null)
 					{
 						categories.Add(existingYearLocCat.title);
@@ -402,7 +402,7 @@ namespace UWash
 			string licenseTag = GetLicenseTag(author, creator, latestYear, pubCountry);
 			if (string.IsNullOrEmpty(licenseTag))
 			{
-				throw new UWashException("not PD? (pub: " + pubCountry + " " + dateParseMetadata.LatestYear + ")");
+				throw new LicenseException(dateParseMetadata.LatestYear, pubCountry);
 			}
 
 			if (dateParseMetadata.LatestYear < 1897 && author == "{{Creator:Asahel Curtis}}")
@@ -682,6 +682,10 @@ namespace UWash
 			}
 
 			string accession = "{{UWASH-digital-accession|" + UWashConfig.digitalCollectionsKey + "|" + key + "}}";
+			if (text.Contains(accession))
+			{
+				return false;
+			}
 			text = text.Substring(0, insertionPoint) + " " + accession + text.Substring(insertionPoint);
 
 			// submit the edit

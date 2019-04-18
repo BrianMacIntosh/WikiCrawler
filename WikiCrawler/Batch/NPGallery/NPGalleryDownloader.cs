@@ -1,16 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
-namespace WikiCrawler
+namespace NPGallery
 {
 	public class NPGalleryDownloader : BatchDownloader
 	{
 		private HashSet<string> m_crawledAlbums = new HashSet<string>();
 
+		private List<NPGalleryAsset> m_allAssets = new List<NPGalleryAsset>();
+
 		public NPGalleryDownloader(string key)
 			: base(key)
 		{
-			
+			EasyWeb.SetDelayForDomain(new Uri(MetadataUriFormat), 6f);
+
+			// load existing assetlist
+			string assetlistFile = Path.Combine(ProjectDataDirectory, "assetlist.json");
+			string json = File.ReadAllText(assetlistFile);
+			m_allAssets = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
 		}
 
 		private const string MetadataUriFormat = "https://npgallery.nps.gov/AssetDetail/{0}";
@@ -22,8 +30,13 @@ namespace WikiCrawler
 
 		protected override IEnumerable<string> GetKeys()
 		{
-			yield return "e107f248-4b4e-410b-b93f-8ffc4cc21a6d";
-			yield return "1FD0604F-1DD8-B71C-073AF79D82F66B9E";
+			foreach (NPGalleryAsset asset in m_allAssets)
+			{
+				if (asset.AssetType == "Standard")
+				{
+					yield return asset.AssetID;
+				}
+			}
 		}
 
 		protected override Dictionary<string, string> ParseMetadata(string pageContent)

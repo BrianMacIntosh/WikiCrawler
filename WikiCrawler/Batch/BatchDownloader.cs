@@ -59,6 +59,8 @@ public abstract class BatchDownloader : BatchTask
 			int saveOutInterval = 10;
 			int saveOutTimer = saveOutInterval;
 
+			m_heartbeatData["nTotal"] = GetKeys().Count();
+
 			// load metadata
 			foreach (string key in GetKeys())
 			{
@@ -78,6 +80,8 @@ public abstract class BatchDownloader : BatchTask
 						}
 						else
 						{
+							//TODO: crash when failing here
+							succeededMetadata.Add(key);
 							File.WriteAllText(
 								GetMetadataCacheFilename(key),
 								JsonConvert.SerializeObject(metadata, Formatting.Indented),
@@ -88,9 +92,20 @@ public abstract class BatchDownloader : BatchTask
 					{
 						goto redownload;
 					}
+					catch (Exception e)
+					{
+						Console.WriteLine(e.ToString());
+						m_failMessages.Add(key + "\t\t" + e.Message);
+					}
 
 					saveOutTimer--;
 				}
+
+				m_heartbeatData["nCompleted"] = m_succeeded.Count;
+				m_heartbeatData["nDownloaded"] = succeededMetadata.Count;
+				m_heartbeatData["nFailed"] = m_failMessages.Count;
+				m_heartbeatData["nFailedLicense"] = 0;
+				UpdateHeartbeat();
 
 				if (File.Exists(stopFile))
 				{
@@ -109,6 +124,7 @@ public abstract class BatchDownloader : BatchTask
 		finally
 		{
 			SaveOut();
+			SendHeartbeat(true);
 		}
 	}
 
@@ -133,9 +149,8 @@ public abstract class BatchDownloader : BatchTask
 			{
 				if (e.Status == WebExceptionStatus.Timeout)
 				{
-					throw;
-					//Console.WriteLine("Timeout - sleeping (30 sec)");
-					//System.Threading.Thread.Sleep(30000);
+					Console.WriteLine("Timeout - Retrying");
+					System.Threading.Thread.Sleep(30000);
 				}
 				else
 				{
@@ -144,6 +159,11 @@ public abstract class BatchDownloader : BatchTask
 					{
 						Console.WriteLine("404 error encountered, skipping file");
 						return null;
+					}
+					else if (response.StatusCode == HttpStatusCode.ServiceUnavailable)
+					{
+						Console.WriteLine("Service Unavailable - Retrying");
+						System.Threading.Thread.Sleep(60000);
 					}
 					else
 					{

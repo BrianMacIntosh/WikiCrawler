@@ -26,7 +26,7 @@ namespace WikiCrawler
 				{
 					case "nptest":
 						{
-							NPGalleryAlbumDownloader albumDl = new NPGalleryAlbumDownloader("npgallery");
+							NPGallery.NPGalleryAssetListDownloader albumDl = new NPGallery.NPGalleryAssetListDownloader("npgallery");
 							albumDl.DownloadAll();
 						}
 						break;

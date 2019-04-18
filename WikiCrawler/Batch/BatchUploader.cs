@@ -50,11 +50,16 @@ public abstract class BatchUploader : BatchTask
 	public void UploadAll()
 	{
 		string stopFile = Path.Combine(Configuration.DataDirectory, "STOP");
-
-		StreamWriter errorsWriter = new StreamWriter(new FileStream(Path.Combine(ProjectDataDirectory, "failed.txt"), FileMode.Create, FileAccess.Write));
+		
 		try
 		{
-			foreach (string metadataFile in Directory.GetFiles(MetadataCacheDirectory))
+			string[] metadataFiles = Directory.GetFiles(MetadataCacheDirectory);
+
+			int initialSucceeded = m_succeeded.Count;
+			m_heartbeatData["nTotal"] = metadataFiles.Length + m_succeeded.Count;
+			int licenseFailures = 0;
+
+			foreach (string metadataFile in metadataFiles)
 			{
 				string key = Path.GetFileNameWithoutExtension(metadataFile);
 
@@ -62,11 +67,21 @@ public abstract class BatchUploader : BatchTask
 				{
 					Upload(metadataFile);
 				}
-				catch (UWashException e)
+				catch (Exception e)
 				{
-					errorsWriter.WriteLine(key + "\t\t" + e.Message);
-					errorsWriter.Flush();
+					if (e is LicenseException)
+					{
+						licenseFailures++;
+					}
+					string failMessage = key + "\t\t" + e.Message;
+					m_failMessages.Add(e.Message);
 				}
+
+				m_heartbeatData["nCompleted"] = m_succeeded.Count;
+				m_heartbeatData["nDownloaded"] = metadataFiles.Length - m_failMessages.Count - (m_succeeded.Count - initialSucceeded);
+				m_heartbeatData["nFailed"] = m_failMessages.Count - licenseFailures;
+				m_heartbeatData["nFailedLicense"] = licenseFailures;
+				UpdateHeartbeat();
 
 				if (File.Exists(stopFile))
 				{
@@ -78,8 +93,8 @@ public abstract class BatchUploader : BatchTask
 		}
 		finally
 		{
-			errorsWriter.Close();
 			SaveOut();
+			SendHeartbeat(true);
 		}
 	}
 
