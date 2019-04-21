@@ -56,7 +56,16 @@ public abstract class BatchUploader : BatchTask
 			string[] metadataFiles = Directory.GetFiles(MetadataCacheDirectory);
 
 			int initialSucceeded = m_succeeded.Count;
-			m_heartbeatData["nTotal"] = metadataFiles.Length + m_succeeded.Count;
+			int totalKeys = TotalKeyCount;
+			if (totalKeys < 0)
+			{
+				// assume everything was downloaded
+				m_heartbeatData["nTotal"] = metadataFiles.Length + m_succeeded.Count;
+			}
+			else
+			{
+				m_heartbeatData["nTotal"] = totalKeys;
+			}
 			int licenseFailures = 0;
 
 			foreach (string metadataFile in metadataFiles)
@@ -73,8 +82,9 @@ public abstract class BatchUploader : BatchTask
 					{
 						licenseFailures++;
 					}
+					Console.WriteLine(e.Message);
 					string failMessage = key + "\t\t" + e.Message;
-					m_failMessages.Add(e.Message);
+					m_failMessages.Add(failMessage);
 				}
 
 				m_heartbeatData["nCompleted"] = m_succeeded.Count;
@@ -189,6 +199,14 @@ public abstract class BatchUploader : BatchTask
 		}
 
 		DeleteImageCache(key);
+	}
+
+	/// <summary>
+	/// Returns the total number of keys that need to be downloaded, or -1 if unknown.
+	/// </summary>
+	public virtual int TotalKeyCount
+	{
+		get { return -1; }
 	}
 
 	/// <summary>
