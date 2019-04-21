@@ -7,7 +7,7 @@ public class LicenseException : Exception
 {
 	public override string Message
 	{
-		get { return "Could not determine a free license (" + Country + " " + Year.ToString() + "."; }
+		get { return "Could not determine a free license (" + Country + " " + Year.ToString() + ")"; }
 	}
 
 	public readonly int Year;

@@ -20,6 +20,19 @@ namespace WikiCrawler
 			}
 		}
 
+		public static BatchDownloader CreateDownloader(string downloader, string projectKey)
+		{
+			switch (downloader)
+			{
+				case "UWash":
+					return new UWash.UWashDownloader(projectKey);
+				case "NPGallery":
+					return new NPGallery.NPGalleryDownloader(projectKey);
+				default:
+					throw new NotImplementedException("Downloader '" + "'.");
+			}
+		}
+
 		public static void Download()
 		{
 			Console.Write("Project Key>");
@@ -36,19 +49,23 @@ namespace WikiCrawler
 			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
 				File.ReadAllText(Path.Combine(projectDir, "config.json")));
 
-			BatchDownloader downloader;
-			switch (config.downloader)
+			BatchDownloader downloader = CreateDownloader(config.downloader, projectKey);
+			downloader.DownloadAll();
+		}
+
+		public static BatchUploader CreateUploader(string uploader, string projectKey)
+		{
+			switch (uploader)
 			{
 				case "UWash":
-					downloader = new UWash.UWashDownloader(projectKey);
-					break;
+					return new UWash.UWashUploader(projectKey);
 				case "NPGallery":
-					downloader = new NPGallery.NPGalleryDownloader(projectKey);
-					break;
+					return new NPGallery.NPGalleryUploader(projectKey);
+				case "DSAL":
+					return new Dsal.DsalUploader(projectKey);
 				default:
-					throw new NotImplementedException("Downloader '" + "'.");
+					throw new NotImplementedException("Uploader '" + "'.");
 			}
-			downloader.DownloadAll();
 		}
 
 		public static void Upload()
@@ -67,21 +84,7 @@ namespace WikiCrawler
 			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
 				File.ReadAllText(Path.Combine(projectDir, "config.json")));
 
-			BatchUploader uploader;
-			switch (config.uploader)
-			{
-				case "UWash":
-					uploader = new UWash.UWashUploader(projectKey);
-					break;
-				case "NPGallery":
-					uploader = new NPGallery.NPGalleryUploader(projectKey);
-					break;
-				case "DSAL":
-					uploader = new Dsal.DsalUploader(projectKey);
-					break;
-				default:
-					throw new NotImplementedException("Uploader '" + "'.");
-			}
+			BatchUploader uploader = CreateUploader(config.uploader, projectKey);
 			uploader.UploadAll();
 		}
 

@@ -62,7 +62,7 @@ namespace WikiCrawler
 					{
 						first = false;
 					}
-					writer.Write("\"" + kv.Key + "\":");
+					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Key) + ":");
 					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Value, Newtonsoft.Json.Formatting.Indented));
 				}
 				writer.WriteLine("}");

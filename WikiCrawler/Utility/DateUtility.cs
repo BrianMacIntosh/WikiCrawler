@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
-public struct DateParseMetadata
+public struct DateParseMetadata : IEquatable<DateParseMetadata>
 {
 	public static DateParseMetadata Unknown = new DateParseMetadata(0, 9999);
 
@@ -33,11 +34,41 @@ public struct DateParseMetadata
 			a.PreciseYear == b.PreciseYear ? a.PreciseYear : 0,
 			Math.Max(a.LatestYear, b.LatestYear));
 	}
+
+	public bool Equals(DateParseMetadata other)
+	{
+		return PreciseYear == other.PreciseYear && LatestYear == other.LatestYear;
+	}
+
+	public override bool Equals(object obj)
+	{
+		return obj is DateParseMetadata && Equals((DateParseMetadata)obj);
+	}
+
+	public override int GetHashCode()
+	{
+		var hashCode = 1050958002;
+		hashCode = hashCode * -1521134295 + PreciseYear.GetHashCode();
+		hashCode = hashCode * -1521134295 + LatestYear.GetHashCode();
+		return hashCode;
+	}
+
+	public static bool operator==(DateParseMetadata a, DateParseMetadata b)
+	{
+		return a.Equals(b);
+	}
+
+	public static bool operator !=(DateParseMetadata a, DateParseMetadata b)
+	{
+		return !a.Equals(b);
+	}
 }
 
 public static class DateUtility
 {
 	private static Regex s_exactDateRegex = new Regex("^[0-9][0-9][0-9][0-9]-[0-9][0-9]?-[0-9][0-9]?$");
+
+	private static char[] s_dateSplit = new char[] { '-', '/' };
 
 	/// <summary>
 	/// Returns true if this is a date in the format YYYY-M[M]-D[D]
@@ -150,7 +181,7 @@ public static class DateUtility
 		}
 		else
 		{
-			string[] dashsplit = date.Split('-');
+			string[] dashsplit = date.Split(s_dateSplit);
 			if (dashsplit.Length == 2 && dashsplit[0].Length == 4
 				&& dashsplit[1].Length == 4)
 			{
@@ -172,6 +203,29 @@ public static class DateUtility
 	/// </summary>
 	public static string ParseSingleDate(string date, out DateParseMetadata parseMetadata)
 	{
+		//M/d/yyyy
+		DateTime apiParse;
+		if (DateTime.TryParseExact(date, "M/d/yyyy", CultureInfo.InvariantCulture.DateTimeFormat, DateTimeStyles.AllowWhiteSpaces, out apiParse))
+		{
+			parseMetadata = new DateParseMetadata(apiParse.Year);
+			return apiParse.Year.ToString() + "-" + apiParse.Month.ToString() + "-" + apiParse.Day.ToString();
+		}
+
+		// yyyyMMdd
+		if (date.Length == 8)
+		{
+			string year = date.Substring(0, 4);
+			string month = date.Substring(4, 2);
+			string day = date.Substring(6, 2);
+			int iyear, imonth, iday;
+			if (int.TryParse(year, out iyear) && int.TryParse(month, out imonth) && int.TryParse(day, out iday))
+			{
+				parseMetadata = new DateParseMetadata(iyear);
+				return iyear.ToString() + "-" + imonth.ToString("00") + "-" + iday.ToString("00");
+			}
+		}
+
+		// natural strings
 		string[] dateSplit = date.Split(new char[] { ' ', ',', '.' }, StringSplitOptions.RemoveEmptyEntries);
 		if (dateSplit.Length == 3)
 		{
