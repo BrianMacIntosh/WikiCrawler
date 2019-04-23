@@ -1,50 +1,50 @@
-﻿using System;
+﻿using LightweightRobots;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
-using LightweightRobots;
 
 class EasyWeb
 {
-    /// <summary>
-    /// Robots object to prohibit access to certain pages
-    /// </summary>
-    public static RobotsTxt robots
-    {
-        get { return mrobots; }
-        set
-        {
-            mrobots = value;
-            if (value.CrawlDelay() > 0) crawlDelay = value.CrawlDelay();
-        }
-    }
-    private static RobotsTxt mrobots;
+	/// <summary>
+	/// Robots object to prohibit access to certain pages
+	/// </summary>
+	public static RobotsTxt robots
+	{
+		get { return mrobots; }
+		set
+		{
+			mrobots = value;
+			if (value.CrawlDelay() > 0) crawlDelay = value.CrawlDelay();
+		}
+	}
+	private static RobotsTxt mrobots;
 
-    /// <summary>
-    /// Default time in seconds between page loads
-    /// </summary>
-    public static float crawlDelay = 4f;
+	/// <summary>
+	/// Default time in seconds between page loads
+	/// </summary>
+	public static float crawlDelay = 4f;
 
 	private static Dictionary<string, float> overrideDelays = new Dictionary<string, float>();
 
 	private static Dictionary<string, Stopwatch> domainTimers = new Dictionary<string, Stopwatch>();
 
-    public static Stream GetResponseStream(HttpWebRequest request)
-    {
-        if (robots == null || robots.IsAllowed(request.Address))
-        {
+	public static Stream GetResponseStream(HttpWebRequest request)
+	{
+		if (robots == null || robots.IsAllowed(request.Address))
+		{
 			WaitForDelay(request.RequestUri);
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            return response.GetResponseStream();
-        }
-        else
-        {
-            throw new InvalidOperationException("The site's robots.txt forbids access to '" + request.Address + "'.");
-        }
-    }
+			HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+			return response.GetResponseStream();
+		}
+		else
+		{
+			throw new InvalidOperationException("The site's robots.txt forbids access to '" + request.Address + "'.");
+		}
+	}
 
 	public static void SetDelayForDomain(Uri uri, float duration)
 	{
@@ -68,25 +68,25 @@ class EasyWeb
 		}
 	}
 
-    public static Stream Post(HttpWebRequest request, string data)
-    {
-        byte[] datainflate = Encoding.UTF8.GetBytes(data);
-        request.Method = "POST";
-        request.ContentType = "application/x-www-form-urlencoded";
-        request.ContentLength = datainflate.Length;
+	public static Stream Post(HttpWebRequest request, string data)
+	{
+		byte[] datainflate = Encoding.UTF8.GetBytes(data);
+		request.Method = "POST";
+		request.ContentType = "application/x-www-form-urlencoded";
+		request.ContentLength = datainflate.Length;
 
 		WaitForDelay(request.RequestUri);
 
-        Stream newStream = request.GetRequestStream();
-        newStream.Write(datainflate, 0, datainflate.Length);
-        newStream.Flush();
-        newStream.Close();
-        return request.GetResponse().GetResponseStream();
-    }
+		using (Stream newStream = request.GetRequestStream())
+		{
+			newStream.Write(datainflate, 0, datainflate.Length);
+		}
+		return request.GetResponse().GetResponseStream();
+	}
 
-    public static Stream Upload(HttpWebRequest request, Dictionary<string, string> data,
-        string filename, string filetype, Stream filedata)
-    {
-        return MultipartUpload.UploadFile(request, data, filename, filetype, filedata);
-    }
+	public static Stream Upload(HttpWebRequest request, Dictionary<string, string> data,
+		string filename, string filetype, Stream filedata)
+	{
+		return MultipartUpload.UploadFile(request, data, filename, filetype, filedata);
+	}
 }

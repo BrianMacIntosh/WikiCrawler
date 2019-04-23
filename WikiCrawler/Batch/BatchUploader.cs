@@ -67,6 +67,7 @@ public abstract class BatchUploader : BatchTask
 				m_heartbeatData["nTotal"] = totalKeys;
 			}
 			int licenseFailures = 0;
+			StartHeartbeat();
 
 			foreach (string metadataFile in metadataFiles)
 			{
@@ -87,11 +88,13 @@ public abstract class BatchUploader : BatchTask
 					m_failMessages.Add(failMessage);
 				}
 
-				m_heartbeatData["nCompleted"] = m_succeeded.Count;
-				m_heartbeatData["nDownloaded"] = metadataFiles.Length - m_failMessages.Count - (m_succeeded.Count - initialSucceeded);
-				m_heartbeatData["nFailed"] = m_failMessages.Count - licenseFailures;
-				m_heartbeatData["nFailedLicense"] = licenseFailures;
-				UpdateHeartbeat();
+				lock (m_heartbeatData)
+				{
+					m_heartbeatData["nCompleted"] = m_succeeded.Count;
+					m_heartbeatData["nDownloaded"] = metadataFiles.Length - m_failMessages.Count - (m_succeeded.Count - initialSucceeded);
+					m_heartbeatData["nFailed"] = m_failMessages.Count - licenseFailures;
+					m_heartbeatData["nFailedLicense"] = licenseFailures;
+				}
 
 				if (File.Exists(stopFile))
 				{

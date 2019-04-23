@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using WikiCrawler;
 
 public abstract class BatchTask
@@ -41,7 +43,7 @@ public abstract class BatchTask
 
 	private Uri m_heartbeatEndpoint;
 	private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(60f);
-	private DateTime m_nextHeartbeat;
+	private Thread m_heartbeatThread;
 
 	protected Dictionary<string, object> m_heartbeatData = new Dictionary<string, object>();
 
@@ -59,6 +61,7 @@ public abstract class BatchTask
 			File.ReadAllText(Path.Combine(ProjectDataDirectory, "config.json")));
 
 		m_heartbeatEndpoint = new Uri(File.ReadAllText(Path.Combine(Configuration.DataDirectory, "heartbeat_endpoint.txt")));
+		EasyWeb.SetDelayForDomain(m_heartbeatEndpoint, 0f);
 
 		m_heartbeatData["taskKey"] = m_projectKey;
 		m_heartbeatData["displayName"] = m_config.displayName;
@@ -81,24 +84,40 @@ public abstract class BatchTask
 		}
 	}
 	
-	protected void UpdateHeartbeat()
+	protected void StartHeartbeat()
 	{
-		if (m_nextHeartbeat <= DateTime.Now)
+		m_heartbeatThread = new Thread(HeartbeatThread);
+		m_heartbeatThread.Start();
+	}
+
+	private void HeartbeatThread()
+	{
+		while (true)
 		{
 			SendHeartbeat(false);
-			m_nextHeartbeat = DateTime.Now + HeartbeatInterval;
+			Thread.Sleep(HeartbeatInterval);
 		}
 	}
 
 	protected void SendHeartbeat(bool terminate)
 	{
+		if (terminate && m_heartbeatThread != null)
+		{
+			m_heartbeatThread.Abort();
+			m_heartbeatThread = null;
+		}
 		try
 		{
 			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(m_heartbeatEndpoint);
-			m_heartbeatData["terminate"] = terminate;
-			string serialized = JsonConvert.SerializeObject(m_heartbeatData);
+			string serialized;
+			lock (m_heartbeatData)
+			{
+				m_heartbeatData["terminate"] = terminate;
+				serialized = JsonConvert.SerializeObject(m_heartbeatData);
+			}
 			string dataString = "d=" + System.Web.HttpUtility.UrlEncode(serialized);
-			EasyWeb.Post(request, dataString);
+			Stream response = EasyWeb.Post(request, dataString);
+			response.Dispose();
 		}
 		catch (Exception e)
 		{

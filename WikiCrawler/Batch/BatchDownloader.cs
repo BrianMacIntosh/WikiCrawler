@@ -60,6 +60,7 @@ public abstract class BatchDownloader : BatchTask
 			int saveOutTimer = saveOutInterval;
 
 			m_heartbeatData["nTotal"] = GetKeys().Count();
+			StartHeartbeat();
 
 			// load metadata
 			foreach (string key in GetKeys())
@@ -101,11 +102,13 @@ public abstract class BatchDownloader : BatchTask
 					saveOutTimer--;
 				}
 
-				m_heartbeatData["nCompleted"] = m_succeeded.Count;
-				m_heartbeatData["nDownloaded"] = succeededMetadata.Count;
-				m_heartbeatData["nFailed"] = m_failMessages.Count;
-				m_heartbeatData["nFailedLicense"] = 0;
-				UpdateHeartbeat();
+				lock (m_heartbeatData)
+				{
+					m_heartbeatData["nCompleted"] = m_succeeded.Count;
+					m_heartbeatData["nDownloaded"] = succeededMetadata.Count;
+					m_heartbeatData["nFailed"] = m_failMessages.Count;
+					m_heartbeatData["nFailedLicense"] = 0;
+				}
 
 				if (File.Exists(stopFile))
 				{
