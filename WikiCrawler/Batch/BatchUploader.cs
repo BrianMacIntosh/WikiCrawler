@@ -53,14 +53,14 @@ public abstract class BatchUploader : BatchTask
 		
 		try
 		{
-			string[] metadataFiles = Directory.GetFiles(MetadataCacheDirectory);
+			List<string> metadataFiles = Directory.GetFiles(MetadataCacheDirectory).ToList();
 
 			int initialSucceeded = m_succeeded.Count;
 			int totalKeys = TotalKeyCount;
 			if (totalKeys < 0)
 			{
 				// assume everything was downloaded
-				m_heartbeatData["nTotal"] = metadataFiles.Length + m_succeeded.Count;
+				m_heartbeatData["nTotal"] = metadataFiles.Count + m_succeeded.Count;
 			}
 			else
 			{
@@ -68,6 +68,11 @@ public abstract class BatchUploader : BatchTask
 			}
 			int licenseFailures = 0;
 			StartHeartbeat();
+
+			if (m_config.randomizeOrder)
+			{
+				metadataFiles.Shuffle();
+			}
 
 			foreach (string metadataFile in metadataFiles)
 			{
@@ -84,14 +89,14 @@ public abstract class BatchUploader : BatchTask
 						licenseFailures++;
 					}
 					Console.WriteLine(e.Message);
-					string failMessage = key + "\t\t" + e.Message;
+					string failMessage = key.PadLeft(5) + "\t" + e.Message;
 					m_failMessages.Add(failMessage);
 				}
 
 				lock (m_heartbeatData)
 				{
 					m_heartbeatData["nCompleted"] = m_succeeded.Count;
-					m_heartbeatData["nDownloaded"] = metadataFiles.Length - m_failMessages.Count - (m_succeeded.Count - initialSucceeded);
+					m_heartbeatData["nDownloaded"] = metadataFiles.Count - m_failMessages.Count - (m_succeeded.Count - initialSucceeded);
 					m_heartbeatData["nFailed"] = m_failMessages.Count - licenseFailures;
 					m_heartbeatData["nFailedLicense"] = licenseFailures;
 				}
@@ -338,7 +343,7 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Get a string that should be used for the file's 'author' field.
 	/// </summary>
-	protected string GetAuthor(string name, string lang, out Creator creator)
+	protected virtual string GetAuthor(string name, string lang, out Creator creator)
 	{
 		//TODO: support multiple creators
 		creator = null;
@@ -357,7 +362,15 @@ public abstract class BatchUploader : BatchTask
 			}
 
 			// if we get here, there is not yet a mapping for this creator
-			finalResult += "{{" + lang + "|" + author + "}}";
+			if (!string.IsNullOrEmpty(lang))
+			{
+				finalResult += "{{" + lang + "|" + author + "}}";
+			}
+			else
+			{
+				//TODO: better support for tags with plaintext
+				finalResult = StringUtility.Join("; ", finalResult, author);
+			}
 		}
 
 		return finalResult;

@@ -96,7 +96,7 @@ public abstract class BatchDownloader : BatchTask
 					catch (Exception e)
 					{
 						Console.WriteLine(e.ToString());
-						m_failMessages.Add(key + "\t\t" + e.Message);
+						m_failMessages.Add(key.PadLeft(5) + "\t" + e.Message);
 					}
 
 					saveOutTimer--;
