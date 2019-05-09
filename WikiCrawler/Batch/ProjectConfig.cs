@@ -41,6 +41,7 @@ public class ProjectConfig
 	public int maxFailed = int.MaxValue;
 	public int maxNew = int.MaxValue;
 	public int maxSuccesses = int.MaxValue;
+	public bool randomizeOrder = false;
 
 	[OnDeserialized]
 	internal void OnDeserializedMethod(StreamingContext context)

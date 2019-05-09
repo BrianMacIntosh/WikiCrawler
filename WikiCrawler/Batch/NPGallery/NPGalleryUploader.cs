@@ -14,10 +14,13 @@ namespace NPGallery
 			"Title",
 			"Photographer",
 			"PhotoCredit",
+			"Creator",
 			"Publisher",
 			"Constraints Information",
+			"Attribution",
 			"Create Date",
 			"Content Dates",
+			"Embedded Timestamp",
 			"Location",
 			"Categories",
 			"Subject",
@@ -113,19 +116,20 @@ namespace NPGallery
 			Creator creator = null;
 			if (metadata.TryGetValue("Photographer", out outValue))
 			{
-				authorString = GetAuthor(outValue, "en", out creator);
+				outValue = outValue.TrimEnd(" <i></i>");
+				authorString = GetAuthor(outValue, "", out creator);
 			}
-			else if (metadata.TryGetValue("PhotoCredit", out outValue))
+			else if (metadata.TryGetValue("PhotoCredit", out outValue)
+				&& !outValue.Contains(", Code: "))
 			{
-				// that means it's actually the park name
-				if (!outValue.Contains(", Code: "))
-				{
-					authorString = GetAuthor(outValue, "en", out creator);
-				}
+				outValue = outValue.TrimEnd(" <i></i>");
+				authorString = GetAuthor(outValue, "", out creator);
 			}
-			if (creator == null)
+			else if (metadata.TryGetValue("Creator", out outValue)
+				&& !outValue.Contains(", Code: "))
 			{
-				throw new UWashException("No creator");
+				outValue = outValue.TrimEnd(" <i></i>");
+				authorString = GetAuthor(outValue, "", out creator);
 			}
 
 			string publisher;
@@ -144,17 +148,28 @@ namespace NPGallery
 			{
 				contentDate = DateUtility.ParseDate("Content Dates", out contentDateMetadata);
 			}
-			DateParseMetadata dateMetadata;
+			DateParseMetadata embeddedTimestampMetadata = DateParseMetadata.Unknown;
+			string embeddedTimestamp = "";
+			if (metadata.TryGetValue("Embedded Timestamp", out outValue))
+			{
+				embeddedTimestamp = DateUtility.ParseDate("Embedded Timestamp", out embeddedTimestampMetadata);
+			}
+			DateParseMetadata dateMetadata = DateParseMetadata.Unknown;
 			string date = "";
 			if (contentDateMetadata != DateParseMetadata.Unknown)
 			{
 				dateMetadata = contentDateMetadata;
 				date = contentDate;
 			}
-			else
+			else if (createDateMetadata != DateParseMetadata.Unknown)
 			{
 				dateMetadata = createDateMetadata;
 				date = createDate;
+			}
+			else if (embeddedTimestampMetadata != DateParseMetadata.Unknown)
+			{
+				dateMetadata = embeddedTimestampMetadata;
+				date = embeddedTimestamp;
 			}
 			if (metadata.TryGetValue("Time Submitted", out outValue))
 			{
@@ -165,15 +180,50 @@ namespace NPGallery
 				}
 			}
 
+			// if the date has an accurate month, day, and year, use {{taken on|}}
+			if (m_config.informationTemplate == "Photograph"
+				&& DateUtility.IsExactDateModern(date)
+				// these are too frequently inaccurate
+				&& !date.EndsWith("-01-01") && !date.EndsWith("-1-1"))
+			{
+				date = "{{taken on|" + date + "}}";
+			}
+
+			string licenseTag = GetLicenseTag(authorString, creator, dateMetadata.LatestYear, m_config.defaultPubCountry);
+
+			if (string.IsNullOrEmpty(licenseTag))
+			{
+				string[] authorNames = authorString.TrimStart("NPS Photo /").Trim().Split(' ');
+				if (authorNames.Length == 2 && NPSDirectoryQuery.QueryDirectory(authorNames[0], authorNames[1]))
+				{
+					licenseTag = "{{PD-USGov-NPS}}";
+				}
+			}
+
+			if (string.IsNullOrEmpty(licenseTag))
+			{
+				throw new LicenseException(dateMetadata.LatestYear, m_config.defaultPubCountry);
+			}
+
+			if (metadata.TryGetValue("Constraints Information", out outValue) && !outValue.Contains(", Code: "))
+			{
+				throw new Exception("'Constraints Information' contained something other than a park name");
+			}
+			else if (metadata.TryGetValue("Attribution", out outValue) && !outValue.Contains(", Code: "))
+			{
+				throw new Exception("'Attribution' contained something other than a park name");
+			}
+
 			// determine the park name
 			string parkName = "";
-			if (metadata.TryGetValue("PhotoCredit", out outValue) && outValue.Contains(", Code: "))
+			foreach (string metadataValue in metadata.Values)
 			{
-				parkName = outValue.Substring(0, outValue.IndexOf(", Code: "));
-			}
-			else if (metadata.TryGetValue("Constraints Information", out outValue) && outValue.Contains(", Code: "))
-			{
-				parkName = outValue.Substring(0, outValue.IndexOf(", Code: "));
+				int codeIndex = metadataValue.IndexOf(", Code: ");
+				if (codeIndex >= 0)
+				{
+					parkName = metadataValue.Substring(0, codeIndex);
+					break;
+				}
 			}
 			if (!string.IsNullOrEmpty(parkName))
 			{
@@ -239,59 +289,62 @@ namespace NPGallery
 				categories.Add(creator.Category);
 			}
 
-			string licenseTag = GetLicenseTag(authorString, creator, dateMetadata.LatestYear, m_config.defaultPubCountry);
-
-			if (string.IsNullOrEmpty(licenseTag))
-			{
-				throw new LicenseException(dateMetadata.LatestYear, m_config.defaultPubCountry);
-			}
-
 			string otherFields = "";
 			if (metadata.TryGetValue("Collector", out outValue))
 			{
 				otherFields += "\n{{Information field|name=Collector|value=" + outValue + "}}";
 			}
 
-			// include camera info if available
+			// need to download here to check EXIF
+			CacheImage(key, metadata);
+			Dictionary<string, FreeImageTag> exifData = ImageUtility.GetExif(GetImageCacheFilename(key));
 			string photoInfo = "";
-			if (metadata.TryGetValue("Camera Information", out outValue))
+			if (!exifData.ContainsKey("FocalLength")
+				&& !exifData.ContainsKey("ApertureValue")
+				&& !exifData.ContainsKey("ExposureTime")
+				&& !exifData.ContainsKey("ShutterSpeedValue")
+				&& !exifData.ContainsKey("ISOSpeedRatings"))
 			{
-				photoInfo += "|Model=" + outValue + "\n";
-			}
-			if (metadata.TryGetValue("Exposure", out outValue))
-			{
-				string[] split = outValue.Split(" sec at ", StringSplitOptions.None);
-				if (split.Length != 2) throw new Exception("Could not parse 'Exposure'");
-				photoInfo += "|Shutter=" + split[0];
-				photoInfo += "|Aperture=" + split[1];
-			}
-			if (metadata.TryGetValue("Focal Length", out outValue))
-			{
-				photoInfo += "|Focal length=" + outValue + "\n";
-			}
-			if (metadata.TryGetValue("ISO Speed", out outValue))
-			{
-				outValue = outValue.TrimStart("ISO").Trim();
-				photoInfo += "|ISO=" + outValue + "\n";
+				// include camera info if available and not in exif
+				if (metadata.TryGetValue("Camera Information", out outValue))
+				{
+					photoInfo += "|Model=" + outValue + "\n";
+				}
+				if (metadata.TryGetValue("Exposure", out outValue))
+				{
+					string[] split = outValue.Split(" sec at ", StringSplitOptions.None);
+					if (split.Length != 2) throw new Exception("Could not parse 'Exposure'");
+					photoInfo += "|Shutter=" + split[0];
+					photoInfo += "|Aperture=" + split[1];
+				}
+				if (metadata.TryGetValue("Focal Length", out outValue))
+				{
+					photoInfo += "|Focal length=" + outValue + "\n";
+				}
+				if (metadata.TryGetValue("ISO Speed", out outValue))
+				{
+					outValue = outValue.TrimStart("ISO").Trim();
+					photoInfo += "|ISO=" + outValue + "\n";
+				}
 			}
 
 			// get description
 			List<string> descriptionBlocks = new List<string>();
 			if (metadata.TryGetValue("AltText", out outValue))
 			{
-				descriptionBlocks.Add(outValue);
+				descriptionBlocks.AddUnique(outValue);
 			}
 			if (metadata.TryGetValue("Image Details", out outValue))
 			{
-				descriptionBlocks.Add(outValue);
+				descriptionBlocks.AddUnique(outValue);
 			}
 			if (metadata.TryGetValue("Description", out outValue))
 			{
-				descriptionBlocks.Add(outValue);
+				descriptionBlocks.AddUnique(outValue);
 			}
 			if (metadata.TryGetValue("Subject", out outValue))
 			{
-				descriptionBlocks.Add("*Subject: " + outValue);
+				descriptionBlocks.AddUnique("*Subject: " + outValue);
 			}
 			string description;
 			if (descriptionBlocks.Count == 0)
@@ -305,6 +358,11 @@ namespace NPGallery
 			else
 			{
 				description = "<p>" + string.Join("</p>\n<p>", descriptionBlocks) + "</p>";
+			}
+
+			if (string.IsNullOrEmpty(authorString))
+			{
+				authorString = "{{unknown|author}}";
 			}
 
 			string page = GetCheckCategoriesTag(categories.Count) + "\n"
@@ -321,13 +379,12 @@ namespace NPGallery
 				+ "|source=" + m_config.sourceTemplate + "\n"
 				+ "|permission=" + licenseTag + "\n"
 				+ "|other_versions=\n"
-				+ "|other_fields=" + otherFields + "\n"
-				+ "}}\n";
+				+ "|other_fields=" + otherFields + "\n";
 			if (!string.IsNullOrEmpty(photoInfo))
 			{
-				page += "{{Photo Information|" + photoInfo + "}}\n";
+				page += "{{Photo Information" + photoInfo + "}}\n";
 			}
-			page += "\n";
+			page += "}}\n";
 
 			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
 
@@ -339,6 +396,26 @@ namespace NPGallery
 			return page;
 		}
 
+		protected override void SaveOut()
+		{
+			base.SaveOut();
+
+			NPSDirectoryQuery.SaveOut();
+		}
+
+		protected override string GetAuthor(string name, string lang, out Creator creator)
+		{
+			int italicStartIndex = name.IndexOf("<i>");
+			if (italicStartIndex >= 0)
+			{
+				int italicEndIndex = name.IndexOf("</i>", italicStartIndex);
+				string organization = name.SubstringRange(italicStartIndex + "<i>".Length, italicEndIndex - 1);
+				name = name.Substring(italicStartIndex).TrimEnd();
+			}
+
+			return base.GetAuthor(name, lang, out creator);
+		}
+
 		protected override Uri GetImageUri(string key, Dictionary<string, string> metadata)
 		{
 			return new Uri(string.Format(ImageUriFormat, key));
@@ -346,7 +423,7 @@ namespace NPGallery
 
 		protected override string GetTitle(string key, Dictionary<string, string> metadata)
 		{
-			return HttpUtility.HtmlDecode(metadata["Title"]);
+			return HttpUtility.HtmlDecode(metadata["Title"]) + " (" + key + ")";
 		}
 	}
 }

@@ -72,6 +72,7 @@
     <Compile Include="Batch\NPGallery\NPGalleryData.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryDownloader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryUploader.cs" />
+    <Compile Include="Batch\NPGallery\NPSDirectoryQuery.cs" />
     <Compile Include="Batch\ProjectConfig.cs" />
     <Compile Include="Utility\Exceptions\LicenseException.cs" />
     <Compile Include="Utility\Exceptions\RedownloadException.cs" />
@@ -86,6 +87,8 @@
     <Compile Include="Utility\CreatorUtility.cs" />
     <Compile Include="Utility\DateUtility.cs" />
     <Compile Include="Utility\Dimensions.cs" />
+    <Compile Include="Utility\IListUtility.cs" />
+    <Compile Include="Utility\ImageUtility.cs" />
     <Compile Include="Utility\LicenseUtility.cs" />
     <Compile Include="Utility\StringUtility.cs" />
     <Compile Include="CategoryTranslation.cs" />

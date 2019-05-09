@@ -56,6 +56,7 @@ namespace UWash
 			"LCTGM",
 
 			// unused
+			"Object Description",
 			"Brand Name/Product",
 			"Digital Reproduction Information",
 			"Rights URI",
@@ -218,6 +219,16 @@ namespace UWash
 				}
 			}
 			if (!string.IsNullOrEmpty(unused)) throw new UWashException("unused key" + unused);
+
+			// check for metadata with unexpected value
+			string objectDescription;
+			if (metadata.TryGetValue("Object Description", out objectDescription))
+			{
+				if (objectDescription != "Photograph")
+				{
+					throw new UWashException("unused key|Object Description");
+				}
+			}
 
 			string lang = "en";
 

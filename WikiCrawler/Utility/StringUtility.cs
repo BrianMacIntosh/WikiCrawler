@@ -11,6 +11,11 @@ public static class StringUtility
 	public static string[] DashDash = new string[] { "--" };
 	public static char[] Equal = new char[] { '=' };
 
+	public static string SubstringRange(this string str, int start, int end)
+	{
+		return str.Substring(start, end - start + 1);
+	}
+
 	/// <summary>
 	/// Removes certain HTML tags if they are enclosing the entire string.
 	/// </summary>
