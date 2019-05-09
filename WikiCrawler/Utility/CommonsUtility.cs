@@ -1,5 +1,4 @@
-﻿using System.Text.RegularExpressions;
-using Wikimedia;
+﻿using Wikimedia;
 
 public static class CommonsUtility
 {
@@ -11,6 +10,11 @@ public static class CommonsUtility
 		if (DateUtility.IsExactDateModern(date))
 		{
 			string[] dateSplit = date.Split('-');
+
+			// cat name day/month should be padded
+			dateSplit[1] = int.Parse(dateSplit[1]).ToString("00");
+			dateSplit[2] = int.Parse(dateSplit[2]).ToString("00");
+			date = string.Join("-", dateSplit);
 
 			string takenOnCatTitle = "Category:Photographs taken on " + date;
 			Article takenOnCatArticle = api.GetPage(takenOnCatTitle);
