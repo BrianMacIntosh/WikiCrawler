@@ -204,16 +204,6 @@ namespace NPGallery
 				{
 					licenseTag = "{{PD-USGov-NPS}}";
 				}
-				else
-				{
-					//TEMP: TEST
-					throw new Exception("Skipping");
-				}
-			}
-			else
-			{
-				//TEMP: TEST
-				throw new Exception("Skipping");
 			}
 
 			if (string.IsNullOrEmpty(licenseTag))
