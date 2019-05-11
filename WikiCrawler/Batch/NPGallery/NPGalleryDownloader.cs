@@ -74,6 +74,28 @@ namespace NPGallery
 
 			} while (true);
 
+			// get albums
+			int groupsIndex = pageContent.IndexOf("<!-- Groups Section -->", readHead);
+			string albums = "";
+			if (groupsIndex >= 0)
+			{
+				string groupStartString = "<p style=\"font-size:small\" data-toggle=\"tooltip\" data-placement=\"left\" title=\"";
+				int groupStartIndex = groupsIndex;
+				while (true)
+				{
+					groupStartIndex = pageContent.IndexOf(groupStartString, groupStartIndex + 1);
+					if (groupStartIndex < 0)
+					{
+						break;
+					}
+					int groupEndIndex = pageContent.IndexOf('"', groupStartIndex + groupStartString.Length);
+					int albumStartIndex = groupStartIndex + groupStartString.Length;
+					string album = pageContent.Substring(albumStartIndex, groupEndIndex - albumStartIndex);
+					albums = StringUtility.Join("|", albums, album);
+				}
+			}
+			metadata["Albums"] = albums;
+
 			return metadata;
 		}
 	}

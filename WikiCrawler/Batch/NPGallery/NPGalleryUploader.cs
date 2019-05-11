@@ -58,6 +58,8 @@ namespace NPGallery
 			"Permission must be secured from the individual copyright owners to reproduce any copyrighted materials contained within this website. Digital assets without any copyright restrictions are public domain."
 		};
 
+		private NPGalleryDownloader m_downloader;
+
 		public NPGalleryUploader(string key)
 			: base(key)
 		{
@@ -66,6 +68,10 @@ namespace NPGallery
 			string json = File.ReadAllText(assetlistFile);
 			List<NPGalleryAsset> allAssets = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
 			m_assetCount = allAssets.Count(asset => asset.AssetType == "Standard");
+
+			// we'll need to redownload data when the Albums key is missing
+			m_downloader = new NPGalleryDownloader(key);
+			m_downloader.HeartbeatEnabled = false;
 		}
 
 		public override int TotalKeyCount
@@ -198,6 +204,16 @@ namespace NPGallery
 				{
 					licenseTag = "{{PD-USGov-NPS}}";
 				}
+				else
+				{
+					//TEMP: TEST
+					throw new Exception("Skipping");
+				}
+			}
+			else
+			{
+				//TEMP: TEST
+				throw new Exception("Skipping");
 			}
 
 			if (string.IsNullOrEmpty(licenseTag))
@@ -216,12 +232,14 @@ namespace NPGallery
 
 			// determine the park name
 			string parkName = "";
+			string parkCode = "";
 			foreach (string metadataValue in metadata.Values)
 			{
 				int codeIndex = metadataValue.IndexOf(", Code: ");
 				if (codeIndex >= 0)
 				{
 					parkName = metadataValue.Substring(0, codeIndex);
+					parkCode = metadataValue.Substring(codeIndex + ", Code: ".Length);
 					break;
 				}
 			}
@@ -253,7 +271,7 @@ namespace NPGallery
 
 			// determine the location
 			string location = parkName;
-			
+
 			if (metadata.TryGetValue("Categories", out outValue))
 			{
 				foreach (string dataSplit in outValue.Split(','))
@@ -293,6 +311,32 @@ namespace NPGallery
 			if (metadata.TryGetValue("Collector", out outValue))
 			{
 				otherFields += "\n{{Information field|name=Collector|value=" + outValue + "}}";
+			}
+
+			if (!string.IsNullOrEmpty(parkCode))
+			{
+				otherFields += "\n{{Information field|name=NPS Unit Code|value=" + parkCode + "}}";
+			}
+
+			// redownload if there is no Albums key
+			if (!metadata.TryGetValue("Albums", out outValue))
+			{
+				metadata = m_downloader.Download(key);
+			}
+			if (metadata.TryGetValue("Albums", out outValue))
+			{
+				// album titles might work as categories
+				string[] albums = outValue.Split('|');
+				foreach (string album in albums)
+				{
+					IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(album);
+					if (mappedCats != null)
+					{
+						categories.AddRange(mappedCats);
+					}
+				}
+
+				otherFields += "\n{{Information field|name=Album(s)|value=" + string.Join("; ", albums) + "}}";
 			}
 
 			// need to download here to check EXIF
@@ -364,6 +408,10 @@ namespace NPGallery
 			{
 				authorString = "{{unknown|author}}";
 			}
+			else if (!authorString.StartsWith("{{"))
+			{
+				authorString = "{{en|" + authorString + "}}";
+			}
 
 			string page = GetCheckCategoriesTag(categories.Count) + "\n"
 				+ "=={{int:filedesc}}==\n"
@@ -373,7 +421,7 @@ namespace NPGallery
 				+ "|title={{en|" + metadata["Title"] + "}}\n"
 				+ "|description=\n"
 				+ "{{en|" + description + "}}\n"
-				+ "|depicted place=" + location + "\n"
+				+ "|depicted place={{en|" + location + "}}\n"
 				+ "|date=" + date + "\n"
 				+ "|accession number={{NPGallery-accession|" + key + "}}\n"
 				+ "|source=" + m_config.sourceTemplate + "\n"

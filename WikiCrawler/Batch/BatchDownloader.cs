@@ -65,40 +65,13 @@ public abstract class BatchDownloader : BatchTask
 			// load metadata
 			foreach (string key in GetKeys())
 			{
-				// download metadata
 				if (!succeededMetadata.Contains(key) && !m_succeeded.Contains(key))
 				{
-					Console.WriteLine("Downloading metadata: " + key);
-					Uri url = GetItemUri(key);
-				redownload:
-					string content = Download(url);
-					try
+					Dictionary<string, string> metadata = Download(key);
+					if (metadata != null)
 					{
-						Dictionary<string, string> metadata = ParseMetadata(content);
-						if (metadata == null)
-						{
-							m_succeeded.Add(key);
-						}
-						else
-						{
-							//TODO: crash when failing here
-							succeededMetadata.Add(key);
-							File.WriteAllText(
-								GetMetadataCacheFilename(key),
-								JsonConvert.SerializeObject(metadata, Formatting.Indented),
-								Encoding.UTF8);
-						}
+						succeededMetadata.Add(key);
 					}
-					catch (RedownloadException)
-					{
-						goto redownload;
-					}
-					catch (Exception e)
-					{
-						Console.WriteLine(e.ToString());
-						m_failMessages.Add(key.PadLeft(5) + "\t" + e.Message);
-					}
-
 					saveOutTimer--;
 				}
 
@@ -128,6 +101,45 @@ public abstract class BatchDownloader : BatchTask
 		{
 			SaveOut();
 			SendHeartbeat(true);
+		}
+	}
+
+	/// <summary>
+	/// Downloads and caches the data for the specified key.
+	/// </summary>
+	/// <returns>The parsed data.</returns>
+	public Dictionary<string, string> Download(string key)
+	{
+		Console.WriteLine("Downloading metadata: " + key);
+		Uri url = GetItemUri(key);
+	redownload:
+		string content = Download(url);
+		try
+		{
+			Dictionary<string, string> metadata = ParseMetadata(content);
+			if (metadata == null)
+			{
+				m_succeeded.Add(key);
+			}
+			else
+			{
+				//TODO: crash when failing here
+				File.WriteAllText(
+					GetMetadataCacheFilename(key),
+					JsonConvert.SerializeObject(metadata, Formatting.Indented),
+					Encoding.UTF8);
+			}
+			return metadata;
+		}
+		catch (RedownloadException)
+		{
+			goto redownload;
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e.ToString());
+			m_failMessages.Add(key.PadLeft(5) + "\t" + e.Message);
+			return null;
 		}
 	}
 

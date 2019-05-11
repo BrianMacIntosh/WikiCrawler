@@ -41,6 +41,8 @@ public abstract class BatchTask
 		return Path.Combine(MetadataCacheDirectory, key + ".json");
 	}
 
+	public bool HeartbeatEnabled = true;
+
 	private Uri m_heartbeatEndpoint;
 	private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(60f);
 	private Thread m_heartbeatThread;
@@ -86,13 +88,16 @@ public abstract class BatchTask
 	
 	protected void StartHeartbeat()
 	{
-		m_heartbeatThread = new Thread(HeartbeatThread);
-		m_heartbeatThread.Start();
+		if (HeartbeatEnabled)
+		{
+			m_heartbeatThread = new Thread(HeartbeatThread);
+			m_heartbeatThread.Start();
+		}
 	}
 
 	private void HeartbeatThread()
 	{
-		while (true)
+		while (HeartbeatEnabled)
 		{
 			SendHeartbeat(false);
 			Thread.Sleep(HeartbeatInterval);
@@ -101,6 +106,10 @@ public abstract class BatchTask
 
 	protected void SendHeartbeat(bool terminate)
 	{
+		if (!HeartbeatEnabled)
+		{
+			return;
+		}
 		if (terminate && m_heartbeatThread != null)
 		{
 			m_heartbeatThread.Abort();
