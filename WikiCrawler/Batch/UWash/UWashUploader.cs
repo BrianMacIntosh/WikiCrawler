@@ -329,12 +329,12 @@ namespace UWash
 			{
 				string latestYearString = dateParseMetadata.LatestYear.ToString();
 				string adYearCat = "Category:" + latestYearString + " advertisements in the United States";
-				Wikimedia.Article existingYearCat = CategoryTranslation.TryFetchCategory(Api, adYearCat);
+				Article existingYearCat = CategoryTranslation.TryFetchCategory(Api, adYearCat);
 				if (existingYearCat == null)
 				{
-					existingYearCat = new Wikimedia.Article(adYearCat);
-					existingYearCat.revisions = new Wikimedia.Revision[1];
-					existingYearCat.revisions[0] = new Wikimedia.Revision();
+					existingYearCat = new Article(adYearCat);
+					existingYearCat.revisions = new Revision[1];
+					existingYearCat.revisions[0] = new Revision();
 					existingYearCat.revisions[0].text = "{{AdvertisUSYear|" + latestYearString.Substring(0, 3)
 						+ "|" + latestYearString.Substring(3) + "}}";
 					Api.SetPage(existingYearCat, "(BOT) creating category", false, true, false);
@@ -344,7 +344,7 @@ namespace UWash
 				if (!string.IsNullOrEmpty(publisherLocation))
 				{
 					string adLocCat = "Category:Advertisements in " + publisherLocation.Split(',')[0];
-					Wikimedia.Article existingLocCat = CategoryTranslation.TryFetchCategory(Api, adLocCat);
+					Article existingLocCat = CategoryTranslation.TryFetchCategory(Api, adLocCat);
 					if (existingLocCat != null)
 					{
 						categories.Add(existingLocCat.title);
@@ -367,7 +367,7 @@ namespace UWash
 					if (false)
 					{
 						string blackAndWhiteCat = "Category:Black and white photographs of " + sureLocation;
-						Wikimedia.Article existingBwCat = CategoryTranslation.TryFetchCategory(Api, blackAndWhiteCat);
+						Article existingBwCat = CategoryTranslation.TryFetchCategory(Api, blackAndWhiteCat);
 						if (existingBwCat != null)
 						{
 							categories.Add(existingBwCat.title);
@@ -911,7 +911,8 @@ namespace UWash
 						string titleDate = DateUtility.ParseDate(possibleDate, out titleParseMetadata);
 						if (titleParseMetadata.LatestYear == parseMetadata.LatestYear)
 						{
-							return titleDate;
+							date = titleDate;
+							break;
 						}
 						commaIndex = title.IndexOf(',', commaIndex + 1);
 					}
