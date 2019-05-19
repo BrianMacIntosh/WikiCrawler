@@ -275,7 +275,7 @@ namespace UWash
 			string temp;
 			if (metadata.TryGetValue("LCTGM", out temp)) catparse += "|" + temp;
 			if (metadata.TryGetValue("LCSH", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Category", out temp)) catparse += "|" + temp.Replace(StringUtility.LineBreak, "|");
+			if (metadata.TryGetValue("Category", out temp)) catparse += "|" + temp.Replace(StringUtility.LineBreak, "|"); //TODO: line breaks not always separators
 			/*if (data.ContainsKey("Caption"))
 			{
 				//max 50

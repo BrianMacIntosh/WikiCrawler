@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace NPGallery
 {
@@ -57,7 +58,15 @@ namespace NPGallery
 
 				foreach (NPGallerySearchResult result in results.Results)
 				{
-					m_allAssets.Add(result.Asset);
+					if (m_allAssets.Contains(result.Asset))
+					{
+						// we are up-to-date
+						Finished = true;
+					}
+					else
+					{
+						m_allAssets.Add(result.Asset);
+					}
 				}
 			}
 			else

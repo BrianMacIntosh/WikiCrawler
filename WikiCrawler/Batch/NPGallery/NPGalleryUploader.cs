@@ -33,6 +33,7 @@ namespace NPGallery
 			"ISO Speed",
 			"Copyright",
 			"Collector",
+			"Albums",
 
 			// Soft use
 			"Time Submitted",
@@ -206,6 +207,46 @@ namespace NPGallery
 				}
 			}
 
+			//TODO: separate alt text
+
+			// get description
+			List<string> descriptionBlocks = new List<string>();
+			bool needScopeCheck = false;
+			if (metadata.TryGetValue("AltText", out outValue))
+			{
+				needScopeCheck = AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+			}
+			if (metadata.TryGetValue("Image Details", out outValue))
+			{
+				needScopeCheck = AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+			}
+			if (metadata.TryGetValue("Description", out outValue))
+			{
+				needScopeCheck = AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+			}
+			if (metadata.TryGetValue("Subject", out outValue))
+			{
+				descriptionBlocks.AddUnique("*Subject: " + outValue);
+			}
+			string description;
+			if (descriptionBlocks.Count == 0)
+			{
+				description = metadata["Title"];
+			}
+			else if (descriptionBlocks.Count == 1)
+			{
+				description = descriptionBlocks[0];
+			}
+			else
+			{
+				description = "<p>" + string.Join("</p>\n<p>", descriptionBlocks) + "</p>";
+			}
+
+			if (needScopeCheck)
+			{
+				categories.Add("Category:Images from NPGallery to check for scope");
+			}
+
 			if (string.IsNullOrEmpty(licenseTag))
 			{
 				throw new LicenseException(dateMetadata.LatestYear, m_config.defaultPubCountry);
@@ -300,7 +341,7 @@ namespace NPGallery
 			string otherFields = "";
 			if (metadata.TryGetValue("Collector", out outValue))
 			{
-				otherFields += "\n{{Information field|name=Collector|value=" + outValue + "}}";
+				otherFields += "\n{{Information field|name=Collector|value={{en|" + outValue + "}}}}";
 			}
 
 			if (!string.IsNullOrEmpty(parkCode))
@@ -326,7 +367,7 @@ namespace NPGallery
 					}
 				}
 
-				otherFields += "\n{{Information field|name=Album(s)|value=" + string.Join("; ", albums) + "}}";
+				otherFields += "\n{{Information field|name=Album(s)|value={{en|" + string.Join("; ", albums) + "}}}}";
 			}
 
 			// need to download here to check EXIF
@@ -362,38 +403,6 @@ namespace NPGallery
 				}
 			}
 
-			// get description
-			List<string> descriptionBlocks = new List<string>();
-			if (metadata.TryGetValue("AltText", out outValue))
-			{
-				descriptionBlocks.AddUnique(outValue);
-			}
-			if (metadata.TryGetValue("Image Details", out outValue))
-			{
-				descriptionBlocks.AddUnique(outValue);
-			}
-			if (metadata.TryGetValue("Description", out outValue))
-			{
-				descriptionBlocks.AddUnique(outValue);
-			}
-			if (metadata.TryGetValue("Subject", out outValue))
-			{
-				descriptionBlocks.AddUnique("*Subject: " + outValue);
-			}
-			string description;
-			if (descriptionBlocks.Count == 0)
-			{
-				description = metadata["Title"];
-			}
-			else if (descriptionBlocks.Count == 1)
-			{
-				description = descriptionBlocks[0];
-			}
-			else
-			{
-				description = "<p>" + string.Join("</p>\n<p>", descriptionBlocks) + "</p>";
-			}
-
 			if (string.IsNullOrEmpty(authorString))
 			{
 				authorString = "{{unknown|author}}";
@@ -403,11 +412,13 @@ namespace NPGallery
 				authorString = "{{en|" + authorString + "}}";
 			}
 
+			//TODO: captions
+
 			string page = GetCheckCategoriesTag(categories.Count) + "\n"
 				+ "=={{int:filedesc}}==\n"
 				+ "{{Photograph\n"
 				+ "|photographer=" + authorString + "\n"
-				+ "|publisher=" + publisher + "\n"
+				+ "|publisher={{en|" + publisher + "}}\n"
 				+ "|title={{en|" + metadata["Title"] + "}}\n"
 				+ "|description=\n"
 				+ "{{en|" + description + "}}\n"
@@ -432,6 +443,44 @@ namespace NPGallery
 			}
 
 			return page;
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <returns>False if the image needs a scope check</returns>
+		private bool AddDescriptionBlock(List<string> descriptionBlocks, string descriptionBlock)
+		{
+			descriptionBlocks.AddUnique(descriptionBlock);
+
+			// check for FOP issues
+			if (descriptionBlock.Contains("statue "))
+			{
+				throw new Exception("Possible FOP issue");
+			}
+
+			// add an additional check category to possible out-of-scope photos
+			if (descriptionBlock.StartsWith("people ")
+				|| descriptionBlock.StartsWith("man ")
+				|| descriptionBlock.StartsWith("a man ")
+				|| descriptionBlock.StartsWith("woman ")
+				|| descriptionBlock.StartsWith("a woman ")
+				|| descriptionBlock.StartsWith("two people ")
+				|| descriptionBlock.StartsWith("two women ")
+				|| descriptionBlock.StartsWith("two men ")
+				|| descriptionBlock.StartsWith("three people ")
+				|| descriptionBlock.StartsWith("three women ")
+				|| descriptionBlock.StartsWith("three men ")
+				|| descriptionBlock.StartsWith("four people ")
+				|| descriptionBlock.StartsWith("four women ")
+				|| descriptionBlock.StartsWith("four men "))
+			{
+				return false;
+			}
+			else
+			{
+				return true;
+			}
 		}
 
 		protected override void SaveOut()

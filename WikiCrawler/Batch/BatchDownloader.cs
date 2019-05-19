@@ -41,6 +41,11 @@ public abstract class BatchDownloader : BatchTask
 	protected abstract Dictionary<string, string> ParseMetadata(string pageContent);
 
 	/// <summary>
+	/// If set, the task will stop.
+	/// </summary>
+	protected bool Finished = false;
+
+	/// <summary>
 	/// Downloads all metadata and images.
 	/// </summary>
 	public void DownloadAll()
@@ -82,14 +87,18 @@ public abstract class BatchDownloader : BatchTask
 					m_heartbeatData["nFailed"] = m_failMessages.Count;
 					m_heartbeatData["nFailedLicense"] = 0;
 				}
-
+				
 				if (File.Exists(stopFile))
 				{
 					File.Delete(stopFile);
 					Console.WriteLine("Received STOP signal.");
 					return;
 				}
-				
+				else if (Finished)
+				{
+					return;
+				}
+
 				if (saveOutTimer <= 0)
 				{
 					SaveOut();

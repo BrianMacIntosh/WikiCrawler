@@ -24,7 +24,7 @@ namespace WikiCrawler
 
 				switch (task)
 				{
-					case "nptest":
+					case "npassets":
 						{
 							NPGallery.NPGalleryAssetListDownloader albumDl = new NPGallery.NPGalleryAssetListDownloader("npgallery");
 							albumDl.DownloadAll();

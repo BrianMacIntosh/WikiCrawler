@@ -80,7 +80,7 @@ public abstract class BatchUploader : BatchTask
 
 				try
 				{
-					Upload(metadataFile);
+					Upload(key);
 				}
 				catch (Exception e)
 				{
@@ -116,9 +116,9 @@ public abstract class BatchUploader : BatchTask
 		}
 	}
 
-	public void Upload(string metadataFile)
+	public void Upload(string key)
 	{
-		string key = Path.GetFileNameWithoutExtension(metadataFile);
+		string metadataFile = GetMetadataCacheFilename(key);
 
 		Console.WriteLine("== BUILDING " + key);
 
