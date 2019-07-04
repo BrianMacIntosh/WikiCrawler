@@ -114,8 +114,23 @@ public static class DateUtility
 	/// <summary>
 	/// Parses the specified semi-natural date string into a Commons marked-up date.
 	/// </summary>
-	public static string ParseDate(string date, out DateParseMetadata parseMetadata)
+	public static string ParseDate(string date, out DateParseMetadata parseMetadata, bool possibleEmptyDates = false)
 	{
+		DateTime parseResult;
+		if (DateTime.TryParse(date, out parseResult))
+		{
+			if (possibleEmptyDates
+				&& parseResult.Month == 1 && parseResult.Day == 1 && parseResult.Hour == 0 && parseResult.Minute == 0 && parseResult.Second == 0)
+			{
+				// don't trust it
+				parseMetadata = DateParseMetadata.Unknown;
+				return date;
+			}
+
+			parseMetadata = new DateParseMetadata(parseResult.Year);
+			return string.Format("{0:0000}-{1:00}-{2:00}", parseResult.Year, parseResult.Month, parseResult.Day);
+		}
+
 		date = date.Trim('.');
 
 		if (string.IsNullOrEmpty(date))

@@ -52,7 +52,9 @@ namespace WikiCrawler
 				writer.WriteLine("{");
 				List<KeyValuePair<string, Creator>> creatorsFlat = new List<KeyValuePair<string, Creator>>(s_creatorData);
 				bool first = true;
-				foreach (KeyValuePair<string, Creator> kv in creatorsFlat.OrderByDescending(kv => kv.Value.UploadableUsage))
+				foreach (KeyValuePair<string, Creator> kv in creatorsFlat
+					.OrderByDescending(kv => kv.Value.Usage)
+					.OrderByDescending(kv => kv.Value.UploadableUsage))
 				{
 					if (!first)
 					{

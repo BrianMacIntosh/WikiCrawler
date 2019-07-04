@@ -62,6 +62,8 @@ public static class ImageUtility
 			}
 		}
 
+		FreeImage.Unload(raw);
+
 		return results;
 	}
 }

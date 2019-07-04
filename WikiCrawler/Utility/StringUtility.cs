@@ -1,11 +1,13 @@
 ﻿using System.Collections.Generic;
 using System.Net;
+using System.Text;
 
 public static class StringUtility
 {
 	public static char[] Pipe = { '|' };
-	public static string[] LineBreak = { "|", "<br/>", "<br />", "<br>", "\r", "\n" }; //TEMP: pipe is temp (napoleon only)
-	public static string[] WhitespaceExtended = { "|", "<br/>", "<br />", "<br>", "\r", "\n", " ", "\t" }; //TEMP: pipe is temp (napoleon only)
+	public static string[] LineBreak = { "<br/>", "<br />", "<br>", "\r", "\n" };
+	public static string[] RawLineBreak = { "\r\n", "\n" };
+	public static string[] WhitespaceExtended = { "<br/>", "<br />", "<br>", "\r", "\n", " ", "\t" };
 	public static char[] Colon = { ':' };
 	public static char[] Parens = { '(', ')', ' ' };
 	public static string[] DashDash = new string[] { "--" };
@@ -77,6 +79,56 @@ public static class StringUtility
 			text = text.Substring(0, text.Length - str.Length);
 		}
 		return text;
+	}
+
+	/// <summary>
+	/// Removes all whitespace that starts a line.
+	/// </summary>
+	public static string RemoveIndentation(this string text)
+	{
+		string[] lines = text.Split(RawLineBreak, System.StringSplitOptions.None);
+		string result = "";
+		foreach (string line in lines)
+		{
+			result = Join("\n", result, line.TrimStart());
+		}
+		return result;
+	}
+
+	/// <summary>
+	/// Removes all line returns more than two in a row.
+	/// </summary>
+	public static string RemoveExtraneousLines(this string text)
+	{
+		string[] lines = text.Split(RawLineBreak, System.StringSplitOptions.None);
+		string result = "";
+		bool lastLineBlank = true;
+		foreach (string line in lines)
+		{
+			bool thisLineBlank = string.IsNullOrWhiteSpace(line);
+			if (thisLineBlank && lastLineBlank)
+			{
+				continue;
+			}
+			result = Join("\n", result, line);
+			lastLineBlank = thisLineBlank;
+		}
+		return result;
+	}
+
+	/// <summary>
+	/// Capitalizes the first letter of each word.
+	/// </summary>
+	public static string ToTitleCase(this string text)
+	{
+		bool lastWhitespace = true;
+		StringBuilder builder = new StringBuilder();
+		for (int i = 0; i < text.Length; i++)
+		{
+			builder.Append(lastWhitespace ? char.ToUpper(text[i]) : text[i]);
+			lastWhitespace = char.IsWhiteSpace(text[i]);
+		}
+		return builder.ToString();
 	}
 
 	/// <summary>

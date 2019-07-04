@@ -63,6 +63,8 @@ namespace WikiCrawler
 					return new NPGallery.NPGalleryUploader(projectKey);
 				case "DSAL":
 					return new Dsal.DsalUploader(projectKey);
+				case "OEC":
+					return new OEC.OecUploader(projectKey);
 				default:
 					throw new NotImplementedException("Uploader '" + "'.");
 			}
@@ -101,11 +103,11 @@ namespace WikiCrawler
 
 			List<string> succeeded = new List<string>();
 
-			string suffixStart = " (" + projectConfig.filenameSuffix + " ";
+			string suffixStart = " (";// + projectConfig.filenameSuffix + " ";
 			foreach (Wikimedia.Article article in commonsApi.GetCategoryFiles(projectConfig.masterCategory))
 			{
 				Console.WriteLine(article.title);
-				int tagIndex = article.title.IndexOf(suffixStart);
+				int tagIndex = article.title.LastIndexOf(suffixStart);
 				if (tagIndex < 0)
 				{
 					continue;
@@ -118,7 +120,7 @@ namespace WikiCrawler
 
 			string succeededFile = Path.Combine(projectDir, "succeeded.json");
 			succeeded.Sort();
-			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded));
+			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded, Formatting.Indented));
 		}
 	}
 }

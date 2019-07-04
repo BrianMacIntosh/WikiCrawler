@@ -24,7 +24,7 @@ namespace Dsal
 			DateParseMetadata dateMetadata;
 			string date = DateUtility.ParseDate(metadata["Date"], out dateMetadata);
 
-			List<string> categories = new List<string>();
+			HashSet<string> categories = new HashSet<string>();
 			categories.Add(m_config.checkCategory);
 
 			string location = metadata["Location"];

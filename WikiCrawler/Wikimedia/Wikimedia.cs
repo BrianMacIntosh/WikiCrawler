@@ -422,23 +422,23 @@ namespace Wikimedia
         /// <summary>
         /// Returns the Wiki text of the specified page
         /// </summary>
-        public Article GetPage(Article page, string prop = "info|revisions")
+        public Article GetPage(Article page, string prop = "info|revisions", string param = "")
         {
-            return GetPage(page.title, prop);
+            return GetPage(page.title, prop, param);
         }
 
         /// <summary>
         /// Returns the Wiki text of the specified page
         /// </summary>
-        public Article GetPage(string page, string prop = "info|revisions")
+        public Article GetPage(string page, string prop = "info|revisions", string param = "")
         {
-            return GetPages(new string[] { page }, prop)[0];
+            return GetPages(new string[] { page }, prop, param)[0];
         }
 
         /// <summary>
         /// Returns the Wiki text for all of the specified pages
         /// </summary>
-        public Article[] GetPages(IList<string> inpages, string prop = "info|revisions")
+        public Article[] GetPages(IList<string> inpages, string prop = "info|revisions", string param = "")
         {
 			string[] props = prop.Split('|');
 			if (inpages.Count == 0) return new Article[0];
@@ -451,6 +451,10 @@ namespace Wikimedia
 				"&action=query" +
 				"&titles=" + string.Join("|", inpages) +
 				"&prop=" + prop;
+			if (!string.IsNullOrEmpty(param))
+			{
+				parameters += "&" + param;
+			}
 			if (props.Contains("revisions"))
 			{
 				parameters += "&rvprop=content";
@@ -1448,6 +1452,9 @@ namespace Wikimedia
         public Revision[] revisions;
 		public Article[] links;
 
+		public string imagerepository;
+		public ImageInfo[] imageinfo;
+
 		public Article()
 		{
 
@@ -1462,15 +1469,15 @@ namespace Wikimedia
 			: base(json)
 		{
 			if (json.ContainsKey("starttimestamp"))
-				starttimestamp = (string)(json["starttimestamp"]);
+				starttimestamp = (string)json["starttimestamp"];
 			if (json.ContainsKey("edittoken"))
-				edittoken = (string)(json["edittoken"]);
+				edittoken = (string)json["edittoken"];
 			if (!missing)
 			{
 				if (json.ContainsKey("touched"))
-					touched = (string)(json["touched"]);
+					touched = (string)json["touched"];
 				if (json.ContainsKey("length"))
-					length = (int)(json["length"]);
+					length = (int)json["length"];
 				if (json.ContainsKey("revisions"))
 				{
 					object[] revisionsJson = (object[])(json["revisions"]);
@@ -1484,6 +1491,20 @@ namespace Wikimedia
 				if (json.ContainsKey("links"))
 				{
 					links = ReadArticleArray(json, "links");
+				}
+				if (json.ContainsKey("imagerepository"))
+				{
+					imagerepository = (string)json["imagerepository"];
+				}
+				if (json.ContainsKey("imageinfo"))
+				{
+					object[] imageinfoJson = (object[])(json["imageinfo"]);
+					imageinfo = new ImageInfo[imageinfoJson.Length];
+					for (int c = 0; c < imageinfo.Length; c++)
+					{
+						Dictionary<string, object> infoJson = (Dictionary<string, object>)imageinfoJson[c];
+						imageinfo[c] = new ImageInfo(infoJson);
+					}
 				}
 			}
 		}
@@ -1659,6 +1680,41 @@ namespace Wikimedia
 			if (json.TryGetValue("*", out value))
 			{
 				text = (string)value;
+			}
+		}
+	}
+
+	public class ImageInfo
+	{
+		public string comment;
+		public string url;
+		public string descriptionurl;
+		public string descriptionshorturl;
+
+		public ImageInfo()
+		{
+
+		}
+
+		public ImageInfo(Dictionary<string, object> json)
+		{
+			object value;
+
+			if (json.TryGetValue("comment", out value))
+			{
+				comment = (string)value;
+			}
+			if (json.TryGetValue("url", out value))
+			{
+				url = (string)value;
+			}
+			if (json.TryGetValue("descriptionurl", out value))
+			{
+				descriptionurl = (string)value;
+			}
+			if (json.TryGetValue("descriptionshorturl", out value))
+			{
+				descriptionshorturl = (string)value;
 			}
 		}
 	}

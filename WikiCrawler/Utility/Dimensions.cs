@@ -52,7 +52,7 @@ public struct Dimensions
 
 	public static bool TryParse(string text, out Dimensions dimensions)
 	{
-		string[] dimSplit = text.Trim().Split(new string[] { " x " }, StringSplitOptions.None);
+		string[] dimSplit = text.Trim().Split(new string[] { " x ", " X " }, StringSplitOptions.None);
 		if (dimSplit.Length == 2)
 		{
 			int lastSpace = dimSplit[1].LastIndexOf(' ');

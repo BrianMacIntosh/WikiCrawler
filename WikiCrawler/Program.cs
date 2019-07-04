@@ -1,5 +1,5 @@
 ﻿using System;
-using System.IO;
+using System.Diagnostics;
 using System.Net;
 
 namespace WikiCrawler
@@ -24,6 +24,15 @@ namespace WikiCrawler
 
 				switch (task)
 				{
+					case "watermarkdl":
+						new WatermarkRemoval("Category:Images from Slovenian Ethnographic Museum website").Download();
+						break;
+					case "watermarkfind":
+						new WatermarkRemoval("Category:Images from Slovenian Ethnographic Museum website").FindWatermark();
+						break;
+					case "watermarkremove":
+						new WatermarkRemoval("Category:Images from Slovenian Ethnographic Museum website").RemoveAndUpload();
+						break;
 					case "npassets":
 						{
 							NPGallery.NPGalleryAssetListDownloader albumDl = new NPGallery.NPGalleryAssetListDownloader("npgallery");
@@ -108,6 +117,7 @@ namespace WikiCrawler
 			}
 
 			Console.WriteLine("Done");
+			WindowsUtility.FlashWindowEx(Process.GetCurrentProcess().MainWindowHandle);
 			Console.ReadLine();
         }
     }

@@ -108,7 +108,7 @@ namespace Wikimedia
 		/// <summary>
 		/// Removes any categories from the list that are just less-specific versions of other categories.
 		/// </summary>
-		public void RemoveLessSpecific(IList<string> categories)
+		public void RemoveLessSpecific(ISet<string> categories)
 		{
 			foreach (string s in categories)
 				AddToTree(s, 2);

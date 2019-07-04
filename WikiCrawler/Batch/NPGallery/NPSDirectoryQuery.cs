@@ -66,7 +66,9 @@ namespace NPGallery
 
 		public static void SaveOut()
 		{
-			File.WriteAllText(CacheFile, Newtonsoft.Json.JsonConvert.SerializeObject(s_cache.Keys), Encoding.UTF8);
+			File.WriteAllText(CacheFile,
+				Newtonsoft.Json.JsonConvert.SerializeObject(s_cache.Keys, Newtonsoft.Json.Formatting.Indented),
+				Encoding.UTF8);
 		}
 
 		/// <summary>
@@ -79,6 +81,8 @@ namespace NPGallery
 			{
 				return cachedValue;
 			}
+
+			Console.WriteLine("NPS Directory Query: " + lastName + ", " + firstName);
 
 			WebRequest request = WebRequest.Create(string.Format(Endpoint, firstName, lastName));
 			using (StreamReader reader = new StreamReader(request.GetResponse().GetResponseStream()))

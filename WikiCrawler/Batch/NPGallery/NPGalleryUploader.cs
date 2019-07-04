@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Web;
 using WikiCrawler;
 
@@ -13,19 +14,25 @@ namespace NPGallery
 		{
 			"Title",
 			"Photographer",
+			"Photographer, attributed",
 			"PhotoCredit",
 			"Creator",
 			"Publisher",
+			"Compiler",
 			"Constraints Information",
 			"Attribution",
+			"Locations",
 			"Create Date",
+			"Date Created",
 			"Content Dates",
 			"Embedded Timestamp",
-			"Location",
 			"Categories",
+			"Keywords",
+			"Controlled Keywords",
 			"Subject",
 			"Description",
 			"Image Details",
+			"Comment",
 			"AltText",
 			"Camera Information",
 			"Exposure",
@@ -33,30 +40,48 @@ namespace NPGallery
 			"ISO Speed",
 			"Copyright",
 			"Collector",
-			"Albums",
+			"Editor",
+			"Sponsor",
+			"Cataloguer",
+			"Contacts",
+			"Related System IDs",
+			"NPS Units", // implicit use by the bit that iterates all fields looking for "Code:"
+			"~Related",
 
 			// Soft use
 			"Time Submitted",
+			"Intended Audience",
+			"~Version",
 
 			// Unused
 			"Asset ID",
+			"XmpMetadataDate", // date of metadata update, not that useful
 			"Related Collections",
 			"Last Edited",
 			"Original File Name",
 			"File Name",
 			"Resource Format",
+			"Resource Type",
 			"File Size (bytes)",
 			"Rating",
+			"Related Resources", //facebook page
+			"Related Portals",
 			"Original NPS Focus Uploader",
+			"NPGallery Uploader",
 			"Source Information Description",
-			"Source Location"
+			"Source Location",
+			"Albums", // Obsolete
 		};
 
 		// List of copyright text blocks that can be ignored
 		private static List<string> s_standardCopyrights = new List<string>()
 		{
 			"Permission must be secured from the individual copyright owners to reproduce any copyrighted materials contained within this website.",
-			"Permission must be secured from the individual copyright owners to reproduce any copyrighted materials contained within this website. Digital assets without any copyright restrictions are public domain."
+			"Permission must be secured from the individual copyright owners to reproduce any copyrighted materials contained within this website. Digital assets without any copyright restrictions are public domain.",
+			"This digital asset is provided for &#39;fair use&#39; purposes. The National Park Service is not necessarily the holder of the original copyright and is not legally liable for infringement when materials are wrongfully used.",
+
+			//TODO: make a license to use with this
+			"To the best of our knowledge we believe this image to by copyright free and in the public domain."
 		};
 
 		private NPGalleryDownloader m_downloader;
@@ -75,13 +100,15 @@ namespace NPGallery
 			m_downloader.HeartbeatEnabled = false;
 		}
 
+		public static string[] KeywordSplitters = { "<br/>", "<br />", "<br>", "\r", "\n", "," };
+
 		public override int TotalKeyCount
 		{
 			get { return m_assetCount; }
 		}
 		private int m_assetCount = -1;
 
-		private const string ImageUriFormat = "https://npgallery.nps.gov/GetAsset/{0}/original.jpg";
+		private const string ImageUriFormat = "https://npgallery.nps.gov/GetAsset/{0}/";
 
 		protected override string BuildPage(string key, Dictionary<string, string> metadata)
 		{
@@ -91,7 +118,9 @@ namespace NPGallery
 				string value = kv.Value;
 				value = value.Trim(StringUtility.WhitespaceExtended);
 				value = value.TrimSingleEnclosingTags();
+				value = value.TrimEnd("<i></i>");
 				value = value.Trim(StringUtility.WhitespaceExtended);
+				value = WebUtility.HtmlDecode(value);
 				metadata[kv.Key] = value;
 			}
 
@@ -106,15 +135,26 @@ namespace NPGallery
 
 			string outValue;
 
-			List<string> categories = new List<string>();
-			categories.Add(m_config.checkCategory);
+			HashSet<string> categories = new HashSet<string>();
+
+			if (metadata.TryGetValue("Intended Audience", out outValue))
+			{
+				if (outValue != "Public")
+				{
+					throw new Exception("Unrecognized Intended Audience");
+				}
+			}
 
 			// check for different copyright text
 			if (metadata.TryGetValue("Copyright", out outValue))
 			{
 				if (!s_standardCopyrights.Contains(outValue))
 				{
-					throw new Exception("Unrecognized copyright block");
+					//TODO: make use of this info
+					if (!outValue.StartsWith("This digital asset is in the public domain."))
+					{
+						throw new Exception("Unrecognized copyright block");
+					}
 				}
 			}
 
@@ -123,20 +163,27 @@ namespace NPGallery
 			Creator creator = null;
 			if (metadata.TryGetValue("Photographer", out outValue))
 			{
-				outValue = outValue.TrimEnd(" <i></i>");
+				authorString = GetAuthor(outValue, "", out creator);
+			}
+			else if (metadata.TryGetValue("Photographer, attributed", out outValue))
+			{
 				authorString = GetAuthor(outValue, "", out creator);
 			}
 			else if (metadata.TryGetValue("PhotoCredit", out outValue)
 				&& !outValue.Contains(", Code: "))
 			{
-				outValue = outValue.TrimEnd(" <i></i>");
 				authorString = GetAuthor(outValue, "", out creator);
 			}
 			else if (metadata.TryGetValue("Creator", out outValue)
 				&& !outValue.Contains(", Code: "))
 			{
-				outValue = outValue.TrimEnd(" <i></i>");
 				authorString = GetAuthor(outValue, "", out creator);
+			}
+
+			if (creator != null)
+			{
+				//HACK;
+				creator.UploadableUsage++;
 			}
 
 			string publisher;
@@ -147,19 +194,25 @@ namespace NPGallery
 			string createDate = "";
 			if (metadata.TryGetValue("Create Date", out outValue))
 			{
-				createDate = DateUtility.ParseDate(outValue, out createDateMetadata);
+				createDate = DateUtility.ParseDate(outValue, out createDateMetadata, true);
+			}
+			DateParseMetadata dateCreatedMetadata = DateParseMetadata.Unknown;
+			string dateCreated = "";
+			if (metadata.TryGetValue("Date Created", out outValue))
+			{
+				dateCreated = DateUtility.ParseDate(outValue, out dateCreatedMetadata, true);
 			}
 			DateParseMetadata contentDateMetadata = DateParseMetadata.Unknown;
 			string contentDate = "";
 			if (metadata.TryGetValue("Content Dates", out outValue))
 			{
-				contentDate = DateUtility.ParseDate("Content Dates", out contentDateMetadata);
+				contentDate = DateUtility.ParseDate(outValue, out contentDateMetadata, true);
 			}
 			DateParseMetadata embeddedTimestampMetadata = DateParseMetadata.Unknown;
 			string embeddedTimestamp = "";
 			if (metadata.TryGetValue("Embedded Timestamp", out outValue))
 			{
-				embeddedTimestamp = DateUtility.ParseDate("Embedded Timestamp", out embeddedTimestampMetadata);
+				embeddedTimestamp = DateUtility.ParseDate(outValue, out embeddedTimestampMetadata, true);
 			}
 			DateParseMetadata dateMetadata = DateParseMetadata.Unknown;
 			string date = "";
@@ -172,6 +225,11 @@ namespace NPGallery
 			{
 				dateMetadata = createDateMetadata;
 				date = createDate;
+			}
+			else if (dateCreatedMetadata != DateParseMetadata.Unknown)
+			{
+				dateMetadata = dateCreatedMetadata;
+				date = dateCreated;
 			}
 			else if (embeddedTimestampMetadata != DateParseMetadata.Unknown)
 			{
@@ -200,11 +258,11 @@ namespace NPGallery
 
 			if (string.IsNullOrEmpty(licenseTag))
 			{
-				string[] authorNames = authorString.TrimStart("NPS Photo /").Trim().Split(' ');
-				if (authorNames.Length == 2 && NPSDirectoryQuery.QueryDirectory(authorNames[0], authorNames[1]))
+				string[] authorNames = authorString.TrimStart("NPS Photo /").TrimStart("NPS/").Trim().Split(' ');
+				/*if (authorNames.Length == 2 && NPSDirectoryQuery.QueryDirectory(authorNames[0], authorNames[1]))
 				{
 					licenseTag = "{{PD-USGov-NPS}}";
-				}
+				}*/
 			}
 
 			//TODO: separate alt text
@@ -214,15 +272,19 @@ namespace NPGallery
 			bool needScopeCheck = false;
 			if (metadata.TryGetValue("AltText", out outValue))
 			{
-				needScopeCheck = AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
 			}
 			if (metadata.TryGetValue("Image Details", out outValue))
 			{
-				needScopeCheck = AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
 			}
 			if (metadata.TryGetValue("Description", out outValue))
 			{
-				needScopeCheck = AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+			}
+			if (metadata.TryGetValue("Comment", out outValue))
+			{
+				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
 			}
 			if (metadata.TryGetValue("Subject", out outValue))
 			{
@@ -244,7 +306,8 @@ namespace NPGallery
 
 			if (needScopeCheck)
 			{
-				categories.Add("Category:Images from NPGallery to check for scope");
+				//categories.Add("Category:Images from NPGallery to check for scope");
+				throw new Exception("Out of scope?");
 			}
 
 			if (string.IsNullOrEmpty(licenseTag))
@@ -252,9 +315,14 @@ namespace NPGallery
 				throw new LicenseException(dateMetadata.LatestYear, m_config.defaultPubCountry);
 			}
 
-			if (metadata.TryGetValue("Constraints Information", out outValue) && !outValue.Contains(", Code: "))
+			if (metadata.TryGetValue("Constraints Information", out outValue))
 			{
-				throw new Exception("'Constraints Information' contained something other than a park name");
+				if (!outValue.Contains(", Code: ")
+					&& outValue != "Public domain"
+					&& outValue != "Public domain:Full Granting Rights") //TODO: use this
+				{
+					throw new Exception("'Constraints Information' contained something other than a park name");
+				}
 			}
 			else if (metadata.TryGetValue("Attribution", out outValue) && !outValue.Contains(", Code: "))
 			{
@@ -263,15 +331,17 @@ namespace NPGallery
 
 			// determine the park name
 			string parkName = "";
-			string parkCode = "";
+			List<string> parkCodes = new List<string>();
 			foreach (string metadataValue in metadata.Values)
 			{
-				int codeIndex = metadataValue.IndexOf(", Code: ");
-				if (codeIndex >= 0)
+				foreach (string park in metadataValue.Split(StringUtility.LineBreak, StringSplitOptions.RemoveEmptyEntries))
 				{
-					parkName = metadataValue.Substring(0, codeIndex);
-					parkCode = metadataValue.Substring(codeIndex + ", Code: ".Length);
-					break;
+					int codeIndex = park.IndexOf(", Code: ");
+					if (codeIndex >= 0)
+					{
+						parkName = park.Substring(0, codeIndex);
+						parkCodes.Add(park.Substring(codeIndex + ", Code: ".Length));
+					}
 				}
 			}
 			if (!string.IsNullOrEmpty(parkName))
@@ -303,6 +373,16 @@ namespace NPGallery
 			// determine the location
 			string location = parkName;
 
+			if (metadata.TryGetValue("Locations", out outValue))
+			{
+				string[] locationSplit = outValue.Split(StringUtility.LineBreak, StringSplitOptions.RemoveEmptyEntries);
+				if (locationSplit.Length > 2)
+				{
+					throw new Exception("Unrecognized Locations format");
+				}
+				location = locationSplit[0];
+			}
+
 			if (metadata.TryGetValue("Categories", out outValue))
 			{
 				foreach (string dataSplit in outValue.Split(','))
@@ -318,6 +398,49 @@ namespace NPGallery
 					{
 						categories.AddRange(mappedCats);
 					}
+				}
+			}
+			string keywordsToParse = "";
+			if (metadata.TryGetValue("Keywords", out outValue))
+			{
+				keywordsToParse = StringUtility.Join(", ", keywordsToParse, outValue);
+			}
+			if (metadata.TryGetValue("Controlled Keywords", out outValue))
+			{
+				keywordsToParse = StringUtility.Join(", ", keywordsToParse, outValue);
+			}
+			if (!string.IsNullOrEmpty(keywordsToParse))
+			{
+				keywordsToParse = StringUtility.CleanHtml(keywordsToParse);
+				List<string> parsedKeywords = new List<string>();
+				foreach (string dataSplit in keywordsToParse.Split(KeywordSplitters, StringSplitOptions.RemoveEmptyEntries))
+				{
+					// strip links
+					string dataTrimmed = dataSplit.Trim();
+
+					if (string.IsNullOrEmpty(dataTrimmed) || dataTrimmed == "()")
+					{
+						continue;
+					}
+
+					// park codes will not map to meaningful categories
+					if (!parkCodes.Contains(dataTrimmed, StringComparer.CurrentCultureIgnoreCase))
+					{
+						IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(dataTrimmed);
+						if (mappedCats != null)
+						{
+							categories.AddRange(mappedCats);
+						}
+					}
+
+					if (!parsedKeywords.Contains(dataTrimmed, StringComparer.CurrentCultureIgnoreCase))
+					{
+						parsedKeywords.Add(dataTrimmed);
+					}
+				}
+				if (parsedKeywords.Count > 0)
+				{
+					description += "\n*Keywords: " + string.Join("; ", parsedKeywords);
 				}
 			}
 			if (metadata.TryGetValue("Subject", out outValue))
@@ -343,42 +466,90 @@ namespace NPGallery
 			{
 				otherFields += "\n{{Information field|name=Collector|value={{en|" + outValue + "}}}}";
 			}
-
-			if (!string.IsNullOrEmpty(parkCode))
+			if (metadata.TryGetValue("Editor", out outValue))
 			{
-				otherFields += "\n{{Information field|name=NPS Unit Code|value=" + parkCode + "}}";
+				otherFields += "\n{{Information field|name=Editor|value={{en|" + outValue + "}}}}";
 			}
-
-			// redownload if there is no Albums key
-			if (!metadata.TryGetValue("Albums", out outValue))
+			if (metadata.TryGetValue("Sponsor", out outValue))
 			{
-				metadata = m_downloader.Download(key);
+				otherFields += "\n{{Information field|name=Sponsor|value={{en|" + outValue + "}}}}";
 			}
-			if (metadata.TryGetValue("Albums", out outValue))
+			if (metadata.TryGetValue("Cataloguer", out outValue))
+			{
+				otherFields += "\n{{Information field|name=Cataloguer|value={{en|" + outValue + "}}}}";
+			}
+			if (metadata.TryGetValue("Contacts", out outValue))
+			{
+				otherFields += "\n{{Information field|name=Contacts|value={{en|" + outValue + "}}}}";
+			}
+			if (parkCodes.Count > 0)
+			{
+				otherFields += "\n{{Information field|name=NPS Unit Code|value=" + string.Join(", ", parkCodes) + "}}";
+			}
+			if (metadata.TryGetValue("Compiler", out outValue))
+			{
+				otherFields += "\n{{Information field|name=Compiler|value={{en|" + outValue + "}}}}";
+			}
+			if (metadata.TryGetValue("Related System IDs", out outValue))
+			{
+				string[] relatedIDs = outValue.Split(StringUtility.LineBreak, StringSplitOptions.RemoveEmptyEntries);
+				foreach (string line in relatedIDs)
+				{
+					string[] lineSplit = line.Split(new char[] { ':' }, 2);
+					if (lineSplit.Length != 2)
+					{
+						throw new Exception("Unhandled format in Related System IDs");
+					}
+					string systemKey = StringUtility.CleanHtml(lineSplit[0]).Trim();
+					string systemValue = StringUtility.CleanHtml(lineSplit[1]).Trim();
+					if (systemValue.StartsWith("Mission 2000 record no."))
+					{
+						throw new Exception("Document");
+					}
+					otherFields += "\n{{Information field|name=" + systemKey  + "|value=" + systemValue + "}}";
+				}
+			}
+			
+			if (metadata.TryGetValue("~Related", out outValue) && !string.IsNullOrEmpty(outValue))
 			{
 				// album titles might work as categories
-				string[] albums = outValue.Split('|');
-				foreach (string album in albums)
+				string[] related = outValue.Split('|');
+				List<string> relatedAlbums = new List<string>();
+				for (int i = 0; i < related.Length; i += 3)
 				{
-					IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(album);
-					if (mappedCats != null)
+					//TODO: do something with related assets?
+
+					string relatedId = related[i];
+					string relatedType = related[i + 1];
+					string relatedTitle = related[i + 2];
+					if (relatedType == "Album")
 					{
-						categories.AddRange(mappedCats);
+						relatedAlbums.Add(relatedTitle);
+
+						IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(relatedTitle);
+						if (mappedCats != null)
+						{
+							categories.AddRange(mappedCats);
+						}
 					}
 				}
 
-				otherFields += "\n{{Information field|name=Album(s)|value={{en|" + string.Join("; ", albums) + "}}}}";
+				if (relatedAlbums.Count > 0)
+				{
+					otherFields += "\n{{Information field|name=Album(s)|value={{en|" + string.Join("; ", relatedAlbums) + "}}}}";
+				}
 			}
 
 			// need to download here to check EXIF
 			CacheImage(key, metadata);
-			Dictionary<string, FreeImageTag> exifData = ImageUtility.GetExif(GetImageCacheFilename(key));
+			Dictionary<string, FreeImageTag> exifData = ImageUtility.GetExif(GetImageCacheFilename(key, metadata));
 			string photoInfo = "";
 			if (!exifData.ContainsKey("FocalLength")
 				&& !exifData.ContainsKey("ApertureValue")
 				&& !exifData.ContainsKey("ExposureTime")
 				&& !exifData.ContainsKey("ShutterSpeedValue")
-				&& !exifData.ContainsKey("ISOSpeedRatings"))
+				&& !exifData.ContainsKey("ISOSpeedRatings")
+				&& !exifData.ContainsKey("Model"))
 			{
 				// include camera info if available and not in exif
 				if (metadata.TryGetValue("Camera Information", out outValue))
@@ -412,14 +583,36 @@ namespace NPGallery
 				authorString = "{{en|" + authorString + "}}";
 			}
 
+			if (categories.Contains("Category:Graves") && parkCodes.Contains("MACA"))
+			{
+				throw new Exception("Gravestone");
+			}
+
+			// now that this looks like a success, redownload and start over
+			string version;
+			if (!metadata.TryGetValue("~Version", out version) || int.Parse(version) < NPGalleryDownloader.Version)
+			{
+				Console.WriteLine("Old version, redownloading");
+				metadata = m_downloader.Download(key);
+				return BuildPage(key, metadata);
+			}
+
 			//TODO: captions
 
-			string page = GetCheckCategoriesTag(categories.Count) + "\n"
+			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
+
+			string catCheckTag = GetCheckCategoriesTag(categories.Count);
+			categories.Add(m_config.checkCategory);
+
+			string page = catCheckTag + "\n"
 				+ "=={{int:filedesc}}==\n"
 				+ "{{Photograph\n"
-				+ "|photographer=" + authorString + "\n"
-				+ "|publisher={{en|" + publisher + "}}\n"
-				+ "|title={{en|" + metadata["Title"] + "}}\n"
+				+ "|photographer=" + authorString + "\n";
+			if (!string.IsNullOrEmpty(publisher))
+			{
+				page += "|publisher={{en|" + publisher + "}}\n";
+			}
+			page += "|title={{en|" + metadata["Title"] + "}}\n"
 				+ "|description=\n"
 				+ "{{en|" + description + "}}\n"
 				+ "|depicted place={{en|" + location + "}}\n"
@@ -435,8 +628,6 @@ namespace NPGallery
 			}
 			page += "}}\n";
 
-			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
-
 			foreach (string cat in categories)
 			{
 				page += "[[" + cat + "]]\n";
@@ -451,6 +642,8 @@ namespace NPGallery
 		/// <returns>False if the image needs a scope check</returns>
 		private bool AddDescriptionBlock(List<string> descriptionBlocks, string descriptionBlock)
 		{
+			descriptionBlock = descriptionBlock.RemoveIndentation().RemoveExtraneousLines();
+
 			descriptionBlocks.AddUnique(descriptionBlock);
 
 			// check for FOP issues
@@ -460,20 +653,32 @@ namespace NPGallery
 			}
 
 			// add an additional check category to possible out-of-scope photos
+			string[] split = descriptionBlock.ToLower().Split(' ');
+			if (split[0] == "a" || split[0] == "one"
+				|| split[0] == "two" || split[0] == "three"
+				|| split[0] == "four" || split[0] == "five"
+				|| split[0] == "six" || split[0] == "seven"
+				|| split[0] == "eight" || split[0] == "nine"
+				|| split[0] == "ten")
+			{
+				if (split[1] == "person" || split[1]  == "people"
+					//|| split[1] == "man" || split[1] == "men"
+					//|| split[1] == "woman" || split[1] == "women"
+					|| split[1] == "hiker" || split[1] == "hikers"
+					|| split[1] == "camper" || split[1] == "campers"
+					|| split[1] == "visitor" || split[1] == "visitors"
+					|| split[1] == "young child" || split[1] == "young children"
+					|| split[1] == "child" || split[1] == "children"
+					|| split[1] == "kid" || split[1] == "kids"
+					|| split[1] == "teenager" || split[1] == "teenagers")
+				{
+					return false;
+				}
+			}
+
 			if (descriptionBlock.StartsWith("people ")
-				|| descriptionBlock.StartsWith("man ")
-				|| descriptionBlock.StartsWith("a man ")
-				|| descriptionBlock.StartsWith("woman ")
-				|| descriptionBlock.StartsWith("a woman ")
-				|| descriptionBlock.StartsWith("two people ")
-				|| descriptionBlock.StartsWith("two women ")
-				|| descriptionBlock.StartsWith("two men ")
-				|| descriptionBlock.StartsWith("three people ")
-				|| descriptionBlock.StartsWith("three women ")
-				|| descriptionBlock.StartsWith("three men ")
-				|| descriptionBlock.StartsWith("four people ")
-				|| descriptionBlock.StartsWith("four women ")
-				|| descriptionBlock.StartsWith("four men "))
+				|| descriptionBlock.StartsWith("person ")
+				|| descriptionBlock.StartsWith("woman "))
 			{
 				return false;
 			}
@@ -492,20 +697,50 @@ namespace NPGallery
 
 		protected override string GetAuthor(string name, string lang, out Creator creator)
 		{
+			string organization = "";
 			int italicStartIndex = name.IndexOf("<i>");
 			if (italicStartIndex >= 0)
 			{
 				int italicEndIndex = name.IndexOf("</i>", italicStartIndex);
-				string organization = name.SubstringRange(italicStartIndex + "<i>".Length, italicEndIndex - 1);
-				name = name.Substring(italicStartIndex).TrimEnd();
+				organization = name.SubstringRange(italicStartIndex + "<i>".Length, italicEndIndex - 1);
+				name = name.Substring(0, italicStartIndex - 1).TrimEnd();
 			}
 
-			return base.GetAuthor(name, lang, out creator);
+			string niceAuthor = base.GetAuthor(name, lang, out creator);
+			if (!string.IsNullOrEmpty(organization))
+			{
+				niceAuthor += " (''" + organization + "'')";
+			}
+			return niceAuthor;
 		}
 
 		protected override Uri GetImageUri(string key, Dictionary<string, string> metadata)
 		{
-			return new Uri(string.Format(ImageUriFormat, key));
+			string url = string.Format(ImageUriFormat, key) + "original" + GetImageExtension(key, metadata);
+			return new Uri(url);
+		}
+
+		protected override string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
+		{
+			return Path.ChangeExtension(base.GetImageCacheFilename(key, metadata), GetImageExtension(key, metadata));
+		}
+
+		protected override string GetImageCroppedFilename(string key, Dictionary<string, string> metadata)
+		{
+			return Path.ChangeExtension(base.GetImageCroppedFilename(key, metadata), GetImageExtension(key, metadata));
+		}
+
+		private string GetImageExtension(string key, Dictionary<string, string> metadata)
+		{
+			string originalFileName;
+			if (metadata.TryGetValue("Original File Name", out originalFileName))
+			{
+				return Path.GetExtension(originalFileName);
+			}
+			else
+			{
+				return ".jpg";
+			}
 		}
 
 		protected override string GetTitle(string key, Dictionary<string, string> metadata)

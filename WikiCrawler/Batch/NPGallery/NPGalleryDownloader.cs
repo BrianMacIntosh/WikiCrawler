@@ -10,6 +10,8 @@ namespace NPGallery
 
 		private List<NPGalleryAsset> m_allAssets = new List<NPGalleryAsset>();
 
+		public const int Version = 3;
+
 		public NPGalleryDownloader(string key)
 			: base(key)
 		{
@@ -41,9 +43,9 @@ namespace NPGallery
 
 		protected override Dictionary<string, string> ParseMetadata(string pageContent)
 		{
-			const string keyTagOpen = "<label class=\"col-md-3 col-sm-3 text-right\">";
+			const string keyTagOpen = "<label class=\"col-md-3 col-sm-3"; // text-right\">
 			const string keyTagClose = "</label>";
-			const string valueTagOpen = "<div class=\"col-md-7 col-sm-7 text-left\">";
+			const string valueTagOpen = "<div class=\"col-md-7 col-sm-7"; // text-left\">
 			const string valueTagClose = "</div>";
 
 			int readHead = pageContent.IndexOf("<!-- Metadata (Middle) Section -->");
@@ -56,7 +58,7 @@ namespace NPGallery
 				{
 					break;
 				}
-				keyStartIndex += keyTagOpen.Length;
+				keyStartIndex = pageContent.IndexOf('>', keyStartIndex) + 1;
 				int keyEndIndex = pageContent.IndexOf(keyTagClose, keyStartIndex); //actually 1 past the end
 				string key = pageContent.Substring(keyStartIndex, keyEndIndex - keyStartIndex).TrimEnd(':');
 
@@ -65,7 +67,7 @@ namespace NPGallery
 				{
 					throw new UWashException("key '" + key + "' had no value");
 				}
-				valueStartIndex += valueTagOpen.Length;
+				valueStartIndex = pageContent.IndexOf('>', valueStartIndex) + 1;
 				int valueEndIndex = pageContent.IndexOf(valueTagClose, valueStartIndex); //actually 1 past the end
 				string value = pageContent.Substring(valueStartIndex, valueEndIndex - valueStartIndex);
 
@@ -76,25 +78,48 @@ namespace NPGallery
 
 			// get albums
 			int groupsIndex = pageContent.IndexOf("<!-- Groups Section -->", readHead);
-			string albums = "";
+			string related = "";
 			if (groupsIndex >= 0)
 			{
-				string groupStartString = "<p style=\"font-size:small\" data-toggle=\"tooltip\" data-placement=\"left\" title=\"";
-				int groupStartIndex = groupsIndex;
+				string albumStartString = "<a href=\"/SearchResults/albumid/";
+				string assetStartString = "<a href=\"/AssetDetail/";
+				string preTitleString = "<p style=\"font-size:small\" data-toggle=\"tooltip\" data-placement=\"left\" title=\"";
+				int searchIndex = groupsIndex;
 				while (true)
 				{
-					groupStartIndex = pageContent.IndexOf(groupStartString, groupStartIndex + 1);
-					if (groupStartIndex < 0)
+					int albumIndex = pageContent.IndexOf(albumStartString, searchIndex + 1);
+					int assetIndex = pageContent.IndexOf(assetStartString, searchIndex + 1);
+					string assetType;
+					if (albumIndex >= 0 && (assetIndex < 0 || albumIndex < assetIndex))
+					{
+						assetType = "Album";
+						searchIndex = albumIndex + albumStartString.Length;
+					}
+					else if (assetIndex >= 0)
+					{
+						assetType = "Asset";
+						searchIndex = assetIndex + assetStartString.Length;
+					}
+					else
 					{
 						break;
 					}
-					int groupEndIndex = pageContent.IndexOf('"', groupStartIndex + groupStartString.Length);
-					int albumStartIndex = groupStartIndex + groupStartString.Length;
-					string album = pageContent.Substring(albumStartIndex, groupEndIndex - albumStartIndex);
-					albums = StringUtility.Join("|", albums, album);
+					int idEnd = pageContent.IndexOf('?', searchIndex);
+					string assetId = pageContent.Substring(searchIndex, idEnd - searchIndex);
+					searchIndex = idEnd;
+					searchIndex = pageContent.IndexOf(preTitleString, searchIndex + 1);
+					if (searchIndex < 0)
+					{
+						break;
+					}
+					int groupEndIndex = pageContent.IndexOf('"', searchIndex + preTitleString.Length);
+					int albumStartIndex = searchIndex + preTitleString.Length;
+					string title = pageContent.Substring(albumStartIndex, groupEndIndex - albumStartIndex);
+					related = StringUtility.Join("|", related, assetId + "|" + assetType + "|" + title);
 				}
 			}
-			metadata["Albums"] = albums;
+			metadata["~Related"] = related;
+			metadata["~Version"] = Version.ToString();
 
 			return metadata;
 		}

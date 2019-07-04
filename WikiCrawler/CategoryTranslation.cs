@@ -381,15 +381,15 @@ namespace WikiCrawler
 
 		public static IEnumerable<string> TranslateTagCategory(string input)
 		{
-			if (string.IsNullOrEmpty(input)) return null;
+			if (string.IsNullOrWhiteSpace(input)) return null;
+
+			input = input.Trim();
 
 			IEnumerable<string> existingMapping = GetMappedCategories(input);
 			if (existingMapping != null)
 			{
 				return existingMapping;
 			}
-
-			input = input.Trim();
 
 			//does it look like it has a parent?
 			if (input.Contains('(') && input.EndsWith(")"))
@@ -428,8 +428,14 @@ namespace WikiCrawler
 		{
 			string catname = input.Trim(s_trim);
 
-			//Check if this category exists literally
-			catname = TryMapCategory0(api, input);
+			// fix case
+			if (catname.All(ch => !char.IsUpper(ch)))
+			{
+				catname = catname.ToTitleCase();
+			}
+
+			// Check if this category exists literally
+			catname = TryMapCategory0(api, catname);
 			if (!string.IsNullOrEmpty(catname)) return catname;
 
 			//Failed to map
@@ -476,6 +482,14 @@ namespace WikiCrawler
 
 				//Exact match on first word
 				catname = TryMapCategoryFinal(api, split[0], false);
+				if (!string.IsNullOrEmpty(catname)) return catname;
+			}
+			else
+			{
+				catname = TryMapCategoryFinal(api, input + "s", false);
+				if (!string.IsNullOrEmpty(catname)) return catname;
+
+				catname = TryMapCategoryFinal(api, input + "es", false);
 				if (!string.IsNullOrEmpty(catname)) return catname;
 			}
 

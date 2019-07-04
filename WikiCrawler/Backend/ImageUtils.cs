@@ -35,11 +35,14 @@ public static class ImageUtils
 	{
 		FIBITMAP raw = FreeImage.Load(FREE_IMAGE_FORMAT.FIF_JPEG, sourceFile, FREE_IMAGE_LOAD_FLAGS.DEFAULT);
 		FIBITMAP bitmap = FreeImage.ConvertTo32Bits(raw);
+		FreeImage.Unload(raw);
 
 		int width = (int)FreeImage.GetWidth(bitmap);
 		int height = (int)FreeImage.GetHeight(bitmap);
 
 		FreeImage.JPEGCrop(sourceFile, outFile, 0, 0, width - 1, height - amt - 1);
+
+		FreeImage.Unload(bitmap);
 	}
 
 	/// <summary>
@@ -50,11 +53,15 @@ public static class ImageUtils
 	{
 		FIBITMAP raw = FreeImage.Load(FREE_IMAGE_FORMAT.FIF_JPEG, sourceFile, FREE_IMAGE_LOAD_FLAGS.DEFAULT);
 		FIBITMAP bitmap = FreeImage.ConvertTo32Bits(raw);
+		FreeImage.Unload(raw);
 
 		int width = (int)FreeImage.GetWidth(bitmap);
 		int height = (int)FreeImage.GetHeight(bitmap);
 
 		int bottomBorder = GetBottomBorder(bitmap, 0xffffffff, 0.985f, 15);
+
+		FreeImage.Unload(bitmap);
+
 		if (bottomBorder >= 4 && bottomBorder <= 9)
 		{
 			return FreeImage.JPEGCrop(sourceFile, outFile, 0, 0, width, height - 30);
@@ -84,6 +91,7 @@ public static class ImageUtils
 	{
 		FIBITMAP raw = FreeImage.Load(FREE_IMAGE_FORMAT.FIF_JPEG, sourceFile, FREE_IMAGE_LOAD_FLAGS.DEFAULT);
 		FIBITMAP bitmap = FreeImage.ConvertTo32Bits(raw);
+		FreeImage.Unload(raw);
 
 		int width = (int)FreeImage.GetWidth(bitmap);
 		int height = (int)FreeImage.GetHeight(bitmap);
@@ -116,6 +124,8 @@ public static class ImageUtils
 		{
 			left = GetLeftBorder(bitmap, target, percentage, leeway);
 		}
+
+		FreeImage.Unload(bitmap);
 
 		if (left == 0 && right == width && bottom == 0 && top == height)
 		{

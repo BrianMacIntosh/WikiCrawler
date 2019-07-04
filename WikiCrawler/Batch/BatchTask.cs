@@ -6,7 +6,6 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using WikiCrawler;
 
 public abstract class BatchTask
@@ -26,17 +25,17 @@ public abstract class BatchTask
 		get { return Path.Combine(Configuration.DataDirectory, m_projectKey); }
 	}
 
-	protected string GetImageCacheFilename(string key)
+	protected virtual string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
 	{
 		return Path.Combine(ImageCacheDirectory, key + ".jpg");
 	}
 
-	protected string GetImageCroppedFilename(string key)
+	protected virtual string GetImageCroppedFilename(string key, Dictionary<string, string> metadata)
 	{
 		return Path.Combine(ImageCacheDirectory, key + "_cropped.jpg");
 	}
 
-	protected string GetMetadataCacheFilename(string key)
+	protected virtual string GetMetadataCacheFilename(string key)
 	{
 		return Path.Combine(MetadataCacheDirectory, key + ".json");
 	}

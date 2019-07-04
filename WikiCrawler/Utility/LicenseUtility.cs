@@ -10,6 +10,11 @@ using System.Threading.Tasks;
 public static class LicenseUtility
 {
 	/// <summary>
+	/// A very safe estimate of the lifetime of an author after creating a work, used if the deathyear is no known.
+	/// </summary>
+	private const int SafeLifetimeYears = 80;
+
+	/// <summary>
 	/// Returns true if the specified country can use the EU no-author license.
 	/// </summary>
 	private static bool UseEUNoAuthor(string country)
@@ -89,9 +94,10 @@ public static class LicenseUtility
 	{
 		if (pubCountry == "USA")
 		{
+			pubCountry = "US";
 			if (pubYear < (DateTime.Now.Year - 95))
 			{
-				return "{{PD-US-expired}}";
+				return "{{PD-US-expired|country=" + pubCountry + "}}";
 			}
 			else
 			{
@@ -150,7 +156,9 @@ public static class LicenseUtility
 		}
 		else if (authorDeathYear.HasValue)
 		{
-			canUsePDOldExpired = (DateTime.Now.Year - authorDeathYear.Value) > GetPMADuration(pubCountry);
+			canUsePDOldExpired = (DateTime.Now.Year - authorDeathYear.Value) > GetPMADuration(pubCountry)
+				// estimate for authors with unknown deathyear
+				|| DateTime.Now.Year - (pubYear + SafeLifetimeYears) > GetPMADuration(pubCountry);
 		}
 
 		if (canUsePDOldExpired && pubYear < (DateTime.Now.Year - 95))
@@ -159,9 +167,17 @@ public static class LicenseUtility
 			{
 				return "{{PD-old-auto-expired|deathyear=" + authorDeathYear.ToString() + "}}";
 			}
+			else if (pubCountry == "US" || pubCountry == "USA")
+			{
+				return "{{PD-US-expired|country=US}}";
+			}
+			else if (pubCountry == "FRA")
+			{
+				return "{{PD-US-expired}}{{PD-France}}";
+			}
 			else
 			{
-				return "{{PD-US-expired}}";
+				return "";
 			}
 		}
 		else

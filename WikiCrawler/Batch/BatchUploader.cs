@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -118,13 +119,9 @@ public abstract class BatchUploader : BatchTask
 
 	public void Upload(string key)
 	{
-		string metadataFile = GetMetadataCacheFilename(key);
-
 		Console.WriteLine("== BUILDING " + key);
 
-		Dictionary<string, string> metadata
-			= JsonConvert.DeserializeObject<Dictionary<string, string>>(
-				File.ReadAllText(metadataFile, Encoding.UTF8));
+		Dictionary<string, string> metadata = ParseMetadata(key);
 
 		Article art = new Article();
 		art.title = GetTitle(key, metadata).Replace("/", "");
@@ -160,7 +157,22 @@ public abstract class BatchUploader : BatchTask
 			throw new UWashException("upload disabled");
 		}
 
-		string imagePath = GetImageCacheFilename(key);
+		string imagePath = GetImageCacheFilename(key, metadata);
+
+		if (m_config.manualApproval)
+		{
+			WindowsUtility.FlashWindowEx(Process.GetCurrentProcess().MainWindowHandle);
+
+			// open up the preview and image
+			Process.Start(imagePath);
+			Process.Start(previewFile);
+
+			Console.Write("Approve? (y/n): ");
+			if (Console.ReadLine() != "y")
+			{
+				throw new UWashException("skipped");
+			}
+		}
 
 		//TODO: check for existing extension
 		art.title += Path.GetExtension(imagePath);
@@ -171,7 +183,12 @@ public abstract class BatchUploader : BatchTask
 		bool uploadSuccess;
 		try
 		{
-			uploadSuccess = Api.UploadFromLocal(art, imagePath, "(BOT) batch upload", true);
+			string editMessage = "Batch upload";
+			if (!string.IsNullOrEmpty(m_config.projectPage))
+			{
+				editMessage += " ([[" + m_config.projectPage + "]])";
+			}
+			uploadSuccess = Api.UploadFromLocal(art, imagePath, editMessage, true);
 		}
 		catch (DuplicateFileException e)
 		{
@@ -199,14 +216,14 @@ public abstract class BatchUploader : BatchTask
 			// failures in PostUpload will have to be fixed manually for now
 			m_succeeded.Add(key);
 
-			PostUpload(key, art);
+			PostUpload(key, metadata, art);
 		}
 		else
 		{
 			throw new UWashException("upload failed");
 		}
 
-		DeleteImageCache(key);
+		DeleteImageCache(key, metadata);
 	}
 
 	/// <summary>
@@ -229,11 +246,11 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// If the image for the specified item isn't cached, caches it.
 	/// </summary>
-	public void CacheImage(string key, Dictionary<string, string> metadata)
+	public virtual void CacheImage(string key, Dictionary<string, string> metadata)
 	{
 		if (m_config.allowImageDownload)
 		{
-			string imagepath = GetImageCacheFilename(key);
+			string imagepath = GetImageCacheFilename(key, metadata);
 			if (!File.Exists(imagepath))
 			{
 				Console.WriteLine("Downloading image: " + key);
@@ -244,15 +261,15 @@ public abstract class BatchUploader : BatchTask
 		}
 	}
 
-	private void DeleteImageCache(string key)
+	private void DeleteImageCache(string key, Dictionary<string, string> metadata)
 	{
-		string path = GetImageCacheFilename(key);
+		string path = GetImageCacheFilename(key, metadata);
 		if (File.Exists(path))
 		{
 			File.Delete(path);
 		}
 
-		path = GetImageCroppedFilename(key);
+		path = GetImageCroppedFilename(key, metadata);
 		if (File.Exists(path))
 		{
 			File.Delete(path);
@@ -269,6 +286,12 @@ public abstract class BatchUploader : BatchTask
 		{
 			File.Delete(path);
 		}
+	}
+
+	protected virtual Dictionary<string, string> ParseMetadata(string key)
+	{
+		string metadataFile = GetMetadataCacheFilename(key);
+		return JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(metadataFile, Encoding.UTF8));
 	}
 
 	/// <summary>
@@ -315,7 +338,7 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Run any additional logic after a successful upload (such as uploading a crop).
 	/// </summary>
-	protected virtual void PostUpload(string key, Article article)
+	protected virtual void PostUpload(string key, Dictionary<string, string> metadata, Article article)
 	{
 
 	}
@@ -397,12 +420,21 @@ public abstract class BatchUploader : BatchTask
 					first = first.Remove(first.Length - 3).Trim();
 				}
 
-				string result = first + " " + last;
-				if (!string.IsNullOrEmpty(suffix))
+				// expect first names to only have one word
+				//TODO: more verification that this is an actual name
+				if (first.Count((chr) => chr == ' ') == 0)
 				{
-					result += " " + suffix;
+					string result = first + " " + last;
+					if (!string.IsNullOrEmpty(suffix))
+					{
+						result += " " + suffix;
+					}
+					yield return result;
 				}
-				yield return result;
+				else
+				{
+					yield return authors[c];
+				}
 			}
 			else
 			{

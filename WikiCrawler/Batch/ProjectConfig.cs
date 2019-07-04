@@ -8,6 +8,7 @@ public class ProjectConfig
 	public string downloader = "UWash";
 	public string uploader = "UWash";
 
+	public string projectPage = "";
 	public string displayName = "";
 	public string informationTemplate = "Photograph";
 	public string sourceTemplate;
@@ -42,6 +43,7 @@ public class ProjectConfig
 	public int maxNew = int.MaxValue;
 	public int maxSuccesses = int.MaxValue;
 	public bool randomizeOrder = false;
+	public bool manualApproval = false;
 
 	[OnDeserialized]
 	internal void OnDeserializedMethod(StreamingContext context)
@@ -63,6 +65,13 @@ public class ProjectConfig
 			if (downloader == "UWash")
 			{
 				displayName = "<a href=\"https://commons.wikimedia.org/wiki/Commons:Batch_uploading/University_of_Washington_Digital_Collections\">UWash</a> - " + collectionName;
+			}
+		}
+		if (string.IsNullOrEmpty(projectPage))
+		{
+			if (downloader == "UWash")
+			{
+				projectPage = "Commons:Batch uploading/University of Washington Digital Collections";
 			}
 		}
 	}

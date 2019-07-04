@@ -52,6 +52,7 @@
     <Reference Include="System" />
     <Reference Include="System.configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Xml.Linq" />
@@ -73,6 +74,7 @@
     <Compile Include="Batch\NPGallery\NPGalleryDownloader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryUploader.cs" />
     <Compile Include="Batch\NPGallery\NPSDirectoryQuery.cs" />
+    <Compile Include="Batch\OEC\OecUploader.cs" />
     <Compile Include="Batch\ProjectConfig.cs" />
     <Compile Include="Utility\Exceptions\LicenseException.cs" />
     <Compile Include="Utility\Exceptions\RedownloadException.cs" />
@@ -87,7 +89,9 @@
     <Compile Include="Utility\CreatorUtility.cs" />
     <Compile Include="Utility\DateUtility.cs" />
     <Compile Include="Utility\Dimensions.cs" />
+    <Compile Include="Utility\HashSetUtility.cs" />
     <Compile Include="Utility\IListUtility.cs" />
+    <Compile Include="Utility\ImageProcessing\FloatColor.cs" />
     <Compile Include="Utility\ImageUtility.cs" />
     <Compile Include="Utility\LicenseUtility.cs" />
     <Compile Include="Utility\StringUtility.cs" />
@@ -99,8 +103,10 @@
     <Compile Include="Tropenmuseum.cs" />
     <Compile Include="Utility\Wayback.cs" />
     <Compile Include="Utility\Creator.cs" />
+    <Compile Include="Utility\WindowsUtility.cs" />
     <Compile Include="UWash\DataStructures\UWashFailure.cs" />
     <Compile Include="UWash\DataStructures\UWashProjectConfig.cs" />
+    <Compile Include="WatermarkRemoval.cs" />
     <Compile Include="Wikimedia\Date.cs" />
     <Compile Include="Wikimedia\DotNetWikiBot.cs" />
     <Compile Include="Old\Dsea.cs" />
