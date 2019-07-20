@@ -83,7 +83,7 @@
     <Compile Include="Batch\UWash\UWashUploader.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Credentials.cs" />
-    <Compile Include="FindCategoryCreators.cs" />
+    <Compile Include="Tasks\Commons\FindCategoryCreators.cs" />
     <Compile Include="Tasks\Commons\LinksNullEditor.cs" />
     <Compile Include="Tasks\MassDownloader.cs" />
     <Compile Include="Utility\CommonsUtility.cs" />
@@ -102,7 +102,7 @@
     <Compile Include="DetectLanguage.cs" />
     <Compile Include="Tasks\DropboxDownloader.cs" />
     <Compile Include="Tasks\Commons\RequestMassCatMove.cs" />
-    <Compile Include="Tropenmuseum.cs" />
+    <Compile Include="Batch\Tropenmuseum\Tropenmuseum.cs" />
     <Compile Include="Utility\Wayback.cs" />
     <Compile Include="Utility\Creator.cs" />
     <Compile Include="Utility\WindowsUtility.cs" />
@@ -126,7 +126,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Tasks\Commons\SingleUpload.cs" />
     <Compile Include="Tasks\Commons\TakenOnTemplate.cs" />
-    <Compile Include="TaxonCategoryUpdate.cs" />
+    <Compile Include="Tasks\Commons\TaxonCategoryUpdate.cs" />
     <Compile Include="UploadFromWeb.cs" />
     <Compile Include="UploadFromZorger.cs" />
     <Compile Include="UWash\BatchController.cs" />
@@ -134,7 +134,7 @@
     <Compile Include="UWash\UWashLang.cs" />
     <Compile Include="Wikimedia\DuplicateFileException.cs" />
     <Compile Include="Wikimedia\Wikidata.cs" />
-    <Compile Include="WikidataCreatorPropagation.cs" />
+    <Compile Include="Tasks\Commons\WikidataCreatorPropagation.cs" />
     <Compile Include="Wikimedia\Wikimedia.cs" />
     <Compile Include="Wikimedia\WikimediaCategoryTree.cs" />
     <Compile Include="Wikimedia\WikimediaException.cs" />

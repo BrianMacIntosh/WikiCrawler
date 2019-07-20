@@ -39,10 +39,8 @@ public abstract class BatchUploader : BatchTask
 		{
 			Directory.CreateDirectory(ImageCacheDirectory);
 		}
-
-		Console.WriteLine("Logging in...");
-		Credentials credentials = Configuration.LoadCredentials();
-		Api.LogIn(credentials.Username, credentials.Password);
+		
+		Api.LogIn();
 
 		CreatorUtility.Initialize(Api);
 	}

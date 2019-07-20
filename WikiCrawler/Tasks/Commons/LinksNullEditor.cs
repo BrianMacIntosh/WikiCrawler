@@ -13,10 +13,8 @@ namespace WikiCrawler
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
 			WikiApi Api = new WikiApi(commons);
-
-			Console.WriteLine("Logging in...");
-			Credentials credentials = Configuration.LoadCredentials();
-			Api.LogIn(credentials.Username, credentials.Password);
+			
+			Api.LogIn();
 
 			string[] pages = new string[]
 			{
@@ -48,10 +46,7 @@ namespace WikiCrawler
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
 			WikiApi Api = new WikiApi(commons);
-
-			Console.WriteLine("Logging in...");
-			Credentials credentials = Configuration.LoadCredentials();
-			Api.LogIn(credentials.Username, credentials.Password);
+			Api.LogIn();
 
 			foreach (Article article in Api.GetCategoryFiles("Category:Images from the Asahel Curtis Photo Company Photographs Collection"))
 			{
@@ -79,10 +74,7 @@ namespace WikiCrawler
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
 			WikiApi Api = new WikiApi(commons);
-
-			Console.WriteLine("Logging in...");
-			Credentials credentials = Configuration.LoadCredentials();// new Credentials("BMacZero", "Bammer001");
-			Api.LogIn(credentials.Username, credentials.Password);
+			Api.LogIn();
 
 			string startTime = "2018-09-22 16:00:00"; //very generous
 			string endTime = "2018-09-22 17:20:00";

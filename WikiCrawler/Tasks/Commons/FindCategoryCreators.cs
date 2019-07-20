@@ -14,10 +14,8 @@ namespace WikiCrawler
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
 			WikiApi Api = new WikiApi(commons);
-
-			Console.WriteLine("Logging in...");
-			Credentials credentials = Configuration.LoadCredentials();
-			Api.LogIn(credentials.Username, credentials.Password);
+			
+			Api.LogIn();
 
 			foreach (Article article in Api.GetCategoryEntries("Category:Ships by name (flat list)", "subcat"))
 			{

@@ -361,6 +361,13 @@ namespace Wikimedia
 			return request;
 		}
 
+		public bool LogIn()
+		{
+			Console.WriteLine("Logging in to " + Domain + "...");
+			WikiCrawler.Credentials credentials = WikiCrawler.Configuration.LoadCredentials();
+			return LogIn(credentials.Username, credentials.Password);
+		}
+
 		public bool LogIn(string user = null, string pass = null)
 		{
 			Console.WriteLine("Logging in to '" + Domain + "':");

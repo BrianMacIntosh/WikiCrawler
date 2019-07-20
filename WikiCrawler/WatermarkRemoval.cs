@@ -25,9 +25,7 @@ public class WatermarkRemoval
 
 	public void Download()
 	{
-		Console.WriteLine("Logging in...");
-		Credentials credentials = Configuration.LoadCredentials();
-		Api.LogIn(credentials.Username, credentials.Password);
+		Api.LogIn();
 
 		//Wikimedia.Article aarticle = Api.GetPage("File:\"Bokau\" ali \"šmon\" (z napisom W Bacus in okraski) za vino, Šlomberk 1953.jpg", "imageinfo", "iilimit=50&iiprop=comment%7Curl");
 
