@@ -7,6 +7,9 @@ using System.Text.RegularExpressions;
 
 namespace WikiCrawler
 {
+	/// <summary>
+	/// Adds "Template:Taken on" to the dates of appropriate files in specified categories.
+	/// </summary>
 	public class TakenOnTemplate
 	{
 		private static string[] categories = new string[]
