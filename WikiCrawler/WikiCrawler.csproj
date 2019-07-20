@@ -72,6 +72,7 @@
     <Compile Include="Batch\NPGallery\NPGalleryAssetListDownloader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryData.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryDownloader.cs" />
+    <Compile Include="Batch\NPGallery\NPGalleryFixUp.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryUploader.cs" />
     <Compile Include="Batch\NPGallery\NPSDirectoryQuery.cs" />
     <Compile Include="Batch\OEC\OecUploader.cs" />
@@ -89,6 +90,7 @@
     <Compile Include="Utility\CreatorUtility.cs" />
     <Compile Include="Utility\DateUtility.cs" />
     <Compile Include="Utility\Dimensions.cs" />
+    <Compile Include="Utility\Exceptions\UploadDeclinedException.cs" />
     <Compile Include="Utility\HashSetUtility.cs" />
     <Compile Include="Utility\IListUtility.cs" />
     <Compile Include="Utility\ImageProcessing\FloatColor.cs" />

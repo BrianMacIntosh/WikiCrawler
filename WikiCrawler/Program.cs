@@ -51,6 +51,9 @@ namespace WikiCrawler
 					case "batchrebuild":
 						BatchController.RebuildSuccesses();
 						break;
+					case "batchrevalidate":
+						BatchController.RevalidateDownloads();
+						break;
 					case "batchdownall":
 						BatchController.DownloadAll();
 						break;

@@ -111,7 +111,7 @@ namespace Dsal
 			return page;
 		}
 
-		protected override Uri GetImageUri(string key, Dictionary<string, string> metadata)
+		public override Uri GetImageUri(string key, Dictionary<string, string> metadata)
 		{
 			return new Uri(metadata["ImageUrl"]);
 		}

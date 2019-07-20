@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Security.Cryptography;
 using System.Web;
 using WikiCrawler;
 
@@ -14,7 +15,9 @@ namespace NPGallery
 		{
 			"Title",
 			"Photographer",
+			"Author",
 			"Photographer, attributed",
+			"Creator, attributed",
 			"PhotoCredit",
 			"Creator",
 			"Publisher",
@@ -32,8 +35,10 @@ namespace NPGallery
 			"Subject",
 			"Description",
 			"Image Details",
+			"Table Of Contents",
 			"Comment",
 			"AltText",
+			"Online Links to Resource",
 			"Camera Information",
 			"Exposure",
 			"Focal Length",
@@ -67,6 +72,7 @@ namespace NPGallery
 			"Related Resources", //facebook page
 			"Related Portals",
 			"Original NPS Focus Uploader",
+			"uploader",
 			"NPGallery Uploader",
 			"Source Information Description",
 			"Source Location",
@@ -78,10 +84,14 @@ namespace NPGallery
 		{
 			"Permission must be secured from the individual copyright owners to reproduce any copyrighted materials contained within this website.",
 			"Permission must be secured from the individual copyright owners to reproduce any copyrighted materials contained within this website. Digital assets without any copyright restrictions are public domain.",
-			"This digital asset is provided for &#39;fair use&#39; purposes. The National Park Service is not necessarily the holder of the original copyright and is not legally liable for infringement when materials are wrongfully used.",
+			"This digital asset is provided for 'fair use' purposes. The National Park Service is not necessarily the holder of the original copyright and is not legally liable for infringement when materials are wrongfully used.",
 
 			//TODO: make a license to use with this
-			"To the best of our knowledge we believe this image to by copyright free and in the public domain."
+			"To the best of our knowledge we believe this image to by copyright free and in the public domain.",
+
+			"National Park Service",
+			"NPS Photo",
+			"NPS"
 		};
 
 		private NPGalleryDownloader m_downloader;
@@ -98,9 +108,25 @@ namespace NPGallery
 			// we'll need to redownload data when the Albums key is missing
 			m_downloader = new NPGalleryDownloader(key);
 			m_downloader.HeartbeatEnabled = false;
-		}
 
+			// get the hash of some error files
+			using (MD5 md5 = MD5.Create())
+			{
+				using (FileStream stream = File.OpenRead(Path.Combine(ProjectDataDirectory, "file-system-error.png")))
+				{
+					m_fileSystemErrorHash = md5.ComputeHash(stream);
+				}
+				using (FileStream stream = File.OpenRead(Path.Combine(ProjectDataDirectory, "database-error.png")))
+				{
+					m_databaseErrorHash = md5.ComputeHash(stream);
+				}
+			}
+		}
+		
 		public static string[] KeywordSplitters = { "<br/>", "<br />", "<br>", "\r", "\n", "," };
+
+		private byte[] m_fileSystemErrorHash;
+		private byte[] m_databaseErrorHash;
 
 		public override int TotalKeyCount
 		{
@@ -125,13 +151,15 @@ namespace NPGallery
 			}
 
 			// make sure all keys are used
-			foreach (string dataKey in metadata.Keys)
+			/*foreach (string dataKey in metadata.Keys)
 			{
 				if (!m_usedKeys.Contains(dataKey))
 				{
 					throw new Exception("Unused key '" + dataKey + "'.");
 				}
-			}
+			}*/
+
+			string infoTemplate = m_config.informationTemplate;
 
 			string outValue;
 
@@ -148,12 +176,13 @@ namespace NPGallery
 			// check for different copyright text
 			if (metadata.TryGetValue("Copyright", out outValue))
 			{
-				if (!s_standardCopyrights.Contains(outValue))
+				if (!s_standardCopyrights.Contains(outValue)
+					&& !outValue.StartsWith("NPS Photo /"))
 				{
 					//TODO: make use of this info
 					if (!outValue.StartsWith("This digital asset is in the public domain."))
 					{
-						throw new Exception("Unrecognized copyright block");
+						//throw new Exception("Unrecognized copyright: '" + outValue + "'");
 					}
 				}
 			}
@@ -166,6 +195,10 @@ namespace NPGallery
 				authorString = GetAuthor(outValue, "", out creator);
 			}
 			else if (metadata.TryGetValue("Photographer, attributed", out outValue))
+			{
+				authorString = GetAuthor(outValue, "", out creator);
+			}
+			else if (metadata.TryGetValue("Creator, attributed", out outValue))
 			{
 				authorString = GetAuthor(outValue, "", out creator);
 			}
@@ -245,15 +278,6 @@ namespace NPGallery
 				}
 			}
 
-			// if the date has an accurate month, day, and year, use {{taken on|}}
-			if (m_config.informationTemplate == "Photograph"
-				&& DateUtility.IsExactDateModern(date)
-				// these are too frequently inaccurate
-				&& !date.EndsWith("-01-01") && !date.EndsWith("-1-1"))
-			{
-				date = "{{taken on|" + date + "}}";
-			}
-
 			string licenseTag = GetLicenseTag(authorString, creator, dateMetadata.LatestYear, m_config.defaultPubCountry);
 
 			if (string.IsNullOrEmpty(licenseTag))
@@ -276,9 +300,18 @@ namespace NPGallery
 			}
 			if (metadata.TryGetValue("Image Details", out outValue))
 			{
+				if (outValue.Contains("MapId:"))
+				{
+					infoTemplate = "Information";
+				}
+
 				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
 			}
 			if (metadata.TryGetValue("Description", out outValue))
+			{
+				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+			}
+			if (metadata.TryGetValue("Table Of Contents", out outValue))
 			{
 				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
 			}
@@ -307,7 +340,7 @@ namespace NPGallery
 			if (needScopeCheck)
 			{
 				//categories.Add("Category:Images from NPGallery to check for scope");
-				throw new Exception("Out of scope?");
+				throw new UploadDeclinedException("Out of scope?");
 			}
 
 			if (string.IsNullOrEmpty(licenseTag))
@@ -317,7 +350,11 @@ namespace NPGallery
 
 			if (metadata.TryGetValue("Constraints Information", out outValue))
 			{
-				if (!outValue.Contains(", Code: ")
+				if (outValue == "Restrictions apply on use and/or reproduction")
+				{
+
+				}
+				else if (!outValue.Contains(", Code: ")
 					&& outValue != "Public domain"
 					&& outValue != "Public domain:Full Granting Rights") //TODO: use this
 				{
@@ -504,11 +541,22 @@ namespace NPGallery
 					string systemValue = StringUtility.CleanHtml(lineSplit[1]).Trim();
 					if (systemValue.StartsWith("Mission 2000 record no."))
 					{
-						throw new Exception("Document");
+						throw new UploadDeclinedException("Document");
 					}
 					otherFields += "\n{{Information field|name=" + systemKey  + "|value=" + systemValue + "}}";
 				}
 			}
+
+			// display misc other keys
+			foreach (KeyValuePair<string, string> kv in metadata)
+			{
+				if (!m_usedKeys.Contains(kv.Key))
+				{
+					otherFields += "\n{{Information field|name=" + kv.Key + "|value={{en|" + kv.Value + "}}}}";
+				}
+			}
+
+			string otherVersions = "";
 			
 			if (metadata.TryGetValue("~Related", out outValue) && !string.IsNullOrEmpty(outValue))
 			{
@@ -537,6 +585,19 @@ namespace NPGallery
 				if (relatedAlbums.Count > 0)
 				{
 					otherFields += "\n{{Information field|name=Album(s)|value={{en|" + string.Join("; ", relatedAlbums) + "}}}}";
+				}
+				else if (related.Length == 3)
+				{
+					int i = 0;
+					string relatedId = related[i];
+					string relatedType = related[i + 1];
+					string relatedTitle = related[i + 2];
+					Dictionary<string, string> relatedMetadata = ParseMetadata(relatedId);
+					string uploadTitle = GetTitle(relatedId, relatedMetadata).Replace(s_badTitleCharacters, "");
+					string imagePath = GetImageCacheFilename(key, metadata);
+					uploadTitle = Path.ChangeExtension(uploadTitle, Path.GetExtension(imagePath));
+					otherVersions = StringUtility.Join("\n", otherVersions, uploadTitle);
+					//TODO: fix up backs that were uploaded before this (https://commons.wikimedia.org/wiki/File:Colonel_Joseph_Tilford_in_Dress_Uniform_with_a_Van_Dyke_Beard_(468738dfc49648328ef0b75594aa4d20).tif)
 				}
 			}
 
@@ -585,7 +646,7 @@ namespace NPGallery
 
 			if (categories.Contains("Category:Graves") && parkCodes.Contains("MACA"))
 			{
-				throw new Exception("Gravestone");
+				throw new UploadDeclinedException("Gravestone");
 			}
 
 			// now that this looks like a success, redownload and start over
@@ -603,24 +664,78 @@ namespace NPGallery
 
 			string catCheckTag = GetCheckCategoriesTag(categories.Count);
 			categories.Add(m_config.checkCategory);
+			
+			string author;
+			if (metadata.TryGetValue("Author", out author))
+			{
+				if (string.IsNullOrEmpty(authorString))
+				{
+					infoTemplate = "Information";
+					authorString = author;
+				}
+				else
+				{
+					throw new Exception("Multiple author fields present");
+				}
+			}
+
+			// if the date has an accurate month, day, and year, use {{taken on|}}
+			if (infoTemplate == "Photograph"
+				&& DateUtility.IsExactDateModern(date)
+				// these are too frequently inaccurate
+				&& !date.EndsWith("-01-01") && !date.EndsWith("-1-1"))
+			{
+				date = "{{taken on|" + date + "}}";
+			}
 
 			string page = catCheckTag + "\n"
 				+ "=={{int:filedesc}}==\n"
-				+ "{{Photograph\n"
-				+ "|photographer=" + authorString + "\n";
-			if (!string.IsNullOrEmpty(publisher))
+				+ "{{" + infoTemplate + "\n";
+			if (infoTemplate == "Photograph")
 			{
-				page += "|publisher={{en|" + publisher + "}}\n";
+				page += "|photographer=" + authorString + "\n"
+					+ "|title={{en|" + metadata["Title"] + "}}\n"
+					+ "|depicted place={{en|" + location + "}}\n"
+					+ "|accession number={{NPGallery-accession|" + key + "}}\n";
+				if (!string.IsNullOrEmpty(publisher))
+				{
+					page += "|publisher={{en|" + publisher + "}}\n";
+				}
 			}
-			page += "|title={{en|" + metadata["Title"] + "}}\n"
-				+ "|description=\n"
+			else
+			{
+				page += "|author=" + authorString + "\n";
+				otherFields += "\n{{Information field|name=Depicted Place|value={{en|" + location + "}}}}"
+					+ "\n{{Information field|name=Accession Number|value={{NPGallery-accession|" + key + "}}}}";
+				if (!string.IsNullOrEmpty(publisher))
+				{
+					otherFields += "\n{{Information field|name=Publisher|value={{en|" + publisher + "}}}}";
+				}
+			}
+			page += "|description=\n"
 				+ "{{en|" + description + "}}\n"
-				+ "|depicted place={{en|" + location + "}}\n"
 				+ "|date=" + date + "\n"
-				+ "|accession number={{NPGallery-accession|" + key + "}}\n"
-				+ "|source=" + m_config.sourceTemplate + "\n"
-				+ "|permission=" + licenseTag + "\n"
-				+ "|other_versions=\n"
+				+ "|source=" + m_config.sourceTemplate + "\n";
+
+			if (metadata.TryGetValue("Online Links to Resource", out outValue))
+			{
+				if (infoTemplate == "Photograph")
+				{
+					page += "|references=" + outValue + "\n";
+				}
+				else
+				{
+					otherFields += "\n{{Information field|name=References|value={{en|" + outValue + "}}}}";
+				}
+			}
+
+			if (!string.IsNullOrEmpty(otherVersions))
+			{
+				otherVersions = "<gallery>" + otherVersions + "</gallery>";
+			}
+
+			page += "|permission=" + licenseTag + "\n"
+				+ "|other_versions=" + otherVersions + "\n"
 				+ "|other_fields=" + otherFields + "\n";
 			if (!string.IsNullOrEmpty(photoInfo))
 			{
@@ -695,6 +810,27 @@ namespace NPGallery
 			NPSDirectoryQuery.SaveOut();
 		}
 
+		public override void ValidateDownload(string imagePath)
+		{
+			base.ValidateDownload(imagePath);
+
+			using (MD5 md5 = MD5.Create())
+			{
+				using (FileStream stream = File.OpenRead(imagePath))
+				{
+					byte[] hash = md5.ComputeHash(stream);
+					if (hash.SequenceEqual(m_fileSystemErrorHash))
+					{
+						throw new Exception("File System Error");
+					}
+					if (hash.SequenceEqual(m_databaseErrorHash))
+					{
+						throw new Exception("File Database Error");
+					}
+				}
+			}
+		}
+
 		protected override string GetAuthor(string name, string lang, out Creator creator)
 		{
 			string organization = "";
@@ -714,18 +850,18 @@ namespace NPGallery
 			return niceAuthor;
 		}
 
-		protected override Uri GetImageUri(string key, Dictionary<string, string> metadata)
+		public override Uri GetImageUri(string key, Dictionary<string, string> metadata)
 		{
 			string url = string.Format(ImageUriFormat, key) + "original" + GetImageExtension(key, metadata);
 			return new Uri(url);
 		}
 
-		protected override string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
+		public override string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
 		{
 			return Path.ChangeExtension(base.GetImageCacheFilename(key, metadata), GetImageExtension(key, metadata));
 		}
 
-		protected override string GetImageCroppedFilename(string key, Dictionary<string, string> metadata)
+		public override string GetImageCroppedFilename(string key, Dictionary<string, string> metadata)
 		{
 			return Path.ChangeExtension(base.GetImageCroppedFilename(key, metadata), GetImageExtension(key, metadata));
 		}
@@ -745,7 +881,23 @@ namespace NPGallery
 
 		protected override string GetTitle(string key, Dictionary<string, string> metadata)
 		{
-			return HttpUtility.HtmlDecode(metadata["Title"]) + " (" + key + ")";
+			string title = HttpUtility.HtmlDecode(metadata["Title"]);
+
+			if (title.Length > 129)
+			{
+				//truncate the title to 128 characters on a word boundary
+				int lastWordEnd = 0;
+				for (int c = 0; c < 128; c++)
+				{
+					if (!char.IsLetterOrDigit(title[c + 1]) && char.IsLetterOrDigit(title[c]))
+						lastWordEnd = c;
+				}
+				title = title.Remove(lastWordEnd + 1);
+			}
+
+			title += " (" + key + ")";
+
+			return title;
 		}
 	}
 }

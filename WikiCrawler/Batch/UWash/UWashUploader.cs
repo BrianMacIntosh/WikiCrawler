@@ -118,7 +118,7 @@ namespace UWash
 			EasyWeb.SetDelayForDomain(new Uri("https://commons.wikimedia.org/"), 0.5f);
 		}
 
-		protected override Uri GetImageUri(string key, Dictionary<string, string> metadata)
+		public override Uri GetImageUri(string key, Dictionary<string, string> metadata)
 		{
 			return new Uri(string.Format(ImageUrlFormat, key));
 		}

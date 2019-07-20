@@ -210,17 +210,17 @@ namespace OEC
 			}
 		}
 
-		protected override string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
+		public override string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
 		{
 			return Path.ChangeExtension(base.GetImageCacheFilename(key, metadata), ".svg");
 		}
 
-		protected override string GetMetadataCacheFilename(string key)
+		public override string GetMetadataCacheFilename(string key)
 		{
 			return Path.ChangeExtension(base.GetMetadataCacheFilename(key), ".svg");
 		}
 
-		protected override Uri GetImageUri(string key, Dictionary<string, string> metadata)
+		public override Uri GetImageUri(string key, Dictionary<string, string> metadata)
 		{
 			return new Uri("");
 		}

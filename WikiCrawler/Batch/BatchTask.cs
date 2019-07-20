@@ -10,32 +10,32 @@ using WikiCrawler;
 
 public abstract class BatchTask
 {
-	protected string ImageCacheDirectory
+	public string ImageCacheDirectory
 	{
 		get { return Path.Combine(ProjectDataDirectory, "images"); }
 	}
 
-	protected string MetadataCacheDirectory
+	public string MetadataCacheDirectory
 	{
 		get { return Path.Combine(ProjectDataDirectory, "data_cache"); }
 	}
 
-	protected string ProjectDataDirectory
+	public string ProjectDataDirectory
 	{
 		get { return Path.Combine(Configuration.DataDirectory, m_projectKey); }
 	}
 
-	protected virtual string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
+	public virtual string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
 	{
 		return Path.Combine(ImageCacheDirectory, key + ".jpg");
 	}
 
-	protected virtual string GetImageCroppedFilename(string key, Dictionary<string, string> metadata)
+	public virtual string GetImageCroppedFilename(string key, Dictionary<string, string> metadata)
 	{
 		return Path.Combine(ImageCacheDirectory, key + "_cropped.jpg");
 	}
 
-	protected virtual string GetMetadataCacheFilename(string key)
+	public virtual string GetMetadataCacheFilename(string key)
 	{
 		return Path.Combine(MetadataCacheDirectory, key + ".json");
 	}
@@ -71,6 +71,7 @@ public abstract class BatchTask
 		m_heartbeatData["nDownloaded"] = 0;
 		m_heartbeatData["nFailed"] = 0;
 		m_heartbeatData["nFailedLicense"] = 0;
+		m_heartbeatData["nDeclined"] = 0;
 		m_heartbeatData["terminate"] = false;
 
 		// load already-succeeded uploads

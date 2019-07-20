@@ -122,6 +122,37 @@ namespace WikiCrawler
 			succeeded.Sort();
 			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded, Formatting.Indented));
 		}
+
+		public static void RevalidateDownloads()
+		{
+			Console.Write("Project Key>");
+			string projectKey = Console.ReadLine();
+			string projectDir = Path.Combine(Configuration.DataDirectory, projectKey);
+
+			if (!Directory.Exists(projectDir))
+			{
+				Console.WriteLine("Project not found.");
+				return;
+			}
+
+			//TODO: don't deserialize this twice
+			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
+				File.ReadAllText(Path.Combine(projectDir, "config.json")));
+
+			BatchUploader uploader = CreateUploader(config.uploader, projectKey);
+			foreach (string file in Directory.GetFiles(uploader.ImageCacheDirectory))
+			{
+				Console.WriteLine(Path.GetFileName(file));
+				try
+				{
+					uploader.ValidateDownload(file);
+				}
+				catch (Exception e)
+				{
+					File.Delete(file);
+				}
+			}
+		}
 	}
 }
 

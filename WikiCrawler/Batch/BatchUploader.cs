@@ -14,17 +14,19 @@ public abstract class BatchUploader : BatchTask
 {
 	protected WikiApi Api = new WikiApi(new Uri("https://commons.wikimedia.org/"));
 
-	protected string PreviewDirectory
+	public string PreviewDirectory
 	{
 		get { return Path.Combine(ProjectDataDirectory, "preview"); }
 	}
 
-	protected string GetPreviewFileFilename(string key)
+	public string GetPreviewFileFilename(string key)
 	{
 		return Path.Combine(PreviewDirectory, key + ".txt");
 	}
 
 	private static WebClient s_client = new WebClient();
+
+	protected static string[] s_badTitleCharacters = new string[] { "/", "#" };
 
 	public BatchUploader(string key)
 		: base(key)
@@ -68,6 +70,7 @@ public abstract class BatchUploader : BatchTask
 				m_heartbeatData["nTotal"] = totalKeys;
 			}
 			int licenseFailures = 0;
+			int uploadDeclined = 0;
 			StartHeartbeat();
 
 			if (m_config.randomizeOrder)
@@ -89,17 +92,26 @@ public abstract class BatchUploader : BatchTask
 					{
 						licenseFailures++;
 					}
+					if (e is UploadDeclinedException)
+					{
+						uploadDeclined++;
+					}
 					Console.WriteLine(e.Message);
-					string failMessage = key.PadLeft(5) + "\t" + e.Message;
-					m_failMessages.Add(failMessage);
+					if (!(e is LicenseException)
+						&& !(e is UploadDeclinedException))
+					{
+						string failMessage = key.PadLeft(5) + "\t" + e.Message;
+						m_failMessages.Add(failMessage);
+					}
 				}
 
 				lock (m_heartbeatData)
 				{
 					m_heartbeatData["nCompleted"] = m_succeeded.Count;
-					m_heartbeatData["nDownloaded"] = metadataFiles.Count - m_failMessages.Count - (m_succeeded.Count - initialSucceeded);
-					m_heartbeatData["nFailed"] = m_failMessages.Count - licenseFailures;
+					m_heartbeatData["nDownloaded"] = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
+					m_heartbeatData["nFailed"] = m_failMessages.Count;
 					m_heartbeatData["nFailedLicense"] = licenseFailures;
+					m_heartbeatData["nDeclined"] = uploadDeclined;
 				}
 
 				if (File.Exists(stopFile))
@@ -124,7 +136,7 @@ public abstract class BatchUploader : BatchTask
 		Dictionary<string, string> metadata = ParseMetadata(key);
 
 		Article art = new Article();
-		art.title = GetTitle(key, metadata).Replace("/", "");
+		art.title = GetTitle(key, metadata).Replace(s_badTitleCharacters, "");
 		art.revisions = new Revision[1];
 		art.revisions[0] = new Revision();
 		art.revisions[0].text = BuildPage(key, metadata);
@@ -257,6 +269,15 @@ public abstract class BatchUploader : BatchTask
 				Uri uri = GetImageUri(key, metadata);
 				EasyWeb.WaitForDelay(uri);
 				s_client.DownloadFile(uri, imagepath);
+				try
+				{
+					ValidateDownload(imagepath);
+				}
+				catch (Exception)
+				{
+					File.Delete(imagepath);
+					throw;
+				}
 			}
 		}
 	}
@@ -297,7 +318,7 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Returns the URL for the item with the specified data.
 	/// </summary>
-	protected abstract Uri GetImageUri(string key, Dictionary<string, string> metadata);
+	public abstract Uri GetImageUri(string key, Dictionary<string, string> metadata);
 
 	/// <summary>
 	/// Returns the title of the uploaded page for the specified metadata.
@@ -317,6 +338,14 @@ public abstract class BatchUploader : BatchTask
 	protected virtual bool TryAddDuplicate(string targetPage, string key, Dictionary<string, string> metadata)
 	{
 		return false;
+	}
+
+	/// <summary>
+	/// Checks the downloaded image file. If it's invalid, throws an exception.
+	/// </summary>
+	public virtual void ValidateDownload(string imagePath)
+	{
+
 	}
 
 	/// <summary>
