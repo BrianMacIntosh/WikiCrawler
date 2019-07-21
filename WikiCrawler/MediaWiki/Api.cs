@@ -94,7 +94,7 @@ namespace MediaWiki
             {
                 //Send request again, adding lgtoken from "token"
                 baseQuery += "&lgtoken=" + UrlEncode((string)login["token"]);
-                request = CreateApiRequest(baseQuery);
+                request = CreateApiRequest();
 
                 //Read response
 				using (StreamReader read = new StreamReader(EasyWeb.Post(request, baseQuery)))
