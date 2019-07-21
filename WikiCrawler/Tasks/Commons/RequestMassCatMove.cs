@@ -11,7 +11,7 @@ namespace WikiCrawler
 	{
 		public static void Do()
 		{
-			Wikimedia.WikiApi commonsApi = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org"));
+			MediaWiki.Api commonsApi = new MediaWiki.Api(new Uri("https://commons.wikimedia.org"));
 
 			List<string> output = new List<string>();
 
@@ -21,7 +21,7 @@ namespace WikiCrawler
 
 				Console.WriteLine(catnameReal);
 
-				Wikimedia.Article catpage = commonsApi.GetPage("Category:" + catnameReal);
+				MediaWiki.Article catpage = commonsApi.GetPage("Category:" + catnameReal);
 
 				EasyWeb.crawlDelay = 0.1f;
 

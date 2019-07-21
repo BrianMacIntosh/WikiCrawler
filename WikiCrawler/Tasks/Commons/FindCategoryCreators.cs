@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Wikimedia;
+using MediaWiki;
 
 namespace WikiCrawler
 {
@@ -13,9 +13,9 @@ namespace WikiCrawler
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
-			WikiApi Api = new WikiApi(commons);
+			Api Api = new Api(commons);
 			
-			Api.LogIn();
+			Api.AutoLogIn();
 
 			foreach (Article article in Api.GetCategoryEntries("Category:Ships by name (flat list)", "subcat"))
 			{

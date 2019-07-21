@@ -10,20 +10,11 @@ using WikiCrawler;
 
 public abstract class BatchTask
 {
-	public string ImageCacheDirectory
-	{
-		get { return Path.Combine(ProjectDataDirectory, "images"); }
-	}
+	public readonly string ProjectDataDirectory;
 
-	public string MetadataCacheDirectory
-	{
-		get { return Path.Combine(ProjectDataDirectory, "data_cache"); }
-	}
-
-	public string ProjectDataDirectory
-	{
-		get { return Path.Combine(Configuration.DataDirectory, m_projectKey); }
-	}
+	public readonly string ImageCacheDirectory;
+	public readonly string MetadataCacheDirectory;
+	public readonly string MetadataTrashDirectory;
 
 	public virtual string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
 	{
@@ -38,6 +29,11 @@ public abstract class BatchTask
 	public virtual string GetMetadataCacheFilename(string key)
 	{
 		return Path.Combine(MetadataCacheDirectory, key + ".json");
+	}
+
+	public virtual string GetMetadataTrashFilename(string key)
+	{
+		return Path.Combine(MetadataTrashDirectory, key + ".json");
 	}
 
 	public bool HeartbeatEnabled = true;
@@ -58,6 +54,10 @@ public abstract class BatchTask
 	public BatchTask(string key)
 	{
 		m_projectKey = key;
+		ProjectDataDirectory = Path.Combine(Configuration.DataDirectory, m_projectKey);
+		ImageCacheDirectory = Path.Combine(ProjectDataDirectory, "images");
+		MetadataCacheDirectory = Path.Combine(ProjectDataDirectory, "data_cache");
+		MetadataTrashDirectory = Path.Combine(ProjectDataDirectory, "data_trash");
 		m_config = JsonConvert.DeserializeObject<ProjectConfig>(
 			File.ReadAllText(Path.Combine(ProjectDataDirectory, "config.json")));
 

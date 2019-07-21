@@ -66,8 +66,8 @@ namespace WikiCrawler
             }
 
 			Console.WriteLine("Logging in...");
-			Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
-			Api.LogIn();
+			MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
+			Api.AutoLogIn();
 
             //fetch images urls from those pages
             int count = 0;
@@ -105,10 +105,10 @@ namespace WikiCrawler
                             components[components.Length-1] = img;
                             img = string.Join("/", components);
                             
-                            Wikimedia.Article article = new Wikimedia.Article();
+                            MediaWiki.Article article = new MediaWiki.Article();
                             article.title = "Last Enemy illustration " + count.ToString("00") + Path.GetExtension(img);
-                            article.revisions = new Wikimedia.Revision[1];
-                            article.revisions[0] = new Wikimedia.Revision();
+                            article.revisions = new MediaWiki.Revision[1];
+                            article.revisions[0] = new MediaWiki.Revision();
                             article.revisions[0].text = @"=={{int:filedesc}}==
 {{Information
 |description={{en|1=An illustration in the book ''Last Enemy'' by H. Beam Piper, illustrated by Miller.}}

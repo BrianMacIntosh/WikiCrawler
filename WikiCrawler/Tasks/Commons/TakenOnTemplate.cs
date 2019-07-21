@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using MediaWiki;
 
 namespace WikiCrawler
 {
@@ -38,8 +39,8 @@ namespace WikiCrawler
 		public static void Do()
 		{
 			Console.WriteLine("Logging in...");
-			Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
-			Api.LogIn();
+			Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
+			Api.AutoLogIn();
 
 			int maxArticles = int.MaxValue;
 
@@ -69,12 +70,12 @@ namespace WikiCrawler
 						string file = files.ReadLine();
 						if (string.IsNullOrEmpty(file)) continue;
 
-						Wikimedia.Article a = new Wikimedia.Article() { title = file };
+						Article a = new Article() { title = file };
 						currentArticle = a.title;
 						Console.WriteLine(a.title);
 
 						//Fetch it
-						Wikimedia.Article art = Api.GetPage(a, "info|revisions|imageinfo&iiprop=commonmetadata"); //&iimetadataversion=2
+						Article art = Api.GetPage(a, prop: Api.BuildParameterList(Prop.info, Prop.revisions, Prop.imageinfo), iiprop: IIProp.commonmetadata); //&iimetadataversion=2
 						if (art.revisions != null && art.revisions.Any())
 						{
 							string text = art.revisions.First().text;
@@ -111,7 +112,7 @@ namespace WikiCrawler
 								}
 							}
 
-							Dictionary<string, object> metadata = Wikimedia.WikiApi.GetCommonMetadata(art.raw);
+							Dictionary<string, object> metadata = MediaWiki.Api.GetCommonMetadata(art.raw);
 
 							string metadate = "";
 							if (metadata.ContainsKey("DateTimeOriginal"))
@@ -133,7 +134,7 @@ namespace WikiCrawler
 								if (!ReplaceDate(date, metadate, out newdate, out yyyymmdd))
 								{
 									//Add bad date category
-									string newtext = Wikimedia.WikiUtils.AddCategory("Category:Files with no machine-readable date", text);
+									string newtext = MediaWiki.WikiUtils.AddCategory("Category:Files with no machine-readable date", text);
 									if (newtext != text)
 									{
 										art.revisions[0].text = newtext;
@@ -145,7 +146,7 @@ namespace WikiCrawler
 									//Reconstruct and submit page
 									string newtext = text.Substring(0, dateStart) + newdate + text.Substring(dateEnd + 1);
 									if (!string.IsNullOrEmpty(yyyymmdd))
-										newtext = Wikimedia.WikiUtils.RemoveCategory("Category:Photographs taken on " + yyyymmdd, newtext);
+										newtext = MediaWiki.WikiUtils.RemoveCategory("Category:Photographs taken on " + yyyymmdd, newtext);
 
 									art.revisions[0].text = newtext;
 									Api.SetPage(art, "bot: adding appropriate templates to infobox date", true, true, true);

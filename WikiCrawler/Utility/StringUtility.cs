@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
 
@@ -212,7 +213,7 @@ public static class StringUtility
 			return a + delimiter + b;
 		}
 	}
-
+	
 	public static string Replace(this string str, IList<string> targets, string replacement)
 	{
 		foreach (string target in targets)

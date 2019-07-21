@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -8,7 +9,7 @@ namespace WikiCrawler
 {
 	class CommonsCreatorFromWikidata
 	{
-		private static Wikimedia.WikiApi Wikidata = new Wikimedia.WikiApi(new Uri("https://www.wikidata.org/"));
+		private static Api Wikidata = new Api(new Uri("https://www.wikidata.org/"));
 
 		//TODO: support BC dates
 
@@ -23,11 +24,11 @@ namespace WikiCrawler
 		/// </summary>
 		public static void MakeCreatorsFromCat()
 		{
-			Wikimedia.WikiApi commonsApi = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org"));
+			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
 
 			Console.WriteLine("Logging in...");
-			commonsApi.LogIn();
-			Wikidata.LogIn();
+			commonsApi.AutoLogIn();
+			Wikidata.AutoLogIn();
 
 			int successLimit = s_TestLimit;
 
@@ -45,7 +46,7 @@ namespace WikiCrawler
 			{
 				if (s_DoBotCat)
 				{
-					foreach (Wikimedia.Article article in commonsApi.GetCategorySubcats("Category:Creator templates to be created by a bot"))
+					foreach (Article article in commonsApi.GetCategoryEntries("Category:Creator templates to be created by a bot", cmtype: CMType.subcat))
 					{
 						Console.WriteLine("Checking verified '" + article.title + "'...");
 
@@ -55,11 +56,11 @@ namespace WikiCrawler
 							continue;
 						}
 
-						Wikimedia.Article articleContent = commonsApi.GetPage(article);
+						Article articleContent = commonsApi.GetPage(article);
 						string text = articleContent.revisions[0].text;
 
 						// find template parameter
-						string wikidataId = Wikimedia.WikiUtils.GetTemplateParameter("wikidata", text);
+						string wikidataId = WikiUtils.GetTemplateParameter("wikidata", text);
 						Console.WriteLine("Wikidata Id is " + wikidataId);
 
 						if (ProcessCreatorCategory(commonsApi, articleContent, wikidataId))
@@ -75,7 +76,7 @@ namespace WikiCrawler
 
 				if (s_DoNormalCat)
 				{
-					foreach (Wikimedia.Article article in commonsApi.GetCategorySubcats("Category:People by name", normalCatLastPage))
+					foreach (Article article in commonsApi.GetCategoryEntries("Category:People by name", cmtype: CMType.subcat, cmstartsortkeyprefix: normalCatLastPage))
 					{
 						Console.WriteLine("----- Checking '" + article.title + "'...");
 
@@ -85,7 +86,7 @@ namespace WikiCrawler
 							continue;
 						}
 
-						Wikimedia.Article articleContent = commonsApi.GetPage(article);
+						Article articleContent = commonsApi.GetPage(article);
 						string text = articleContent.revisions[0].text;
 
 						string name = article.title.Substring("Category:".Length);
@@ -101,11 +102,11 @@ namespace WikiCrawler
 								int creatorEnd = text.IndexOf("}}", creatorIndex);
 								string creator = text.Substring(creatorIndex + 2, creatorEnd - (creatorIndex + 2));
 
-								Wikimedia.Article creatorArt = commonsApi.GetPage(creator);
-								if (!Wikimedia.Article.IsNullOrEmpty(creatorArt))
+								Article creatorArt = commonsApi.GetPage(creator);
+								if (!MediaWiki.Article.IsNullOrEmpty(creatorArt))
 								{
 									Console.WriteLine("Checking Creator for wikidata id");
-									wikidataId = Wikimedia.WikiUtils.GetTemplateParameter("wikidata", creatorArt.revisions[0].text);
+									wikidataId = MediaWiki.WikiUtils.GetTemplateParameter("wikidata", creatorArt.revisions[0].text);
 								}
 							}
 						}
@@ -114,7 +115,7 @@ namespace WikiCrawler
 						if (string.IsNullOrEmpty(wikidataId))
 						{
 							string onWikidataTemplate;
-							Wikimedia.WikiUtils.RemoveTemplate("On Wikidata", text, out onWikidataTemplate);
+							MediaWiki.WikiUtils.RemoveTemplate("On Wikidata", text, out onWikidataTemplate);
 							if (!string.IsNullOrEmpty(onWikidataTemplate))
 							{
 								string[] split = onWikidataTemplate.Split('|');
@@ -131,7 +132,7 @@ namespace WikiCrawler
 							// look for DOB and DOD categories
 							string yearOfBirth = "";
 							string yearOfDeath = "";
-							foreach (string cat in Wikimedia.WikiUtils.GetCategories(text))
+							foreach (string cat in MediaWiki.WikiUtils.GetCategories(text))
 							{
 								//HACK: only works with 4-digit years
 								if (cat.EndsWith(" births"))
@@ -177,7 +178,7 @@ namespace WikiCrawler
 							Console.WriteLine("Couldn't determine Wikidata ID.");
 						}
 
-						normalCatLastPage = Wikimedia.WikiUtils.GetSortkey(article);
+						normalCatLastPage = MediaWiki.WikiUtils.GetSortkey(article);
 					}
 				}
 			}
@@ -202,15 +203,15 @@ namespace WikiCrawler
 			string[] search = Wikidata.SearchEntities(name);
 			foreach (string result in search)
 			{
-				Wikimedia.Entity entity = Wikidata.GetEntity(result);
+				Entity entity = Wikidata.GetEntity(result);
 
-				if (!entity.HasClaim(Wikimedia.Wikidata.Prop_DateOfBirth)
-					|| entity.GetClaimValueAsDate(Wikimedia.Wikidata.Prop_DateOfBirth).GetYear().ToString() != yearOfBirth)
+				if (!entity.HasClaim(MediaWiki.Wikidata.Prop_DateOfBirth)
+					|| entity.GetClaimValueAsDate(MediaWiki.Wikidata.Prop_DateOfBirth).GetYear().ToString() != yearOfBirth)
 				{
 					continue;
 				}
-				if (!entity.HasClaim(Wikimedia.Wikidata.Prop_DateOfDeath)
-					|| entity.GetClaimValueAsDate(Wikimedia.Wikidata.Prop_DateOfDeath).GetYear().ToString() != yearOfDeath)
+				if (!entity.HasClaim(MediaWiki.Wikidata.Prop_DateOfDeath)
+					|| entity.GetClaimValueAsDate(MediaWiki.Wikidata.Prop_DateOfDeath).GetYear().ToString() != yearOfDeath)
 				{
 					continue;
 				}
@@ -240,14 +241,14 @@ namespace WikiCrawler
 		/// Parse the specified article and attempt to create a Creator based on it and the provided wikidata.
 		/// </summary>
 		/// <returns>Success</returns>
-		private static bool ProcessCreatorCategory(Wikimedia.WikiApi commonsApi,
-			Wikimedia.Article article, string wikidataId)
+		private static bool ProcessCreatorCategory(Api commonsApi,
+			Article article, string wikidataId)
 		{
 			string text = article.revisions[0].text;
 
-			text = Wikimedia.WikiUtils.RemoveDuplicateCategories(text);
+			text = MediaWiki.WikiUtils.RemoveDuplicateCategories(text);
 
-			Wikimedia.Entity entity = Wikidata.GetEntity(wikidataId);
+			Entity entity = Wikidata.GetEntity(wikidataId);
 			if (entity != null && !entity.missing)
 			{
 				bool needsRefetch = false;
@@ -263,7 +264,7 @@ namespace WikiCrawler
 				// pull out existing authority control
 				string existingAuthority;
 				Dictionary<string, string> existingAuthDict = new Dictionary<string, string>();
-				Wikimedia.WikiUtils.RemoveTemplate("Authority control", text, out existingAuthority);
+				MediaWiki.WikiUtils.RemoveTemplate("Authority control", text, out existingAuthority);
 				if (!string.IsNullOrEmpty(existingAuthority))
 				{
 					string authTrim = existingAuthority.Trim().Trim('{', '}');
@@ -282,10 +283,10 @@ namespace WikiCrawler
 					{
 						foreach (KeyValuePair<string, string> kvPair in existingAuthDict)
 						{
-							string prop = Wikimedia.Wikidata.GetPropertyIdForAuthority(kvPair.Key);
+							string prop = MediaWiki.Wikidata.GetPropertyIdForAuthority(kvPair.Key);
 							if (!string.IsNullOrEmpty(prop) && !entity.HasClaim(prop))
 							{
-								string converted = Wikimedia.Wikidata.ConvertAuthorityFromCommonsToWikidata(kvPair.Key, kvPair.Value);
+								string converted = MediaWiki.Wikidata.ConvertAuthorityFromCommonsToWikidata(kvPair.Key, kvPair.Value);
 								if (!string.IsNullOrEmpty(converted))
 								{
 									Wikidata.CreateEntityClaim(entity, prop,
@@ -318,14 +319,14 @@ namespace WikiCrawler
 
 				// add creator template to page
 				//TODO: try to maintain position
-				Wikimedia.Article creatorArticle = !string.IsNullOrEmpty(creatorPage)
+				Article creatorArticle = !string.IsNullOrEmpty(creatorPage)
 					? commonsApi.GetPage(creatorPage)
 					: null;
 				if (creatorArticle != null && !creatorArticle.missing)
 				{
 					// remove 'creator possible'
 					string eat;
-					text = Wikimedia.WikiUtils.RemoveTemplate("Creator possible", text, out eat);
+					text = MediaWiki.WikiUtils.RemoveTemplate("Creator possible", text, out eat);
 
 					// add creator template
 					string creatorTemplate = "{{" + creatorArticle.title + "}}";
@@ -337,7 +338,7 @@ namespace WikiCrawler
 
 					// remove authority from cat and propagate to the creator
 					//TODO:
-					/*text =*/ Wikimedia.WikiUtils.RemoveTemplate("Authority control", text, out existingAuthority);
+					/*text =*/ MediaWiki.WikiUtils.RemoveTemplate("Authority control", text, out existingAuthority);
 
 					// propagate existing creator to wikidata
 					if (!entity.HasClaim("P1472"))
@@ -348,25 +349,25 @@ namespace WikiCrawler
 
 					// remove On Wikidata template (redundant with creator)
 					string oldWikidata;
-					string textNoOnWikidata = Wikimedia.WikiUtils.RemoveTemplate("On Wikidata", text, out oldWikidata);
+					string textNoOnWikidata = MediaWiki.WikiUtils.RemoveTemplate("On Wikidata", text, out oldWikidata);
 					if (oldWikidata == wikidataId)
 					{
 						text = textNoOnWikidata;
 					}
 					else if (!string.IsNullOrEmpty(oldWikidata))
 					{
-						text = Wikimedia.WikiUtils.AddCategory("Category:Categories with On Wikidata template that doesn't match Creator wikidata parameter", text);
+						text = MediaWiki.WikiUtils.AddCategory("Category:Categories with On Wikidata template that doesn't match Creator wikidata parameter", text);
 					}
 
 					// fix implicit creators in the category
 					if (s_FixImplicitCreators)
 					{
 						Console.WriteLine("...checking child files");
-						foreach (Wikimedia.Article subArticle in commonsApi.GetCategoryPagesRecursive(article.title, 4))
+						foreach (Article subArticle in commonsApi.GetCategoryPagesRecursive(article.title, 4))
 						{
-							if (subArticle.GetNamespace() == "File")
+							if (subArticle.ns == MediaWiki.Namespace.File)
 							{
-								Wikimedia.Article gotSubArticle = commonsApi.GetPage(subArticle);
+								Article gotSubArticle = commonsApi.GetPage(subArticle);
 								FixImplicitCreators.Do(commonsApi, gotSubArticle, creatorArticle.title);
 								//PdOldAuto.Do(commonsApi, gotSubArticle);
 
@@ -385,7 +386,7 @@ namespace WikiCrawler
 				}
 
 				// add appropriate categories if they don't exist
-				text = Wikimedia.WikiUtils.AddCategory("Category:People by name", text);
+				text = MediaWiki.WikiUtils.AddCategory("Category:People by name", text);
 
 				// gender cats
 				if (entity.HasClaim("P21"))
@@ -404,9 +405,9 @@ namespace WikiCrawler
 				}
 
 				// dead cat
-				if (entity.HasClaim(Wikimedia.Wikidata.Prop_DateOfDeath))
+				if (entity.HasClaim(MediaWiki.Wikidata.Prop_DateOfDeath))
 				{
-					Wikimedia.DateTime dateData = entity.GetClaimValueAsDate(Wikimedia.Wikidata.Prop_DateOfDeath);
+					MediaWiki.DateTime dateData = entity.GetClaimValueAsDate(MediaWiki.Wikidata.Prop_DateOfDeath);
 
 					int year = dateData.GetYear();
 					/*if (year < DateTime.Now.Year)
@@ -415,31 +416,31 @@ namespace WikiCrawler
 					}*/
 
 					string suffix = " deaths";
-					string decade = dateData.GetString(Wikimedia.DateTime.DecadePrecision) + "s";
+					string decade = dateData.GetString(MediaWiki.DateTime.DecadePrecision) + "s";
 					string century = StringUtility.FormatOrdinal(dateData.GetCentury()) + "-century";
 
-					bool hasYear = Wikimedia.WikiUtils.HasCategory(year + suffix, text);
-					bool hasDecade = Wikimedia.WikiUtils.HasCategory(decade + suffix, text);
+					bool hasYear = MediaWiki.WikiUtils.HasCategory(year + suffix, text);
+					bool hasDecade = MediaWiki.WikiUtils.HasCategory(decade + suffix, text);
 
-					if (dateData.Precision <= Wikimedia.DateTime.CenturyPrecision)
+					if (dateData.Precision <= MediaWiki.DateTime.CenturyPrecision)
 					{
 						// never downgrade
 						if (!hasYear && !hasDecade)
 						{
-							text = Wikimedia.WikiUtils.AddCategory(century + suffix, text);
+							text = MediaWiki.WikiUtils.AddCategory(century + suffix, text);
 						}
 					}
-					else if (dateData.Precision <= Wikimedia.DateTime.DecadePrecision)
+					else if (dateData.Precision <= MediaWiki.DateTime.DecadePrecision)
 					{
 						// never downgrade
 						if (!hasYear)
 						{
-							text = Wikimedia.WikiUtils.AddCategory(decade + suffix, text);
+							text = MediaWiki.WikiUtils.AddCategory(decade + suffix, text);
 						}
 					}
 					else
 					{
-						text = Wikimedia.WikiUtils.AddCategory(year + suffix, text);
+						text = MediaWiki.WikiUtils.AddCategory(year + suffix, text);
 					}
 				}
 
@@ -447,46 +448,46 @@ namespace WikiCrawler
 				MatchCollection deathMatch = Regex.Matches(text, "\\[\\[[Cc]ategory:.+ deaths[\\]\\|]");
 				if (deathMatch.Count > 0)
 				{
-					text = Wikimedia.WikiUtils.RemoveCategory("Category:Year of death missing", text);
+					text = MediaWiki.WikiUtils.RemoveCategory("Category:Year of death missing", text);
 				}
 				else
 				{
-					text = Wikimedia.WikiUtils.AddCategory("Category:Year of death missing", text);
+					text = MediaWiki.WikiUtils.AddCategory("Category:Year of death missing", text);
 				}
 
 				// birth cat
-				if (entity.HasClaim(Wikimedia.Wikidata.Prop_DateOfBirth))
+				if (entity.HasClaim(MediaWiki.Wikidata.Prop_DateOfBirth))
 				{
-					Wikimedia.DateTime dateData = entity.GetClaimValueAsDate(Wikimedia.Wikidata.Prop_DateOfBirth);
+					MediaWiki.DateTime dateData = entity.GetClaimValueAsDate(MediaWiki.Wikidata.Prop_DateOfBirth);
 
 					int year = dateData.GetYear();
 
 					string suffix = " births";
-					string decade = dateData.GetString(Wikimedia.DateTime.DecadePrecision) + "s";
+					string decade = dateData.GetString(MediaWiki.DateTime.DecadePrecision) + "s";
 					string century = StringUtility.FormatOrdinal(dateData.GetCentury()) + "-century";
 
-					bool hasYear = Wikimedia.WikiUtils.HasCategory(year + suffix, text);
-					bool hasDecade = Wikimedia.WikiUtils.HasCategory(decade + suffix, text);
+					bool hasYear = MediaWiki.WikiUtils.HasCategory(year + suffix, text);
+					bool hasDecade = MediaWiki.WikiUtils.HasCategory(decade + suffix, text);
 
-					if (dateData.Precision <= Wikimedia.DateTime.CenturyPrecision)
+					if (dateData.Precision <= MediaWiki.DateTime.CenturyPrecision)
 					{
 						// never downgrade
 						if (!hasYear && !hasDecade)
 						{
-							text = Wikimedia.WikiUtils.AddCategory(century + suffix, text);
+							text = MediaWiki.WikiUtils.AddCategory(century + suffix, text);
 						}
 					}
-					else if (dateData.Precision <= Wikimedia.DateTime.DecadePrecision)
+					else if (dateData.Precision <= MediaWiki.DateTime.DecadePrecision)
 					{
 						// never downgrade
 						if (!hasYear)
 						{
-							text = Wikimedia.WikiUtils.AddCategory(decade + suffix, text);
+							text = MediaWiki.WikiUtils.AddCategory(decade + suffix, text);
 						}
 					}
 					else
 					{
-						text = Wikimedia.WikiUtils.AddCategory(year + suffix, text);
+						text = MediaWiki.WikiUtils.AddCategory(year + suffix, text);
 					}
 				}
 
@@ -494,20 +495,20 @@ namespace WikiCrawler
 				MatchCollection birthMatch = Regex.Matches(text, "\\[\\[[Cc]ategory:.+ births[\\]\\|]");
 				if (birthMatch.Count > 0)
 				{
-					text = Wikimedia.WikiUtils.RemoveCategory("Category:Year of birth missing", text);
+					text = MediaWiki.WikiUtils.RemoveCategory("Category:Year of birth missing", text);
 				}
 				else
 				{
-					text = Wikimedia.WikiUtils.AddCategory("Category:Year of birth missing", text);
+					text = MediaWiki.WikiUtils.AddCategory("Category:Year of birth missing", text);
 				}
 
 				if (birthMatch.Count > 1 || deathMatch.Count > 1)
 				{
-					text = Wikimedia.WikiUtils.AddCategory("Category:Categories with conflicting birth or death categories", text);
+					text = MediaWiki.WikiUtils.AddCategory("Category:Categories with conflicting birth or death categories", text);
 				}
 				else
 				{
-					text = Wikimedia.WikiUtils.RemoveCategory("Category:Categories with conflicting birth or death categories", text);
+					text = MediaWiki.WikiUtils.RemoveCategory("Category:Categories with conflicting birth or death categories", text);
 				}
 
 				// add occupation cats
@@ -556,17 +557,17 @@ namespace WikiCrawler
 		/// </summary>
 		public static void MakeCreators()
 		{
-			Wikimedia.WikiApi commonsApi = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org"));
+			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
 
 			Console.WriteLine("Logging in...");
-			commonsApi.LogIn();
-			Wikidata.LogIn();
+			commonsApi.AutoLogIn();
+			Wikidata.AutoLogIn();
 
 			using (StreamReader reader = new StreamReader(new FileStream("creator_queue.txt", FileMode.Open), Encoding.Default))
 			{
 				while (!reader.EndOfStream)
 				{
-					Wikimedia.Entity entity = Wikidata.GetEntity(reader.ReadLine());
+					Entity entity = Wikidata.GetEntity(reader.ReadLine());
 					string page;
 					TryMakeCreator(commonsApi, entity, "", null, out page);
 				}
@@ -578,7 +579,7 @@ namespace WikiCrawler
 		/// </summary>
 		/// <param name="creatorPage">The name of the Creator page created.</param>
 		/// <returns>True if the Creator page now exists.</returns>
-		public static bool TryMakeCreator(Wikimedia.WikiApi commonsApi, Wikimedia.Entity entity,
+		public static bool TryMakeCreator(Api commonsApi, Entity entity,
 			string sortkey, Dictionary<string, string> extraAuthority,
 			out string creatorPage)
 		{
@@ -640,7 +641,7 @@ namespace WikiCrawler
 			string nationality = "";
 			if (entity.HasClaim("P27"))
 			{
-				Wikimedia.Entity nationalityEntity = entity.GetClaimValueAsEntity("P27", Wikidata);
+				Entity nationalityEntity = entity.GetClaimValueAsEntity("P27", Wikidata);
 				if (nationalityEntity.HasClaim("P297"))
 					nationality = nationalityEntity.GetClaimValueAsString("P297");
 			}
@@ -656,7 +657,7 @@ namespace WikiCrawler
 			string occupation = "";
 			if (entity.HasClaim("P106"))
 			{
-				foreach (Wikimedia.Entity occupationEntity in entity.GetClaimValuesAsEntity("P106", Wikidata))
+				foreach (Entity occupationEntity in entity.GetClaimValuesAsEntity("P106", Wikidata))
 				{
 					occupation += occupationEntity.labels["en"] + "/";
 				}
@@ -670,25 +671,25 @@ namespace WikiCrawler
 			string birthdate = "";
 			if (entity.HasClaim("P569"))
 			{
-				birthdate = entity.GetClaimValueAsDate("P569").GetString(Wikimedia.DateTime.DayPrecision);
+				birthdate = entity.GetClaimValueAsDate("P569").GetString(MediaWiki.DateTime.DayPrecision);
 			}
 			string deathdate = "";
 			if (entity.HasClaim("P570"))
 			{
-				deathdate = entity.GetClaimValueAsDate("P570").GetString(Wikimedia.DateTime.DayPrecision);
+				deathdate = entity.GetClaimValueAsDate("P570").GetString(MediaWiki.DateTime.DayPrecision);
 			}
 
 			//birth/death locs
 			string birthloc = "";
 			if (entity.HasClaim("P19"))
 			{
-				Wikimedia.Entity locEntity = entity.GetClaimValueAsEntity("P19", Wikidata);
+				Entity locEntity = entity.GetClaimValueAsEntity("P19", Wikidata);
 				birthloc = locEntity.labels["en"];
 			}
 			string deathloc = "";
 			if (entity.HasClaim("P20"))
 			{
-				Wikimedia.Entity locEntity = entity.GetClaimValueAsEntity("P20", Wikidata);
+				Entity locEntity = entity.GetClaimValueAsEntity("P20", Wikidata);
 				deathloc = locEntity.labels["en"];
 			}
 
@@ -696,17 +697,17 @@ namespace WikiCrawler
 			string workloc = "";
 			if (entity.HasClaim("P937"))
 			{
-				Wikimedia.Entity locEntity = entity.GetClaimValueAsEntity("P937", Wikidata);
+				Entity locEntity = entity.GetClaimValueAsEntity("P937", Wikidata);
 				workloc = locEntity.labels["en"];
 			}
 			string workperiod = "";
 			if (entity.HasClaim("P2031"))
 			{
-				workperiod = entity.GetClaimValueAsDate("P2031").GetString(Wikimedia.DateTime.DayPrecision);
+				workperiod = entity.GetClaimValueAsDate("P2031").GetString(MediaWiki.DateTime.DayPrecision);
 				if (entity.HasClaim("P2032"))
 				{
 					workperiod = "{{other date|-|" + workperiod + "|"
-						+ entity.GetClaimValueAsDate("P2032").GetString(Wikimedia.DateTime.DayPrecision) +"}}";
+						+ entity.GetClaimValueAsDate("P2032").GetString(MediaWiki.DateTime.DayPrecision) +"}}";
 				}
 			}
 
@@ -717,12 +718,12 @@ namespace WikiCrawler
 			}
 
 			//authority control
-			string authority = Wikimedia.Wikidata.GetAuthorityControlTemplate(entity, "bare=1", extraAuthority);
+			string authority = MediaWiki.Wikidata.GetAuthorityControlTemplate(entity, "bare=1", extraAuthority);
 
-			Wikimedia.Article creatorArt = new Wikimedia.Article();
+			Article creatorArt = new Article();
 			creatorArt.title = commonsArticle;
-			creatorArt.revisions = new Wikimedia.Revision[1];
-			creatorArt.revisions[0] = new Wikimedia.Revision();
+			creatorArt.revisions = new Revision[1];
+			creatorArt.revisions[0] = new Revision();
 			creatorArt.revisions[0].text = "{{Creator" +
 				"\n|Image=" +
 				"\n|Name={{LangSwitch" + langnames +
@@ -750,7 +751,7 @@ namespace WikiCrawler
 			Wikidata.CreateEntityClaim(entity, "P1472", name, "(BOT) creating Commons creator page", true);
 
 			//Do not overwrite if it exists
-			Wikimedia.Article safety = commonsApi.GetPage(creatorArt);
+			Article safety = commonsApi.GetPage(creatorArt);
 			if (safety != null && !safety.missing)
 			{
 				Console.WriteLine("Creator page already exists!");
@@ -776,9 +777,9 @@ namespace WikiCrawler
 		/// Fixes formatting issues with Information/Artwork/Book templates.
 		/// </summary>
 		/// <param name="article">The already-downloaded article.</param>
-		public static void FixInformationTemplates(Wikimedia.Article article, HashSet<string> removeEmptyParams = null)
+		public static void FixInformationTemplates(Article article, HashSet<string> removeEmptyParams = null)
 		{
-			if (Wikimedia.Article.IsNullOrEmpty(article))
+			if (MediaWiki.Article.IsNullOrEmpty(article))
 			{
 				Console.WriteLine("FixInformationTemplates: FATAL: article missing");
 				return;
@@ -950,7 +951,7 @@ namespace WikiCrawler
 
 			if (hasError)
 			{
-				text = Wikimedia.WikiUtils.AddCategory("Category:Pages with mismatched parentheses", text);
+				text = MediaWiki.WikiUtils.AddCategory("Category:Pages with mismatched parentheses", text);
 			}
 			else if (artTemplateHasFilledAuthor && removeEmptyParams == null)
 			{

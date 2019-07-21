@@ -150,18 +150,18 @@ Caption: " + @"}}
             string[] images = Directory.GetFiles("images");
 
 			Console.WriteLine("Logging in...");
-			Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
-			Api.LogIn();
+			MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
+			Api.AutoLogIn();
 
             //Upload
             for (int c = 0; c < images.Length; c++)
             {
                 string title = string.Format(ftitle, c.ToString("00"));
 
-                Wikimedia.Article art = new Wikimedia.Article();
+                MediaWiki.Article art = new MediaWiki.Article();
                 art.title = title;
-                art.revisions = new Wikimedia.Revision[1];
-                art.revisions[0] = new Wikimedia.Revision();
+                art.revisions = new MediaWiki.Revision[1];
+                art.revisions[0] = new MediaWiki.Revision();
                 art.revisions[0].text = content;
                 Api.UploadFromLocal(art, "C:/temp", "", false);
             }

@@ -6,10 +6,11 @@ using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using WikiCrawler;
+using MediaWiki;
 
 public class WatermarkRemoval
 {
-	private static Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
+	private static Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
 
 	/// <summary>
 	/// The category to act on.
@@ -25,7 +26,7 @@ public class WatermarkRemoval
 
 	public void Download()
 	{
-		Api.LogIn();
+		Api.AutoLogIn();
 
 		//Wikimedia.Article aarticle = Api.GetPage("File:\"Bokau\" ali \"šmon\" (z napisom W Bacus in okraski) za vino, Šlomberk 1953.jpg", "imageinfo", "iilimit=50&iiprop=comment%7Curl");
 
@@ -34,9 +35,9 @@ public class WatermarkRemoval
 		{
 			Directory.CreateDirectory(cacheDirectory);
 		}
-		foreach (Wikimedia.Article article in Api.GetCategoryFiles(m_commonsCategory))
+		foreach (Article article in Api.GetCategoryEntries(m_commonsCategory, cmtype: CMType.file))
 		{
-			string safeTitle = article.title.TrimStart("File:");
+			string safeTitle = article.GetTitle();
 			safeTitle = string.Join("_", safeTitle.Split(Path.GetInvalidFileNameChars()));
 			safeTitle = string.Join("_", safeTitle.Split(Path.GetInvalidPathChars()));
 
@@ -48,7 +49,7 @@ public class WatermarkRemoval
 			string targetPath = Path.Combine(cacheDirectory, safeTitle);
 			if (!File.Exists(targetPath))
 			{
-				Wikimedia.Article imageInfo = Api.GetPage(article, "imageinfo", "iilimit=50&iiprop=comment%7Curl");
+				Article imageInfo = Api.GetPage(article, prop: Prop.imageinfo, iilimit: 50, iiprop: Api.BuildParameterList(IIProp.comment, IIProp.url));
 
 				// download the original revision
 				string url = imageInfo.imageinfo.Last().url;

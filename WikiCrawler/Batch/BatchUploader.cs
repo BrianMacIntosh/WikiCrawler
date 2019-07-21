@@ -8,11 +8,11 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using WikiCrawler;
-using Wikimedia;
+using MediaWiki;
 
 public abstract class BatchUploader : BatchTask
 {
-	protected WikiApi Api = new WikiApi(new Uri("https://commons.wikimedia.org/"));
+	protected Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
 
 	public string PreviewDirectory
 	{
@@ -40,18 +40,18 @@ public abstract class BatchUploader : BatchTask
 			Directory.CreateDirectory(ImageCacheDirectory);
 		}
 		
-		Api.LogIn();
+		Api.AutoLogIn();
 
 		CreatorUtility.Initialize(Api);
 	}
+
+	private static bool s_stop = false;
 
 	/// <summary>
 	/// Uploads all configured files.
 	/// </summary>
 	public void UploadAll()
 	{
-		string stopFile = Path.Combine(Configuration.DataDirectory, "STOP");
-		
 		try
 		{
 			List<string> metadataFiles = Directory.GetFiles(MetadataCacheDirectory).ToList();
@@ -76,47 +76,58 @@ public abstract class BatchUploader : BatchTask
 				metadataFiles.Shuffle();
 			}
 
-			foreach (string metadataFile in metadataFiles)
+			using (FileSystemWatcher fileWatcher = new FileSystemWatcher(Configuration.DataDirectory, "STOP"))
 			{
-				string key = Path.GetFileNameWithoutExtension(metadataFile);
-
-				try
-				{
-					Upload(key);
-				}
-				catch (Exception e)
-				{
-					if (e is LicenseException)
-					{
-						licenseFailures++;
-					}
-					if (e is UploadDeclinedException)
-					{
-						uploadDeclined++;
-					}
-					Console.WriteLine(e.Message);
-					if (!(e is LicenseException)
-						&& !(e is UploadDeclinedException))
-					{
-						string failMessage = key.PadLeft(5) + "\t" + e.Message;
-						m_failMessages.Add(failMessage);
-					}
-				}
-
-				lock (m_heartbeatData)
-				{
-					m_heartbeatData["nCompleted"] = m_succeeded.Count;
-					m_heartbeatData["nDownloaded"] = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
-					m_heartbeatData["nFailed"] = m_failMessages.Count;
-					m_heartbeatData["nFailedLicense"] = licenseFailures;
-					m_heartbeatData["nDeclined"] = uploadDeclined;
-				}
-
+				fileWatcher.Created += OnStopFileCreated;
+				fileWatcher.Renamed += OnStopFileCreated;
+				fileWatcher.EnableRaisingEvents = true;
+				string stopFile = Path.Combine(Configuration.DataDirectory, "STOP");
 				if (File.Exists(stopFile))
 				{
 					File.Delete(stopFile);
-					Console.WriteLine("Received STOP signal.");
 					return;
+				}
+
+				foreach (string metadataFile in metadataFiles)
+				{
+					string key = Path.GetFileNameWithoutExtension(metadataFile);
+
+					try
+					{
+						Upload(key);
+					}
+					catch (Exception e)
+					{
+						if (e is LicenseException)
+						{
+							licenseFailures++;
+						}
+						if (e is UploadDeclinedException)
+						{
+							uploadDeclined++;
+						}
+						Console.WriteLine(e.Message);
+						if (!(e is LicenseException)
+							&& !(e is UploadDeclinedException))
+						{
+							string failMessage = key.PadLeft(5) + "\t" + e.Message;
+							m_failMessages.Add(failMessage);
+						}
+					}
+
+					lock (m_heartbeatData)
+					{
+						m_heartbeatData["nCompleted"] = m_succeeded.Count;
+						m_heartbeatData["nDownloaded"] = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
+						m_heartbeatData["nFailed"] = m_failMessages.Count;
+						m_heartbeatData["nFailedLicense"] = licenseFailures;
+						m_heartbeatData["nDeclined"] = uploadDeclined;
+					}
+
+					if (s_stop)
+					{
+						return;
+					}
 				}
 			}
 		}
@@ -127,11 +138,18 @@ public abstract class BatchUploader : BatchTask
 		}
 	}
 
+	void OnStopFileCreated(object sender, FileSystemEventArgs e)
+	{
+		s_stop = true;
+		File.Delete(e.FullPath);
+		Console.WriteLine("Received STOP signal.");
+	}
+
 	public void Upload(string key)
 	{
 		Console.WriteLine("== BUILDING " + key);
 
-		Dictionary<string, string> metadata = ParseMetadata(key);
+		Dictionary<string, string> metadata = LoadMetadata(key);
 
 		Article art = new Article();
 		art.title = GetTitle(key, metadata).Replace(s_badTitleCharacters, "");
@@ -294,10 +312,15 @@ public abstract class BatchUploader : BatchTask
 			File.Delete(path);
 		}
 
+		if (!Directory.Exists(MetadataTrashDirectory))
+		{
+			Directory.CreateDirectory(MetadataTrashDirectory);
+		}
+
 		path = GetMetadataCacheFilename(key);
 		if (File.Exists(path))
 		{
-			File.Delete(path);
+			File.Move(path, GetMetadataTrashFilename(key));
 		}
 
 		path = GetPreviewFileFilename(key);
@@ -307,10 +330,25 @@ public abstract class BatchUploader : BatchTask
 		}
 	}
 
-	protected virtual Dictionary<string, string> ParseMetadata(string key)
+	/// <summary>
+	/// Loads the key-value metadata for the asset with the specified key.
+	/// </summary>
+	/// <param name="always">If set, will look in the trash and TODO: redownload if necessary.</param>
+	protected virtual Dictionary<string, string> LoadMetadata(string key, bool always = false)
 	{
-		string metadataFile = GetMetadataCacheFilename(key);
-		return JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(metadataFile, Encoding.UTF8));
+		string cacheFile = GetMetadataCacheFilename(key);
+		if (File.Exists(cacheFile))
+		{
+			return JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(cacheFile, Encoding.UTF8));
+		}
+
+		string trashFile = GetMetadataTrashFilename(key);
+		if (File.Exists(trashFile))
+		{
+			return JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(trashFile, Encoding.UTF8));
+		}
+
+		return null;
 	}
 
 	/// <summary>
@@ -321,7 +359,7 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Returns the title of the uploaded page for the specified metadata.
 	/// </summary>
-	protected abstract string GetTitle(string key, Dictionary<string, string> metadata);
+	public abstract string GetTitle(string key, Dictionary<string, string> metadata);
 
 	/// <summary>
 	/// Builds the wiki page for the object with the specified metadata.

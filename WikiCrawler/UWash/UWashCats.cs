@@ -28,7 +28,7 @@ namespace UWash
 				}
 			}
 
-			Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
+			MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
 
 			string[] keys = categoryMap.Keys.ToArray();
 			foreach (string key in keys)

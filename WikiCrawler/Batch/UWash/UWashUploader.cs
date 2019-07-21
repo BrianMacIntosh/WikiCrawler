@@ -7,7 +7,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using WikiCrawler;
-using Wikimedia;
+using MediaWiki;
 
 namespace UWash
 {
@@ -74,6 +74,7 @@ namespace UWash
 
 			"LCSH",
 			"LCTGM",
+			"~art", //manual
 			"LICENSE", //manual
 
 			// unused
@@ -126,7 +127,7 @@ namespace UWash
 		/// <summary>
 		/// Returns the title of the uploaded page for the specified metadata.
 		/// </summary>
-		protected override string GetTitle(string key, Dictionary<string, string> metadata)
+		public override string GetTitle(string key, Dictionary<string, string> metadata)
 		{
 			string title;
 			if (!metadata.TryGetValue("Title", out title)

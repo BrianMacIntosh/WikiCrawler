@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
+using MediaWiki;
 
 namespace WikiCrawler
 {
@@ -19,10 +20,10 @@ namespace WikiCrawler
 
 		public static void Do()
 		{
-			Wikimedia.WikiApi commonsApi = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org"));
+			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
 
 			Console.WriteLine("Logging in...");
-			commonsApi.LogIn();
+			commonsApi.AutoLogIn();
 
 			int successLimit = s_TestLimit;
 
@@ -43,26 +44,26 @@ namespace WikiCrawler
 
 			try
 			{
-				IEnumerable<Wikimedia.Article> pages;
-				pages = commonsApi.GetCategoryPages("Category:Author matching Creator template, Creator template not used", lastPage);
-				foreach (Wikimedia.Article article in pages)
+				IEnumerable<Article> pages;
+				pages = commonsApi.GetCategoryEntries("Category:Author matching Creator template, Creator template not used", cmstartsortkeyprefix: lastPage);
+				foreach (Article article in pages)
 				{
 					Console.WriteLine("Checking '" + article.title + "'...");
 
-					Wikimedia.Article articleContent = commonsApi.GetPage(article);
+					Article articleContent = commonsApi.GetPage(article);
 					Do(commonsApi, articleContent);
 
 					if (articleContent.Dirty)
 					{
 						CommonsCreatorFromWikidata.FixInformationTemplates(articleContent);
 						commonsApi.SetPage(articleContent, articleContent.GetEditSummary(), false, true, true);
-						lastPage = Wikimedia.WikiUtils.GetSortkey(article);
+						lastPage = WikiUtils.GetSortkey(article);
 						successLimit--;
 						if (successLimit <= 0) break;
 					}
 					else
 					{
-						lastPage = Wikimedia.WikiUtils.GetSortkey(article);
+						lastPage = WikiUtils.GetSortkey(article);
 					}
 				}
 			}
@@ -84,7 +85,7 @@ namespace WikiCrawler
 		/// </summary>
 		/// <param name="article">Article, already downloaded.</param>
 		/// <param name="creator">A creator that we have already determined should be used.</param>
-		public static void Do(Wikimedia.WikiApi commonsApi, Wikimedia.Article article, string creator = null)
+		public static void Do(Api commonsApi, Article article, string creator = null)
 		{
 			string text = article.revisions[0].text;
 
@@ -97,18 +98,18 @@ namespace WikiCrawler
 
 			// find author
 			int authorLoc;
-			string author = Wikimedia.WikiUtils.GetTemplateParameter("artist", text, out authorLoc);
+			string author = MediaWiki.WikiUtils.GetTemplateParameter("artist", text, out authorLoc);
 			if (string.IsNullOrEmpty(author))
 			{
-				author = Wikimedia.WikiUtils.GetTemplateParameter("artist_display_name", text, out authorLoc);
+				author = MediaWiki.WikiUtils.GetTemplateParameter("artist_display_name", text, out authorLoc);
 			}
 			if (string.IsNullOrEmpty(author))
 			{
-				author = Wikimedia.WikiUtils.GetTemplateParameter("author", text, out authorLoc);
+				author = MediaWiki.WikiUtils.GetTemplateParameter("author", text, out authorLoc);
 			}
 			if (string.IsNullOrEmpty(author))
 			{
-				author = Wikimedia.WikiUtils.GetTemplateParameter("photographer", text, out authorLoc);
+				author = MediaWiki.WikiUtils.GetTemplateParameter("photographer", text, out authorLoc);
 			}
 
 			if (!string.IsNullOrEmpty(author))
@@ -134,7 +135,7 @@ namespace WikiCrawler
 				}
 				else
 				{
-					foreach (string category in Wikimedia.WikiUtils.GetCategories(text))
+					foreach (string category in MediaWiki.WikiUtils.GetCategories(text))
 					{
 						//SPECIAL CASE: ONLY DO THINGS THAT ARE CAUGHT BY THE NEW LOGIC
 						if (!category.Contains(" by "))
@@ -174,7 +175,7 @@ namespace WikiCrawler
 
 		private static string[] templateEnd = new string[] { "}}" };
 
-		private static string GetCreatorForCategory(Wikimedia.WikiApi commonsApi, string category, int currentDepth)
+		private static string GetCreatorForCategory(Api commonsApi, string category, int currentDepth)
 		{
 			//force capitalize first letter
 			//TODO: also force first letter of cat name
@@ -186,8 +187,8 @@ namespace WikiCrawler
 			}
 			else
 			{
-				Wikimedia.Article categoryArticle = commonsApi.GetPage(category);
-				if (!Wikimedia.Article.IsNullOrEmpty(categoryArticle))
+				Article categoryArticle = commonsApi.GetPage(category);
+				if (!MediaWiki.Article.IsNullOrEmpty(categoryArticle))
 				{
 					// creator?
 					int creatorLoc = categoryArticle.revisions[0].text.IndexOf("{{Creator:", StringComparison.OrdinalIgnoreCase);
@@ -203,7 +204,7 @@ namespace WikiCrawler
 					if (currentDepth < s_SearchDepth || 
 						(currentDepth < s_SearchDepth + 1 && categoryArticle.GetTitle().Contains(" by ")))
 					{
-						foreach (string parentCat in Wikimedia.WikiUtils.GetCategories(categoryArticle.revisions[0].text))
+						foreach (string parentCat in MediaWiki.WikiUtils.GetCategories(categoryArticle.revisions[0].text))
 						{
 							string parentCreator = GetCreatorForCategory(commonsApi, parentCat, currentDepth + 1);
 							if (!string.IsNullOrEmpty(parentCreator))

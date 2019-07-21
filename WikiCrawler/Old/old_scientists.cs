@@ -40,7 +40,7 @@ namespace WikiCrawler
             write2.Close();
             return;*/
 
-			Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("http://en.wikipedia.org/"));
+			MediaWiki.Api Api = new MediaWiki.Api(new Uri("http://en.wikipedia.org/"));
 
             StreamReader re = new StreamReader(new FileStream("C:/pages.txt", FileMode.Open));
 
@@ -49,7 +49,7 @@ namespace WikiCrawler
             string sback = "START";
             bool started = false;
             string text;
-            Wikimedia.Article art;
+            MediaWiki.Article art;
             while (!re.EndOfStream)
             {
                 string s = re.ReadLine();

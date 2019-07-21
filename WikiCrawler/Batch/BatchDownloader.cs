@@ -114,10 +114,10 @@ public abstract class BatchDownloader : BatchTask
 	}
 
 	/// <summary>
-	/// Downloads and caches the data for the specified key.
+	/// Downloads the data for the specified key.
 	/// </summary>
 	/// <returns>The parsed data.</returns>
-	public Dictionary<string, string> Download(string key)
+	public Dictionary<string, string> Download(string key, bool cache = true)
 	{
 		Console.WriteLine("Downloading metadata: " + key);
 		Uri url = GetItemUri(key);
@@ -130,7 +130,7 @@ public abstract class BatchDownloader : BatchTask
 			{
 				m_succeeded.Add(key);
 			}
-			else
+			else if (cache)
 			{
 				//TODO: crash when failing here
 				File.WriteAllText(

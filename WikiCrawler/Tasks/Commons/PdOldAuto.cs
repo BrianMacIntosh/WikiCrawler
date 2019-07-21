@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -79,14 +80,14 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 		public static void Do()
 		{
 			Console.WriteLine("Logging in...");
-			Wikimedia.WikiApi commonsApi = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org"));
-			commonsApi.LogIn();
-			Wikimedia.WikiApi wikidataApi = new Wikimedia.WikiApi(new Uri("https://www.wikidata.org"));
-			commonsApi.LogIn();
+			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
+			commonsApi.AutoLogIn();
+			Api wikidataApi = new Api(new Uri("https://www.wikidata.org"));
+			commonsApi.AutoLogIn();
 
 			foreach (string art in s_DoMe)
 			{
-				Wikimedia.Article articleContent = commonsApi.GetPage(art.Trim());
+				Article articleContent = commonsApi.GetPage(art.Trim());
 				Do(commonsApi, wikidataApi, articleContent);
 				if (articleContent.Dirty)
 				{
@@ -101,9 +102,9 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 			{
 				Console.WriteLine("CATEGORY '" + cat + "'...");
 
-				foreach (Wikimedia.Article article in commonsApi.GetCategoryPages(cat))
+				foreach (Article article in commonsApi.GetCategoryEntries(cat, cmtype: CMType.page))
 				{
-					Wikimedia.Article articleContent = commonsApi.GetPage(article);
+					Article articleContent = commonsApi.GetPage(article);
 					Do(commonsApi, wikidataApi, articleContent);
 					if (articleContent.Dirty)
 					{
@@ -123,7 +124,7 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 		/// Gets the year of death from the specified creator template.
 		/// </summary>
 		/// <param name="errcat">Error category that should be added to the creator.</param>
-		private static string GetCreatorDeathYear(Wikimedia.WikiApi commonsApi, Wikimedia.WikiApi wikidataApi,
+		private static string GetCreatorDeathYear(Api commonsApi, Api wikidataApi,
 			string creator)
 		{
 			creator = creator.Trim(s_CreatorTrim);
@@ -135,27 +136,27 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 			else
 			{
 				//TODO: check against Wikidata and publicly report errors
-				
+
 				// check creator
-				Wikimedia.Article article = commonsApi.GetPage(creator);
-				if (!Wikimedia.Article.IsNullOrEmpty(article))
+				Article article = commonsApi.GetPage(creator);
+				if (!MediaWiki.Article.IsNullOrEmpty(article))
 				{
 					// get wikidata deathdate
 					string wdDeathYear = "";
-					string wdId = Wikimedia.WikiUtils.GetTemplateParameter("Wikidata", article.revisions[0].text);
+					string wdId = MediaWiki.WikiUtils.GetTemplateParameter("Wikidata", article.revisions[0].text);
 					if (!string.IsNullOrEmpty(wdId))
 					{
-						Wikimedia.Entity wikidata = wikidataApi.GetEntity(wdId);
+						Entity wikidata = wikidataApi.GetEntity(wdId);
 						if (!wikidata.missing)
 						{
-							wdDeathYear = wikidata.GetClaimValueAsDate(Wikimedia.Wikidata.Prop_DateOfDeath).GetYear().ToString();
+							wdDeathYear = wikidata.GetClaimValueAsDate(MediaWiki.Wikidata.Prop_DateOfDeath).GetYear().ToString();
 						}
 					}
 
-					string deathyear = Wikimedia.WikiUtils.GetTemplateParameter("Deathyear", article.revisions[0].text);
+					string deathyear = MediaWiki.WikiUtils.GetTemplateParameter("Deathyear", article.revisions[0].text);
 					if (string.IsNullOrEmpty(deathyear))
 					{
-						deathyear = Wikimedia.WikiUtils.GetTemplateParameter("Deathdate", article.revisions[0].text);
+						deathyear = MediaWiki.WikiUtils.GetTemplateParameter("Deathdate", article.revisions[0].text);
 					}
 					if (!string.IsNullOrEmpty(deathyear))
 					{
@@ -200,10 +201,10 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 		/// Attempts to update appropriate PD-old templates in the article.
 		/// </summary>
 		/// <param name="article">Article, already downloaded.</param>
-		public static void Do(Wikimedia.WikiApi commonsApi, Wikimedia.WikiApi wikidataApi,
-			Wikimedia.Article article)
+		public static void Do(Api commonsApi, Api wikidataApi,
+			Article article)
 		{
-			if (Wikimedia.Article.IsNullOrEmpty(article))
+			if (MediaWiki.Article.IsNullOrEmpty(article))
 			{
 				Console.WriteLine("PdOldAuto: FATAL: Article missing.");
 				return;
@@ -214,10 +215,10 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 			string text = article.revisions[0].text;
 
 			// search for creator
-			string author = Wikimedia.WikiUtils.GetTemplateParameter("artist", text);
+			string author = MediaWiki.WikiUtils.GetTemplateParameter("artist", text);
 			if (string.IsNullOrEmpty(author))
 			{
-				author = Wikimedia.WikiUtils.GetTemplateParameter("author", text);
+				author = MediaWiki.WikiUtils.GetTemplateParameter("author", text);
 			}
 			author = author.Trim();
 

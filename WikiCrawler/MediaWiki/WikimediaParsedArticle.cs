@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 
-namespace Wikimedia
+namespace MediaWiki
 {
 	public class ParsedArticle
 	{

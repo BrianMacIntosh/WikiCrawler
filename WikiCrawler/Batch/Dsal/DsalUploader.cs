@@ -37,7 +37,7 @@ namespace Dsal
 				if (dateMetadata.PreciseYear != 0)
 				{
 					string yearLocCat = "Category:" + dateMetadata.PreciseYear.ToString() + " in " + location;
-					Wikimedia.Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
+					MediaWiki.Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
 					if (existingYearLocCat != null)
 					{
 						categories.Add(existingYearLocCat.title);
@@ -116,7 +116,7 @@ namespace Dsal
 			return new Uri(metadata["ImageUrl"]);
 		}
 
-		protected override string GetTitle(string key, Dictionary<string, string> metadata)
+		public override string GetTitle(string key, Dictionary<string, string> metadata)
 		{
 			return metadata["Title"] + " (" + m_config.filenameSuffix + " " + key.Substring(key.Length - 4, 4) + ")";
 		}

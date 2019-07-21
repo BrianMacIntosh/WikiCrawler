@@ -9,7 +9,7 @@ namespace WikiCrawler
 {
 	class NsrwFollowup
 	{
-		private static Wikimedia.WikiApi Api;
+		private static MediaWiki.Api Api;
 
 		public static void Do()
 		{
@@ -51,8 +51,8 @@ namespace WikiCrawler
 			try
 			{
 				Console.WriteLine("Logging in...");
-				Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
-				Api.LogIn();
+				Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
+				Api.AutoLogIn();
 
 				for (int c = queue.Count - 1; c >= 0; c--)
 				{
@@ -68,7 +68,7 @@ namespace WikiCrawler
 
 					Console.WriteLine(file);
 
-					Wikimedia.Article article = Api.GetPage(file);
+					MediaWiki.Article article = Api.GetPage(file);
 					string text = article.revisions.First().text;
 
 					//Find source article
@@ -97,7 +97,7 @@ namespace WikiCrawler
 					text = text.Replace("{{ExtractImage}}", "");
 					text = text.Replace("{{LA2-NSRW}}", nsrwDerivedInfobox);
 
-					if (Wikimedia.WikiUtils.HasNoCategories(text))
+					if (MediaWiki.WikiUtils.HasNoCategories(text))
 					{
 						string month = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(DateTime.Now.Month);
 						text = text.TrimEnd() + "\n{{Uncategorized|year=" + DateTime.Now.Year + 
@@ -158,7 +158,7 @@ namespace WikiCrawler
 		{
 			sourceFile = sourceFile.Replace("Image:", "");
 
-			Wikimedia.Article sourceArticle = Api.GetPage(sourceFile);
+			MediaWiki.Article sourceArticle = Api.GetPage(sourceFile);
 
 			string sourceText = sourceArticle.revisions.First().text;
 			string files = string.Join("|", destinationFiles.ToArray());

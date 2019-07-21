@@ -10,7 +10,7 @@ namespace WikiCrawler
 {
 	class Tropenmuseum
 	{
-		private static Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
+		private static MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
 
 		public void Do()
 		{
@@ -33,7 +33,7 @@ namespace WikiCrawler
 			}
 		}
 
-		public void DoUpload(Wikimedia.WikiApi api, Dictionary<string, string> data)
+		public void DoUpload(MediaWiki.Api api, Dictionary<string, string> data)
 		{
 			string title = string.Format(
 				"COLLECTIE STICHTING NATIONAAL MUSEUM VAN WERELDCULTUREN {0} {1}.jpg",
@@ -107,9 +107,9 @@ namespace WikiCrawler
 				text += "[[Category:" + data["Commons category 2"] + "]]";
 			}
 
-			Wikimedia.Article art = new Wikimedia.Article();
+			MediaWiki.Article art = new MediaWiki.Article();
 			art.title = title;
-			art.revisions = new Wikimedia.Revision[1];
+			art.revisions = new MediaWiki.Revision[1];
 			art.revisions[0].text = text;
 
 			Api.UploadFromLocal(art, imagePath, "(BOT) batch image upload (see [[Commons:Batch uploading/Tropenmuseum Expeditions]])", true);

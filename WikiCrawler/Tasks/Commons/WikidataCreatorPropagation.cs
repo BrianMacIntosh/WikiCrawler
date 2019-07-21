@@ -8,14 +8,14 @@ namespace WikiCrawler
 {
 	static class WikidataCreatorPropagation
 	{
-		private static Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
-		private static Wikimedia.WikiApi WikidataApi = new Wikimedia.WikiApi(new Uri("http://www.wikidata.org/"));
+		private static MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
+		private static MediaWiki.Api WikidataApi = new MediaWiki.Api(new Uri("http://www.wikidata.org/"));
 
 		public static void Do()
 		{
 			Console.WriteLine("Logging in...");
-			Api.LogIn();
-			WikidataApi.LogIn();
+			Api.AutoLogIn();
+			WikidataApi.AutoLogIn();
 
 			List<string> creators = new List<string>();
 			using (StreamReader reader = new StreamReader(new FileStream("authority_in.txt", FileMode.Open), Encoding.Default))
@@ -37,7 +37,7 @@ namespace WikiCrawler
 					continue;
 				}
 
-				Wikimedia.Article creatorArticle = Api.GetPage(creatorPage);
+				MediaWiki.Article creatorArticle = Api.GetPage(creatorPage);
 
 				if (creatorArticle == null || creatorArticle.missing)
 				{
@@ -50,15 +50,15 @@ namespace WikiCrawler
 				List<string> articleLines = new List<string>();
 				articleLines.AddRange(articleText.Split('\n'));
 
-				string wikidataId = Wikimedia.WikiUtils.GetTemplateParameter("wikidata", articleText);
+				string wikidataId = MediaWiki.WikiUtils.GetTemplateParameter("wikidata", articleText);
 
 				//got it?
 				if (!string.IsNullOrEmpty(wikidataId) && wikidataId[0] == 'Q')
 				{
-					Wikimedia.Entity entity = WikidataApi.GetEntity(wikidataId);
+					MediaWiki.Entity entity = WikidataApi.GetEntity(wikidataId);
 					if (entity != null && !entity.missing)
 					{
-						string homecat = Wikimedia.WikiUtils.GetTemplateParameter("homecat", articleText);
+						string homecat = MediaWiki.WikiUtils.GetTemplateParameter("homecat", articleText);
 						if (!string.IsNullOrEmpty(homecat) && !entity.HasClaim("P373"))
 						{
 							//propagate homecat
@@ -72,7 +72,7 @@ namespace WikiCrawler
 						}
 
 						// populate creator authority
-						string authority = Wikimedia.Wikidata.GetAuthorityControlTemplate(entity, "bare=1", null);
+						string authority = MediaWiki.Wikidata.GetAuthorityControlTemplate(entity, "bare=1", null);
 						if (!string.IsNullOrEmpty(authority))
 						{
 							// look for existing authority

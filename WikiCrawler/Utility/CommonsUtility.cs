@@ -1,11 +1,11 @@
-﻿using Wikimedia;
+﻿using MediaWiki;
 
 public static class CommonsUtility
 {
 	/// <summary>
 	/// Ensures that the category tree for the {{taken on}} template with the specified date is created.
 	/// </summary>
-	public static void EnsureTakenOnCategories(WikiApi api, string date)
+	public static void EnsureTakenOnCategories(Api api, string date)
 	{
 		if (DateUtility.IsExactDateModern(date))
 		{

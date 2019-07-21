@@ -11,8 +11,8 @@ namespace WikiCrawler
 		public static void Do()
 		{
 			Console.WriteLine("Logging in...");
-			Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
-			Api.LogIn();
+			MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
+			Api.AutoLogIn();
 
 			//Read queue
 			List<string> queue = new List<string>();
@@ -40,7 +40,7 @@ namespace WikiCrawler
 
 					Console.WriteLine(file);
 
-					Wikimedia.Article article = Api.GetPage(file);
+					MediaWiki.Article article = Api.GetPage(file);
 					string text = article.revisions.First().text;
 
 					string extractedFrom = "{{extracted from|";

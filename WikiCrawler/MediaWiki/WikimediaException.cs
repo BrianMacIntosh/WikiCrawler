@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Wikimedia
+namespace MediaWiki
 {
 	public class WikimediaException : Exception
 	{

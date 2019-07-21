@@ -17,7 +17,7 @@ namespace WikiCrawler
 			get { return Path.Combine(Configuration.DataDirectory, "creator_templates.json"); }
 		}
 
-		public static void Initialize(Wikimedia.WikiApi api)
+		public static void Initialize(MediaWiki.Api api)
 		{
 			//load known creators
 			string creatorTemplatesFile = CacheFile;
@@ -71,7 +71,7 @@ namespace WikiCrawler
 			}
 		}
 
-		private static void ValidateCreators(Wikimedia.WikiApi api)
+		private static void ValidateCreators(MediaWiki.Api api)
 		{
 			Console.WriteLine("Validating creators...");
 			foreach (KeyValuePair<string, Creator> kv in s_creatorData)

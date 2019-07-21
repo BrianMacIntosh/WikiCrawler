@@ -77,6 +77,8 @@
     <Compile Include="Batch\NPGallery\NPSDirectoryQuery.cs" />
     <Compile Include="Batch\OEC\OecUploader.cs" />
     <Compile Include="Batch\ProjectConfig.cs" />
+    <Compile Include="MediaWiki\Formats\ImageInfo.cs" />
+    <Compile Include="MediaWiki\Formats\Revision.cs" />
     <Compile Include="Utility\Exceptions\LicenseException.cs" />
     <Compile Include="Utility\Exceptions\RedownloadException.cs" />
     <Compile Include="Batch\UWash\UWashDownloader.cs" />
@@ -109,8 +111,11 @@
     <Compile Include="UWash\DataStructures\UWashFailure.cs" />
     <Compile Include="UWash\DataStructures\UWashProjectConfig.cs" />
     <Compile Include="WatermarkRemoval.cs" />
-    <Compile Include="Wikimedia\Date.cs" />
-    <Compile Include="Wikimedia\DotNetWikiBot.cs" />
+    <Compile Include="MediaWiki\Formats\Article.cs" />
+    <Compile Include="MediaWiki\Formats\Claim.cs" />
+    <Compile Include="MediaWiki\Formats\Contribution.cs" />
+    <Compile Include="MediaWiki\Formats\Date.cs" />
+    <Compile Include="MediaWiki\DotNetWikiBot.cs" />
     <Compile Include="Old\Dsea.cs" />
     <Compile Include="Backend\EasyWeb.cs" />
     <Compile Include="Tasks\Commons\FixImplicitCreators.cs" />
@@ -132,13 +137,19 @@
     <Compile Include="UWash\BatchController.cs" />
     <Compile Include="UWash\UWashCats.cs" />
     <Compile Include="UWash\UWashLang.cs" />
-    <Compile Include="Wikimedia\DuplicateFileException.cs" />
-    <Compile Include="Wikimedia\Wikidata.cs" />
+    <Compile Include="MediaWiki\DuplicateFileException.cs" />
+    <Compile Include="MediaWiki\Formats\Entity.cs" />
+    <Compile Include="MediaWiki\Enumerations.cs" />
+    <Compile Include="MediaWiki\Namespace.cs" />
+    <Compile Include="MediaWiki\Formats\Object.cs" />
+    <Compile Include="MediaWiki\Formats\Snak.cs" />
+    <Compile Include="MediaWiki\Wikidata.cs" />
     <Compile Include="Tasks\Commons\WikidataCreatorPropagation.cs" />
-    <Compile Include="Wikimedia\Wikimedia.cs" />
-    <Compile Include="Wikimedia\WikimediaCategoryTree.cs" />
-    <Compile Include="Wikimedia\WikimediaException.cs" />
-    <Compile Include="Wikimedia\WikimediaParsedArticle.cs" />
+    <Compile Include="MediaWiki\Api.cs" />
+    <Compile Include="MediaWiki\WikimediaCategoryTree.cs" />
+    <Compile Include="MediaWiki\WikimediaException.cs" />
+    <Compile Include="MediaWiki\WikimediaParsedArticle.cs" />
+    <Compile Include="MediaWiki\WikiUtils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

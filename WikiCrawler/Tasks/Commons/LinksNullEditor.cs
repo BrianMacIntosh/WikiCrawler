@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Wikimedia;
+using MediaWiki;
 
 namespace WikiCrawler
 {
@@ -12,9 +12,9 @@ namespace WikiCrawler
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
-			WikiApi Api = new WikiApi(commons);
+			Api Api = new Api(commons);
 			
-			Api.LogIn();
+			Api.AutoLogIn();
 
 			string[] pages = new string[]
 			{
@@ -45,14 +45,14 @@ namespace WikiCrawler
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
-			WikiApi Api = new WikiApi(commons);
-			Api.LogIn();
+			Api Api = new Api(commons);
+			Api.AutoLogIn();
 
-			foreach (Article article in Api.GetCategoryFiles("Category:Images from the Asahel Curtis Photo Company Photographs Collection"))
+			foreach (Article article in Api.GetCategoryEntries("Category:Images from the Asahel Curtis Photo Company Photographs Collection", cmtype: CMType.file))
 			{
 				Console.WriteLine(article.title);
 				Article fullArticle = Api.GetPage(article);
-				Article revs = Api.GetPage(article, "info|revisions&rvprop=user&rvlimit=max");
+				Article revs = Api.GetPage(article, rvprop: RVProp.user, rvlimit: Limit.Max);
 				if (!fullArticle.revisions[0].text.Contains("[[Category:Images from the Asahel Curtis Photo Company Photographs Collection to check]]")
 					&& !revs.revisions.Any(rev => rev.user == "Jmabel"))
 				{
@@ -73,8 +73,8 @@ namespace WikiCrawler
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
-			WikiApi Api = new WikiApi(commons);
-			Api.LogIn();
+			Api Api = new Api(commons);
+			Api.AutoLogIn();
 
 			string startTime = "2018-09-22 16:00:00"; //very generous
 			string endTime = "2018-09-22 17:20:00";

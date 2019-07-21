@@ -139,7 +139,7 @@ namespace NPGallery
 		protected override string BuildPage(string key, Dictionary<string, string> metadata)
 		{
 			// trim all metadata
-			foreach (var kv in metadata.ToArray())
+			foreach (KeyValuePair<string, string> kv in metadata.ToArray())
 			{
 				string value = kv.Value;
 				value = value.Trim(StringUtility.WhitespaceExtended);
@@ -174,7 +174,7 @@ namespace NPGallery
 			}
 
 			// check for different copyright text
-			if (metadata.TryGetValue("Copyright", out outValue))
+			/*if (metadata.TryGetValue("Copyright", out outValue))
 			{
 				if (!s_standardCopyrights.Contains(outValue)
 					&& !outValue.StartsWith("NPS Photo /"))
@@ -182,10 +182,10 @@ namespace NPGallery
 					//TODO: make use of this info
 					if (!outValue.StartsWith("This digital asset is in the public domain."))
 					{
-						//throw new Exception("Unrecognized copyright: '" + outValue + "'");
+						throw new Exception("Unrecognized copyright: '" + outValue + "'");
 					}
 				}
-			}
+			}*/
 
 			// determine the photographer
 			string authorString = "";
@@ -218,9 +218,6 @@ namespace NPGallery
 				//HACK;
 				creator.UploadableUsage++;
 			}
-
-			string publisher;
-			metadata.TryGetValue("Publisher", out publisher);
 
 			// determine the creation date
 			DateParseMetadata createDateMetadata = DateParseMetadata.Unknown;
@@ -390,7 +387,7 @@ namespace NPGallery
 					if (dateMetadata.PreciseYear != 0)
 					{
 						string yearLocCat = "Category:" + dateMetadata.PreciseYear.ToString() + " in " + definiteLocation;
-						Wikimedia.Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
+						MediaWiki.Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
 						if (existingYearLocCat != null)
 						{
 							categories.Add(existingYearLocCat.title);
@@ -592,12 +589,15 @@ namespace NPGallery
 					string relatedId = related[i];
 					string relatedType = related[i + 1];
 					string relatedTitle = related[i + 2];
-					Dictionary<string, string> relatedMetadata = ParseMetadata(relatedId);
+					Dictionary<string, string> relatedMetadata = LoadMetadata(relatedId, true);
+					if (relatedMetadata == null)
+					{
+						relatedMetadata = m_downloader.Download(relatedId, false);
+					}
 					string uploadTitle = GetTitle(relatedId, relatedMetadata).Replace(s_badTitleCharacters, "");
 					string imagePath = GetImageCacheFilename(key, metadata);
 					uploadTitle = Path.ChangeExtension(uploadTitle, Path.GetExtension(imagePath));
 					otherVersions = StringUtility.Join("\n", otherVersions, uploadTitle);
-					//TODO: fix up backs that were uploaded before this (https://commons.wikimedia.org/wiki/File:Colonel_Joseph_Tilford_in_Dress_Uniform_with_a_Van_Dyke_Beard_(468738dfc49648328ef0b75594aa4d20).tif)
 				}
 			}
 
@@ -678,6 +678,9 @@ namespace NPGallery
 					throw new Exception("Multiple author fields present");
 				}
 			}
+
+			string publisher;
+			metadata.TryGetValue("Publisher", out publisher);
 
 			// if the date has an accurate month, day, and year, use {{taken on|}}
 			if (infoTemplate == "Photograph"
@@ -879,7 +882,7 @@ namespace NPGallery
 			}
 		}
 
-		protected override string GetTitle(string key, Dictionary<string, string> metadata)
+		public override string GetTitle(string key, Dictionary<string, string> metadata)
 		{
 			string title = HttpUtility.HtmlDecode(metadata["Title"]);
 

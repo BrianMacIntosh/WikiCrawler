@@ -5,15 +5,15 @@ using System.Text;
 using System.IO;
 using System.Web;
 
-namespace Wikimedia
+namespace MediaWiki
 {
 	public class CategoryTree
 	{
 		private static Dictionary<string, List<string>> s_CategoriesByCategory;
 
-		private readonly WikiApi Api;
+		private readonly Api Api;
 
-		public CategoryTree(WikiApi api)
+		public CategoryTree(Api api)
 		{
 			Api = api;
 		}

@@ -4,13 +4,14 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using MySql.Data.MySqlClient;
+using MediaWiki;
 
 namespace WikiCrawler
 {
 	class TaxonCategoryUpdate
 	{
-		private static Wikimedia.WikiApi Api = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
-		private static Wikimedia.WikiApi SpeciesApi = new Wikimedia.WikiApi(new Uri("http://species.wikimedia.org/"));
+		private static Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
+		private static Api SpeciesApi = new Api(new Uri("http://species.wikimedia.org/"));
 
 		private const string taxonTodoFile = "taxon_todo.txt";
 		private const string catTreeFile = "taxon_category_todo.txt";
@@ -75,7 +76,7 @@ namespace WikiCrawler
 			itisConnection.Open();
 
 			Console.WriteLine("Logging in...");
-			Api.LogIn();
+			Api.AutoLogIn();
 
 			try
 			{
@@ -117,20 +118,16 @@ namespace WikiCrawler
 			// add to category tree
 			if (!catTree.ContainsKey(catname))
 			{
-				Wikimedia.Article[] articles = Api.GetCategoryPagesFlat(catname);
 				List<string> children = new List<string>();
-				foreach (Wikimedia.Article article in articles)
+				foreach (Article article in Api.GetCategoryEntries(catname, cmtype: CMType.subcat))
 				{
-					if (article.title.StartsWith("Category:"))
-					{
-						children.Add(article.title);
-					}
+					children.Add(article.title);
 				}
 				catTree[catname] = children;
 			}
 
 			// update page text
-			Wikimedia.Article thisArticle = Api.GetPage(catname);
+			Article thisArticle = Api.GetPage(catname);
 
 		}
 	}

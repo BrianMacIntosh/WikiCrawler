@@ -14,13 +14,13 @@ namespace WikiCrawler
 	{
 		//private static MySqlConnection taxonConnection;
 
-		private static Wikimedia.WikiApi s_commonsApi = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
-		private static Wikimedia.WikiApi s_wikidataApi = new Wikimedia.WikiApi(new Uri("http://wikidata.org/"));
+		private static MediaWiki.Api s_commonsApi = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
+		private static MediaWiki.Api s_wikidataApi = new MediaWiki.Api(new Uri("http://wikidata.org/"));
 
 		/// <summary>
 		/// Cached tree structure of Commons categories.
 		/// </summary>
-		public static readonly Wikimedia.CategoryTree CategoryTree = new Wikimedia.CategoryTree(s_commonsApi);
+		public static readonly MediaWiki.CategoryTree CategoryTree = new MediaWiki.CategoryTree(s_commonsApi);
 
 		private class CategoryMappingData
 		{
@@ -62,7 +62,7 @@ namespace WikiCrawler
 		/// </summary>
 		private static Dictionary<string, CategoryMappingData> s_categoryMap = new Dictionary<string, CategoryMappingData>(StringComparer.InvariantCultureIgnoreCase);
 
-		private static Dictionary<string, Wikimedia.Article> s_extantCategories = new Dictionary<string, Wikimedia.Article>();
+		private static Dictionary<string, MediaWiki.Article> s_extantCategories = new Dictionary<string, MediaWiki.Article>();
 
 		private static char[] s_trim = new char[] { ' ', '\n', '\r', '\t', '-' };
 
@@ -241,17 +241,17 @@ namespace WikiCrawler
 			string[] entities = s_wikidataApi.SearchEntities(pieces.Last());
 			for (int d = 0; d < Math.Min(5, entities.Length); d++)
 			{
-				Wikimedia.Entity place = s_wikidataApi.GetEntity(entities[d]);
+				MediaWiki.Entity place = s_wikidataApi.GetEntity(entities[d]);
 
 				//get country for place
 				if (place.HasClaim("P17"))
 				{
-					IEnumerable<Wikimedia.Entity> parents = place.GetClaimValuesAsEntity("P17", s_wikidataApi);
+					IEnumerable<MediaWiki.Entity> parents = place.GetClaimValuesAsEntity("P17", s_wikidataApi);
 					if (place.HasClaim("P131"))
 					{
 						parents = parents.Concat(place.GetClaimValuesAsEntity("P131", s_wikidataApi));
 					}
-					foreach (Wikimedia.Entity parent in parents)
+					foreach (MediaWiki.Entity parent in parents)
 					{
 						//look for the parent in the earlier pieces
 						for (int c = 0; c < pieces.Length - 1; c++)
@@ -340,7 +340,7 @@ namespace WikiCrawler
 					else
 					{
 						//try to find creator template's homecat param
-						Wikimedia.Article creatorArticle = s_commonsApi.GetPage(creatorPage);
+						MediaWiki.Article creatorArticle = s_commonsApi.GetPage(creatorPage);
 						if (creatorArticle != null && !creatorArticle.missing)
 						{
 							foreach (string s in creatorArticle.revisions[0].text.Split('|'))
@@ -424,7 +424,7 @@ namespace WikiCrawler
 			return MapCategory(input, TranslateCategory(s_commonsApi, input));
 		}
 
-		public static string TranslateCategory(Wikimedia.WikiApi api, string input)
+		public static string TranslateCategory(MediaWiki.Api api, string input)
 		{
 			string catname = input.Trim(s_trim);
 
@@ -444,7 +444,7 @@ namespace WikiCrawler
 
 		private static string[] seperatorReplacements = new string[] { " in ", " of " };
 
-		private static string TryMapCategory0(Wikimedia.WikiApi api, string input)
+		private static string TryMapCategory0(MediaWiki.Api api, string input)
 		{
 			string catname = TryMapCategoryFinal(api, input, true);
 			if (!string.IsNullOrEmpty(catname)) return catname;
@@ -497,14 +497,14 @@ namespace WikiCrawler
 			return "";
 		}
 
-		private static string TryMapCategoryFinal(Wikimedia.WikiApi api, string cat, bool couldBeAnimal)
+		private static string TryMapCategoryFinal(MediaWiki.Api api, string cat, bool couldBeAnimal)
 		{
 			string scientific = "";
 
 			//remove dupe spaces
 			cat = string.Join(" ", cat.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
 
-			Wikimedia.Article resultArt = TryFetchCategory(api, cat);
+			MediaWiki.Article resultArt = TryFetchCategory(api, cat);
 			if (resultArt != null && !resultArt.missing)
 			{
 				return resultArt.title;
@@ -605,9 +605,9 @@ namespace WikiCrawler
 			return "";
 		}
 
-		public static string TryFetchCategoryName(Wikimedia.WikiApi api, string cat)
+		public static string TryFetchCategoryName(MediaWiki.Api api, string cat)
 		{
-			Wikimedia.Article article = TryFetchCategory(api, cat);
+			MediaWiki.Article article = TryFetchCategory(api, cat);
 			if (article != null && !article.missing)
 				return article.title;
 			else
@@ -617,11 +617,11 @@ namespace WikiCrawler
 		/// <summary>
 		/// Look for the specified category. Return the actual category used.
 		/// </summary>
-		public static Wikimedia.Article TryFetchCategory(Wikimedia.WikiApi api, string cat)
+		public static MediaWiki.Article TryFetchCategory(MediaWiki.Api api, string cat)
 		{
 			if (!cat.StartsWith("Category:")) cat = "Category:" + cat;
 
-			Wikimedia.Article extant;
+			MediaWiki.Article extant;
 			if (s_extantCategories.TryGetValue(cat, out extant))
 			{
 				return extant;
@@ -629,7 +629,7 @@ namespace WikiCrawler
 
 			Console.WriteLine("FETCH: '" + cat + "'");
 
-			Wikimedia.Article art = GetCategory(api, ref cat);
+			MediaWiki.Article art = GetCategory(api, ref cat);
 			if (art != null)
 			{
 				string arttext = art.revisions[0].text;
@@ -655,7 +655,7 @@ namespace WikiCrawler
 					cat = arttext.Substring(catstart, arttext.IndexOf("}}", catstart) - catstart);
 					cat = cat.Split('|')[0];
 					if (cat.Contains("=")) cat = cat.Split('=')[1];
-					Wikimedia.Article redir = TryFetchCategory(api, cat);
+					MediaWiki.Article redir = TryFetchCategory(api, cat);
 					s_extantCategories[cat] = redir;
 					return redir;
 				}
@@ -673,9 +673,9 @@ namespace WikiCrawler
 			}
 		}
 
-		private static Wikimedia.Article GetCategory(Wikimedia.WikiApi api, ref string cat)
+		private static MediaWiki.Article GetCategory(MediaWiki.Api api, ref string cat)
 		{
-			Wikimedia.Article art = api.GetPage(cat);
+			MediaWiki.Article art = api.GetPage(cat);
 			if (art != null && !art.missing)
 			{
 				return art;

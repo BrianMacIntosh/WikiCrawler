@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using MediaWiki;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -92,7 +93,7 @@ namespace WikiCrawler
 
 		public static void RebuildSuccesses()
 		{
-			Wikimedia.WikiApi commonsApi = new Wikimedia.WikiApi(new Uri("https://commons.wikimedia.org/"));
+			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org/"));
 
 			Console.Write("Project Key>");
 			string projectKey = Console.ReadLine();
@@ -104,7 +105,7 @@ namespace WikiCrawler
 			List<string> succeeded = new List<string>();
 
 			string suffixStart = " (";// + projectConfig.filenameSuffix + " ";
-			foreach (Wikimedia.Article article in commonsApi.GetCategoryFiles(projectConfig.masterCategory))
+			foreach (Article article in commonsApi.GetCategoryEntries(projectConfig.masterCategory, cmtype: CMType.file))
 			{
 				Console.WriteLine(article.title);
 				int tagIndex = article.title.LastIndexOf(suffixStart);

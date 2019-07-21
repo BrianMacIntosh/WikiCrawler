@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
-using Wikimedia;
+using MediaWiki;
 
 namespace OEC
 {
@@ -26,7 +26,7 @@ namespace OEC
 			}
 		}
 
-		protected override Dictionary<string, string> ParseMetadata(string fileContents)
+		protected override Dictionary<string, string> LoadMetadata(string fileContents, bool always = false)
 		{
 			return new Dictionary<string, string>();
 		}
@@ -239,7 +239,7 @@ namespace OEC
 			}
 		}
 
-		protected override string GetTitle(string key, Dictionary<string, string> metadata)
+		public override string GetTitle(string key, Dictionary<string, string> metadata)
 		{
 			string countryCode, country, year;
 			ParseKey(key, out countryCode, out country, out year);
