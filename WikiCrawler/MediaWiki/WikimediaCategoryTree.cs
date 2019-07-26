@@ -9,6 +9,9 @@ namespace MediaWiki
 {
 	public class CategoryTree
 	{
+		/// <summary>
+		/// For each category, its parent categories.
+		/// </summary>
 		private static Dictionary<string, List<string>> s_CategoriesByCategory;
 
 		private readonly Api Api;
@@ -59,49 +62,47 @@ namespace MediaWiki
 		/// <summary>
 		/// 
 		/// </summary>
-		/// <param name="cat"></param>
+		/// <param name="rootCat"></param>
 		/// <returns>False if the category does not exist.</returns>
-		public bool AddToTree(string cat, int maxdepth)
+		public bool AddToTree(string rootCat, int maxdepth)
 		{
-			if (!cat.StartsWith("Category:")) cat = "Category:" + cat;
+			if (!rootCat.StartsWith("Category:")) rootCat = "Category:" + rootCat;
 
-			if (s_CategoriesByCategory.ContainsKey(cat)) return true;
+			if (s_CategoriesByCategory.ContainsKey(rootCat)) return true;
+			
+			Console.WriteLine("Begin checking cats: " + rootCat);
+			Article rootArticle = Api.GetPage(rootCat, prop: Prop.categories, rvprop: "");
+			if (rootArticle == null || rootArticle.categories == null || rootArticle.categories.Length == 0) return false;
 
-			Queue<KeyValuePair<Article, int>> queue = new Queue<KeyValuePair<Article, int>>();
+			List<Article> queuedCats = new List<Article>();
+			queuedCats.AddRange(rootArticle.categories);
+			s_CategoriesByCategory[rootArticle.title] = rootArticle.categories.Select(art => art.title).ToList();
 
-			Console.WriteLine("Begin checking cats: " + cat);
-			Article catArt = WikiCrawler.CategoryTranslation.TryFetchCategory(Api, cat);
-			if (catArt == null || catArt.revisions == null || catArt.revisions.Length == 0) return false;
-
-			queue.Enqueue(new KeyValuePair<Article, int>(catArt, 0));
-
-			while (queue.Count > 0)
+			int depth = 0;
+			while (++depth < maxdepth)
 			{
-				KeyValuePair<Article, int> kv = queue.Dequeue();
-				Article check = kv.Key;
-				if (check == null) continue;
-
-				cat = check.title;
-
-				if (s_CategoriesByCategory.ContainsKey(cat)) continue;
-				if (check.revisions == null || check.revisions.Length == 0) continue;
-
-				Console.WriteLine("Checking cats: " + cat);
-				s_CategoriesByCategory[cat] = WikiUtils.GetCategories(check.revisions[0].text).ToList();
-				if (s_CategoriesByCategory[cat].Count > 0)
+				List<Article> newQueuedCats = new List<Article>();
+				foreach (Article queuedArt in Api.GetPages(queuedCats, prop: Prop.categories, rvprop: ""))
 				{
-					if (kv.Value < maxdepth)
+					if (queuedArt.missing)
 					{
-						foreach (Article art in Api.GetPages(s_CategoriesByCategory[cat]))
-							queue.Enqueue(new KeyValuePair<Article, int>(art, kv.Value + 1));
+						s_CategoriesByCategory[queuedArt.title] = new List<string>();
+						continue;
 					}
-					else
+
+					s_CategoriesByCategory[queuedArt.title] = queuedArt.categories.Select(art => art.title).ToList();
+
+					Console.WriteLine("Checking cats: " + queuedArt.title);
+					foreach (Article subcat in queuedArt.categories)
 					{
-						Console.WriteLine("Reached max depth.");
+						if (s_CategoriesByCategory.ContainsKey(subcat.title)) continue;
+						newQueuedCats.Add(subcat);
 					}
 				}
+				queuedCats = newQueuedCats;
 			}
 
+			Console.WriteLine("Reached max depth.");
 			return true;
 		}
 
@@ -140,6 +141,38 @@ namespace MediaWiki
 					}
 				}
 			}
+		}
+
+		/// <summary>
+		/// Returns true if the specified category has the parent category as a parent.
+		/// </summary>
+		public bool HasParent(string category, string findParent)
+		{
+			Queue<string> toCheck = new Queue<string>();
+			HashSet<string> alreadyChecked = new HashSet<string>();
+			toCheck.Enqueue(category);
+
+			while (toCheck.Count > 0)
+			{
+				string checkCat = toCheck.Dequeue();
+
+				if (!s_CategoriesByCategory.ContainsKey(checkCat)) continue;
+
+				foreach (string parent in s_CategoriesByCategory[checkCat])
+				{
+					if (!alreadyChecked.Contains(parent))
+					{
+						if (parent == findParent)
+						{
+							return true;
+						}
+						toCheck.Enqueue(parent);
+						alreadyChecked.Add(parent);
+					}
+				}
+			}
+
+			return false;
 		}
 	}
 }

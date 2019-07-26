@@ -56,7 +56,7 @@ namespace WikiCrawler
 					if (articleContent.Dirty)
 					{
 						CommonsCreatorFromWikidata.FixInformationTemplates(articleContent);
-						commonsApi.SetPage(articleContent, articleContent.GetEditSummary(), false, true, true);
+						commonsApi.EditPage(articleContent, articleContent.GetEditSummary());
 						lastPage = WikiUtils.GetSortkey(article);
 						successLimit--;
 						if (successLimit <= 0) break;

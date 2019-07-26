@@ -147,6 +147,14 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns an array of all the directly-referenced parent categories of this article.
 		/// </summary>
+		public static IEnumerable<string> GetCategories(Article article)
+		{
+			return GetCategories(article.revisions[0].text);
+		}
+
+		/// <summary>
+		/// Returns an array of all the directly-referenced parent categories of this article.
+		/// </summary>
 		public static IEnumerable<string> GetCategories(string text)
 		{
 			//TODO: whitespace after [[ is legal
@@ -248,6 +256,16 @@ namespace MediaWiki
 				}
 			}
 			return "";
+		}
+
+		/// <summary>
+		/// Removes the first occurence of the specified template from the text.
+		/// </summary>
+		/// <returns>The new text.</returns>
+		public static string RemoveTemplate(string templateName, string text)
+		{
+			string eat;
+			return RemoveTemplate(templateName, text, out eat);
 		}
 
 		/// <summary>

@@ -43,6 +43,7 @@ namespace UWash
 			"Scrapbook Notes",
 			"Album/Page",
 			"Keywords",
+			"Subjects",
 			"Subjects (LCTGM)",
 			"Subjects (LCSH)",
 			"Subjects (TGM)",
@@ -71,6 +72,8 @@ namespace UWash
 			"Digital ID Number",
 			"UW Reference Number",
 			"Reference Number on Photograph",
+			"Print Location",
+			"Condition",
 
 			"LCSH",
 			"LCTGM",
@@ -382,7 +385,7 @@ namespace UWash
 					existingYearCat.revisions[0] = new Revision();
 					existingYearCat.revisions[0].text = "{{AdvertisUSYear|" + latestYearString.Substring(0, 3)
 						+ "|" + latestYearString.Substring(3) + "}}";
-					Api.SetPage(existingYearCat, "(BOT) creating category", false, true, false);
+					Api.CreatePage(existingYearCat, "(BOT) creating category");
 				}
 				categories.Add(adYearCat);
 
@@ -535,6 +538,10 @@ namespace UWash
 			{
 				descText.AppendLine("*Geographic coverage: " + temp.Trim());
 			}
+			if (metadata.TryGetValue("Subjects", out temp))
+			{
+				descText.AppendLine("*Subjects: " + temp.Trim());
+			}
 			if (metadata.TryGetValue("LCTGM", out temp))
 			{
 				descText.AppendLine("*Subjects (LCTGM): " + temp.Replace("|", "; "));
@@ -633,6 +640,10 @@ namespace UWash
 			content.AppendLine("|source=" + UWashConfig.sourceTemplate); //was department, for Artwork
 			content.AppendLine("|permission=" + licenseTag);
 
+			if (metadata.TryGetValue("Print Location", out temp))
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Print Location|value=" + temp + "}}");
+			}
 			if (metadata.TryGetValue("Advertisement Text", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Inscriptions|value={{Inscription|" + temp + "|type=text|language=en}}}}");
@@ -683,19 +694,23 @@ namespace UWash
 			}
 			if (metadata.TryGetValue("Mountain Range", out temp))
 			{
-				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Mountain Range| value=" + temp.Trim(';') + "}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Mountain Range|value=" + temp.Trim(';') + "}}");
 			}
 			if (metadata.TryGetValue("Preserve or Park", out temp))
 			{
-				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Preserve or Park| value=" + temp.Trim(';') + "}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Preserve or Park|value=" + temp.Trim(';') + "}}");
 			}
 			if (metadata.TryGetValue("Photographer's Altitude", out temp))
 			{
-				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Camera Altitude| value=" + temp.Trim(';') + "}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Camera Altitude|value=" + temp.Trim(';') + "}}");
 			}
 			if (metadata.TryGetValue("Alternate Names", out temp))
 			{
-				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Alternate Name(s)| value=" + temp.Trim(';') + "}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Alternate Name(s)|value=" + temp.Trim(';') + "}}");
+			}
+			if (metadata.TryGetValue("Condition", out temp))
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Condition|value=" + temp + "}}");
 			}
 
 			string additionalGlaciers = "";
@@ -829,7 +844,7 @@ namespace UWash
 
 			// submit the edit
 			targetArticle.revisions[0].text = text;
-			return Api.SetPage(targetArticle, "(BOT) recording duplicate image from UWash collection", false, true);
+			return Api.EditPage(targetArticle, "(BOT) recording duplicate image from UWash collection");
 		}
 
 		private static Dictionary<string, string> PreprocessMetadata(Dictionary<string, string> data)

@@ -1,4 +1,5 @@
 ﻿using MediaWiki;
+using System;
 
 public static class CommonsUtility
 {
@@ -9,6 +10,7 @@ public static class CommonsUtility
 	{
 		if (DateUtility.IsExactDateModern(date))
 		{
+			Console.WriteLine("Checking for Taken On categories...");
 			string[] dateSplit = date.Split('-');
 
 			// cat name day/month should be padded
@@ -23,7 +25,7 @@ public static class CommonsUtility
 				takenOnCatArticle = new Article(takenOnCatTitle);
 				takenOnCatArticle.revisions = new Revision[1];
 				takenOnCatArticle.revisions[0] = new Revision() { text = "{{Photographs taken on navbox|" + date.Replace('-', '|') + "}}" };
-				api.SetPage(takenOnCatArticle, "creating new category", false, true, false);
+				api.CreatePage(takenOnCatArticle, "creating new category");
 			}
 			string dateCatTitle = "Category:" + date;
 			Article dateCatArticle = api.GetPage(dateCatTitle);
@@ -32,7 +34,7 @@ public static class CommonsUtility
 				dateCatArticle = new Article(dateCatTitle);
 				dateCatArticle.revisions = new Revision[1];
 				dateCatArticle.revisions[0] = new Revision() { text = "{{Date navbox|" + date.Replace('-', '|') + "}}" };
-				api.SetPage(dateCatArticle, "creating new category", false, true, false);
+				api.CreatePage(dateCatArticle, "creating new category");
 			}
 			string monthCatTitle = "Category:" + DateUtility.GetMonthName(int.Parse(dateSplit[1])) + " " + dateSplit[0];
 			Article monthCatArticle = api.GetPage(monthCatTitle);
@@ -44,7 +46,7 @@ public static class CommonsUtility
 				{
 					text = "{{monthbyyear|" + dateSplit[0].Substring(0, 3) + "|" + dateSplit[0].Substring(3, 1) + "|" + dateSplit[1] + "}}"
 				};
-				api.SetPage(monthCatArticle, "creating new category", false, true, false);
+				api.CreatePage(monthCatArticle, "creating new category");
 			}
 			string monthPhotosCatTitle = "Category:" + DateUtility.GetMonthName(int.Parse(dateSplit[1])) + " " + dateSplit[0] + " photographs";
 			Article monthPhotosCatArticle = api.GetPage(monthPhotosCatTitle);
@@ -56,7 +58,7 @@ public static class CommonsUtility
 				{
 					text = "{{PhotographsYearByMonth|" + dateSplit[0] + "|" + dateSplit[1] + "}}"
 				};
-				api.SetPage(monthPhotosCatArticle, "creating new category", false, true, false);
+				api.CreatePage(monthPhotosCatArticle, "creating new category");
 			}
 		}
 	}

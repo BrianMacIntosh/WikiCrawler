@@ -24,6 +24,7 @@ namespace MediaWiki
 		public string edittoken;
 		public Revision[] revisions;
 		public Article[] links;
+		public Article[] categories;
 
 		public string imagerepository;
 		public ImageInfo[] imageinfo;
@@ -64,6 +65,10 @@ namespace MediaWiki
 				if (json.ContainsKey("links"))
 				{
 					links = ReadArticleArray(json, "links");
+				}
+				if (json.ContainsKey("categories"))
+				{
+					categories = ReadArticleArray(json, "categories");
 				}
 				if (json.ContainsKey("imagerepository"))
 				{

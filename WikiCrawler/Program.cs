@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
+using System.Reflection;
 
 namespace WikiCrawler
 {
@@ -85,20 +88,53 @@ namespace WikiCrawler
 					case "massdownload":
 						MassDownloader.Do();
 						break;
-					case "nulleditlinks":
-						LinksNullEditor.Do();
-						break;
-					case "massrevert":
-						LinksNullEditor.Revert();
-						break;
 					case "findcatcreators":
 						FindCategoryCreators.Find();
 						break;
-					case "addcheck":
-						LinksNullEditor.CheckCat();
-						break;
 					default:
-						Console.WriteLine("No such task.");
+						{
+							// look for the class that contains the task
+							Type taskType = taskType = typeof(Program).Assembly.GetType("Tasks." + task);
+							if (taskType == null)
+							{
+								Console.WriteLine("Could not find a class for that task.");
+								break;
+							}
+							List<MethodInfo> taskMethods = new List<MethodInfo>();
+							foreach (MethodInfo method in taskType.GetMethods(BindingFlags.Static | BindingFlags.Public))
+							{
+								if (method.GetCustomAttributes<BatchTaskAttribute>().Any())
+								{
+									Console.WriteLine((taskMethods.Count + 1).ToString() + ". " + method.Name);
+									taskMethods.Add(method);
+								}
+							}
+
+							// select a method on that class
+							MethodInfo runMe;
+							if (taskMethods.Count == 0)
+							{
+								Console.WriteLine("Could not find any BatchTask methods on that class.");
+								break;
+							}
+							else if (taskMethods.Count == 1)
+							{
+								runMe = taskMethods[0];
+							}
+							else
+							{
+								ConsoleKeyInfo key = Console.ReadKey();
+								while (key.Key < ConsoleKey.D1
+									|| key.Key > ConsoleKey.D9
+									|| (key.Key - ConsoleKey.D1) >= taskMethods.Count)
+								{
+									key = Console.ReadKey();
+								}
+								runMe = taskMethods[key.Key - ConsoleKey.D1];
+							}
+
+							runMe.Invoke(null, null);
+						}
 						break;
 				}
 				//UWashCats.Do();

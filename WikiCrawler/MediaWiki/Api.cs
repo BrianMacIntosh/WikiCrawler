@@ -160,26 +160,40 @@ namespace MediaWiki
             return GetPages(new string[] { title }, prop, iiprop, iilimit, rvprop, rvlimit)[0];
         }
 
-        /// <summary>
-        /// Returns the Wiki text for all of the specified pages
-        /// </summary>
-        public Article[] GetPages(IList<string> titles,
+		/// <summary>
+		/// Returns the Wiki text for all of the specified pages
+		/// </summary>
+		public Article[] GetPages(IList<Article> articles,
 			string prop = "info|revisions",
 			string iiprop = "",
 			int iilimit = Limit.Unspecified,
 			string rvprop = "content",
 			int rvlimit = Limit.Unspecified)
+		{
+			return GetPages(
+				articles.Select(art => art.title).ToList(),
+				prop, iiprop, iilimit, rvprop, rvlimit);
+		}
+
+		/// <summary>
+		/// Returns the Wiki text for all of the specified pages
+		/// </summary>
+		public Article[] GetPages(IList<string> titles,
+			string prop = "info|revisions",
+			string iiprop = "",
+			int iilimit = Limit.Unspecified,
+			string rvprop = "content",
+			int rvlimit = Limit.Unspecified,
+			string clshow = "",
+			int cllimit = Limit.Max,
+			string cldir = "")
         {
-			string[] props = prop.Split('|');
 			if (titles.Count == 0) return new Article[0];
-
-            //Encode page names
-            for (int c = 0; c < titles.Count; c++) titles[c] = UrlEncode(titles[c]);
-
+			
 			//Download stream
-			string baseQuery = "format=json" +
-				"&action=query" +
-				"&titles=" + UrlEncode(string.Join("|", titles));
+			string baseQuery = "format=json"
+				+ "&action=query"
+				+ "&titles=" + UrlEncode(string.Join("|", titles));
 			if (!string.IsNullOrEmpty(prop))
 			{
 				baseQuery += "&prop=" + UrlEncode(prop);
@@ -200,7 +214,19 @@ namespace MediaWiki
 			{
 				baseQuery += "&rvlimit=" + GetLimitParameter(rvlimit);
 			}
-            HttpWebRequest request = CreateApiRequest(baseQuery);
+			if (!string.IsNullOrEmpty(clshow))
+			{
+				baseQuery += "&clshow=" + UrlEncode(clshow);
+			}
+			if (cllimit != Limit.Unspecified)
+			{
+				baseQuery += "&cllimit=" + GetLimitParameter(cllimit);
+			}
+			if (!string.IsNullOrEmpty(cldir))
+			{
+				baseQuery += "&cldir=" + UrlEncode(cldir);
+			}
+			HttpWebRequest request = CreateApiRequest(baseQuery);
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
@@ -227,10 +253,43 @@ namespace MediaWiki
             return ret;
         }
 
-        /// <summary>
-        /// Edit the specified page to have the specified text
-        /// </summary>
-        public bool SetPage(Article newpage, string summary, bool minor = false, bool bot = true, bool nocreate = true)
+		/// <summary>
+		/// Creates a new page with the specified content.
+		/// </summary>
+		public bool CreatePage(Article newpage,
+			string summary,
+			string tags = "",
+			bool minor = false,
+			bool notminor = false,
+			bool bot = true)
+		{
+			return SetPage(newpage, summary, tags, minor, notminor, bot, createonly: true);
+		}
+
+		/// <summary>
+		/// Edit the specified existing page to have the specified content.
+		/// </summary>
+		public bool EditPage(Article newpage,
+			string summary,
+			string tags = "",
+			bool minor = false,
+			bool notminor = false,
+			bool bot = true)
+		{
+			return SetPage(newpage, summary, tags, minor, notminor, bot, nocreate: true);
+		}
+
+		/// <summary>
+		/// Set the content of the specified page.
+		/// </summary>
+		public bool SetPage(Article newpage,
+			string summary,
+			string tags = "",
+			bool minor = false,
+			bool notminor = false,
+			bool bot = true,
+			bool createonly = false,
+			bool nocreate = false)
         {
             MD5 hashFn = MD5.Create();
             byte[] hash = hashFn.ComputeHash(Encoding.UTF8.GetBytes(newpage.revisions[0].text.ToCharArray()));
@@ -248,6 +307,10 @@ namespace MediaWiki
                 + "&starttimestamp=" + UrlEncode(newpage.starttimestamp)
                 + "&token=" + UrlEncode(newpage.edittoken)
 				+ "&assert=bot";
+			if (!string.IsNullOrEmpty(tags))
+			{
+				baseQuery += "&tags=" + UrlEncode(tags);
+			}
 			if (bot)
 			{
 				baseQuery += "&bot";
@@ -255,6 +318,14 @@ namespace MediaWiki
 			if (minor)
 			{
 				baseQuery += "&minor";
+			}
+			if (notminor)
+			{
+				baseQuery += "&notminor";
+			}
+			if (createonly)
+			{
+				baseQuery += "&createonly";
 			}
 			if (nocreate)
 			{

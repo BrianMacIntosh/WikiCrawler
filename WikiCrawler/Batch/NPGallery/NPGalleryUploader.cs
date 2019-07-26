@@ -596,7 +596,7 @@ namespace NPGallery
 					}
 					string uploadTitle = GetTitle(relatedId, relatedMetadata).Replace(s_badTitleCharacters, "");
 					string imagePath = GetImageCacheFilename(key, metadata);
-					uploadTitle = Path.ChangeExtension(uploadTitle, Path.GetExtension(imagePath));
+					uploadTitle = uploadTitle + Path.GetExtension(imagePath);
 					otherVersions = StringUtility.Join("\n", otherVersions, uploadTitle);
 				}
 			}

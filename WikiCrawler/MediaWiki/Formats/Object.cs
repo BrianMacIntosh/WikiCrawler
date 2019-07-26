@@ -30,13 +30,15 @@ namespace MediaWiki
 			}
 			if (json.ContainsKey("missing"))
 			{
-				missing = json.ContainsKey("missing");
+				missing = true;
 			}
-			if (!missing)
+			if (json.ContainsKey("pageid"))
 			{
 				pageid = (int)json["pageid"];
-				if (json.ContainsKey("lastrevid"))
-					lastrevid = (int)json["lastrevid"];
+			}
+			if (json.ContainsKey("lastrevid"))
+			{
+				lastrevid = (int)json["lastrevid"];
 			}
 		}
 

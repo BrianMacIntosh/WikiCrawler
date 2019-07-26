@@ -62,7 +62,7 @@ namespace WikiCrawler
 						if (text != article.revisions.First().text)
 						{
 							article.revisions.First().text = text;
-							Api.SetPage(article, "extracted image", false, false, true);
+							Api.EditPage(article, "extracted image", bot: false);
 						}
 
 						queue.RemoveAt(c);

@@ -4,11 +4,18 @@ using System.IO;
 using System.Linq;
 using MediaWiki;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	public class LinksNullEditor
+	/// <summary>
+	/// Class for simple, self contained tasks.
+	/// </summary>
+	public class SimpleTasks
 	{
-		public static void Do()
+		/// <summary>
+		/// Does a null edit on all pages with incoming links to a set of pages.
+		/// </summary>
+		[BatchTask]
+		public static void NullEditLinks()
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
@@ -32,16 +39,20 @@ namespace WikiCrawler
 				foreach (Article link in article.GetLinksHere(Api))
 				{
 					Article linkpage = Api.GetPage(link);
-					Api.SetPage(linkpage, "null edit", true, true, true);
+					Api.EditPage(linkpage, "null edit", minor: true);
 					Console.WriteLine(link.title);
 					links.Add(link.title);
 				}
 			}
 
-			System.IO.File.WriteAllLines("E:/temp.txt", links.ToArray());
+			File.WriteAllLines("E:/temp.txt", links.ToArray());
 		}
 
-		public static void CheckCat()
+		/// <summary>
+		/// Adds a check category to files that haven't been checked yet.
+		/// </summary>
+		[BatchTask]
+		public static void AddCheckCategory()
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
@@ -59,7 +70,7 @@ namespace WikiCrawler
 					fullArticle.revisions[0].text = WikiUtils.AddCategory(
 						"Category:Images from the Asahel Curtis Photo Company Photographs Collection to check",
 						fullArticle.revisions[0].text);
-					Api.SetPage(fullArticle, "add check category to possibly unchecked images", true, true, true);
+					Api.EditPage(fullArticle, "add check category to possibly unchecked images", minor: true);
 				}
 				else
 				{
@@ -69,7 +80,11 @@ namespace WikiCrawler
 			}
 		}
 
-		public static void Revert()
+		/// <summary>
+		/// Reverts a range of contributions.
+		/// </summary>
+		[BatchTask]
+		public static void RevertContribs()
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);

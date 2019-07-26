@@ -112,7 +112,7 @@ namespace WikiCrawler
 								}
 							}
 
-							Dictionary<string, object> metadata = MediaWiki.Api.GetCommonMetadata(art.raw);
+							Dictionary<string, object> metadata = Api.GetCommonMetadata(art.raw);
 
 							string metadate = "";
 							if (metadata.ContainsKey("DateTimeOriginal"))
@@ -134,11 +134,11 @@ namespace WikiCrawler
 								if (!ReplaceDate(date, metadate, out newdate, out yyyymmdd))
 								{
 									//Add bad date category
-									string newtext = MediaWiki.WikiUtils.AddCategory("Category:Files with no machine-readable date", text);
+									string newtext = WikiUtils.AddCategory("Category:Files with no machine-readable date", text);
 									if (newtext != text)
 									{
 										art.revisions[0].text = newtext;
-										Api.SetPage(art, "bot: cannot understand infobox date", true, true, true);
+										Api.EditPage(art, "bot: cannot understand infobox date", minor: true);
 									}
 								}
 								else if (!string.IsNullOrEmpty(newdate))
@@ -146,10 +146,10 @@ namespace WikiCrawler
 									//Reconstruct and submit page
 									string newtext = text.Substring(0, dateStart) + newdate + text.Substring(dateEnd + 1);
 									if (!string.IsNullOrEmpty(yyyymmdd))
-										newtext = MediaWiki.WikiUtils.RemoveCategory("Category:Photographs taken on " + yyyymmdd, newtext);
+										newtext = WikiUtils.RemoveCategory("Category:Photographs taken on " + yyyymmdd, newtext);
 
 									art.revisions[0].text = newtext;
-									Api.SetPage(art, "bot: adding appropriate templates to infobox date", true, true, true);
+									Api.EditPage(art, "bot: adding appropriate templates to infobox date", minor: true);
 
 									if (newtext.Contains("[[Category:Photographs taken on"))
 									{

@@ -79,6 +79,8 @@
     <Compile Include="Batch\ProjectConfig.cs" />
     <Compile Include="MediaWiki\Formats\ImageInfo.cs" />
     <Compile Include="MediaWiki\Formats\Revision.cs" />
+    <Compile Include="Tasks\Commons\SayreCategorize.cs" />
+    <Compile Include="Tasks\BatchTaskAttribute.cs" />
     <Compile Include="Utility\Exceptions\LicenseException.cs" />
     <Compile Include="Utility\Exceptions\RedownloadException.cs" />
     <Compile Include="Batch\UWash\UWashDownloader.cs" />
@@ -86,7 +88,7 @@
     <Compile Include="Configuration.cs" />
     <Compile Include="Credentials.cs" />
     <Compile Include="Tasks\Commons\FindCategoryCreators.cs" />
-    <Compile Include="Tasks\Commons\LinksNullEditor.cs" />
+    <Compile Include="Tasks\Commons\SimpleTasks.cs" />
     <Compile Include="Tasks\MassDownloader.cs" />
     <Compile Include="Utility\CommonsUtility.cs" />
     <Compile Include="Utility\CreatorUtility.cs" />

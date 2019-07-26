@@ -373,7 +373,7 @@ namespace WikiCrawler
 
 								if (gotSubArticle.Dirty)
 								{
-									commonsApi.SetPage(gotSubArticle, gotSubArticle.GetEditSummary(), false, true, true);
+									commonsApi.EditPage(gotSubArticle, gotSubArticle.GetEditSummary());
 								}
 							}
 						}
@@ -529,7 +529,7 @@ namespace WikiCrawler
 				if (article.revisions[0].text != text)
 				{
 					article.revisions[0].text = text;
-					if (!commonsApi.SetPage(article, "BOT: creator cleanup tasks", false, true, true))
+					if (!commonsApi.EditPage(article, "BOT: creator cleanup tasks"))
 					{
 						Console.WriteLine("Page set failed.");
 						return false;
@@ -759,7 +759,7 @@ namespace WikiCrawler
 				return true;
 			}
 
-			if (commonsApi.SetPage(creatorArt, "BOT: Making creator based on Wikidata.", false, true, false))
+			if (commonsApi.CreatePage(creatorArt, "BOT: Making creator based on Wikidata."))
 			{
 				Console.WriteLine("Creator created!");
 				creatorPage = creatorArt.title;

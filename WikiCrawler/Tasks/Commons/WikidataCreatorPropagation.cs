@@ -109,7 +109,7 @@ namespace WikiCrawler
 								// insert content into authority param
 								articleLines[authorityLine] += " " + authority;
 								creatorArticle.revisions[0].text = string.Join("\n", articleLines.ToArray());
-								Api.SetPage(creatorArticle, "(BOT) propagate authorities from Wikidata", false, true);
+								Api.EditPage(creatorArticle, "(BOT) propagate authorities from Wikidata");
 							}
 							else
 							{
@@ -130,7 +130,7 @@ namespace WikiCrawler
 								if (success)
 								{
 									creatorArticle.revisions[0].text = string.Join("\n", articleLines.ToArray());
-									Api.SetPage(creatorArticle, "(BOT) propagate authorities from Wikidata", false, true);
+									Api.EditPage(creatorArticle, "(BOT) propagate authorities from Wikidata");
 								}
 								else
 								{

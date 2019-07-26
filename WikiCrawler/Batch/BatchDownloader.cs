@@ -65,6 +65,11 @@ public abstract class BatchDownloader : BatchTask
 			int saveOutTimer = saveOutInterval;
 
 			m_heartbeatData["nTotal"] = GetKeys().Count();
+			m_heartbeatData["nCompleted"] = m_succeeded.Count;
+			m_heartbeatData["nDownloaded"] = succeededMetadata.Count;
+			m_heartbeatData["nFailed"] = m_failMessages.Count;
+			m_heartbeatData["nFailedLicense"] = 0;
+
 			StartHeartbeat();
 
 			// load metadata
@@ -119,6 +124,10 @@ public abstract class BatchDownloader : BatchTask
 	/// <returns>The parsed data.</returns>
 	public Dictionary<string, string> Download(string key, bool cache = true)
 	{
+		if (!m_config.allowDataDownload)
+		{
+			throw new Exception("Data download disabled");
+		}
 		Console.WriteLine("Downloading metadata: " + key);
 		Uri url = GetItemUri(key);
 	redownload:
@@ -176,7 +185,7 @@ public abstract class BatchDownloader : BatchTask
 					Console.WriteLine("Timeout - Retrying");
 					System.Threading.Thread.Sleep(30000);
 				}
-				else
+				else if (e.Response != null)
 				{
 					HttpWebResponse response = (HttpWebResponse)e.Response;
 					if (response.StatusCode == HttpStatusCode.NotFound)
@@ -193,6 +202,10 @@ public abstract class BatchDownloader : BatchTask
 					{
 						throw;
 					}
+				}
+				else
+				{
+					throw;
 				}
 			}
 			catch (IOException e)

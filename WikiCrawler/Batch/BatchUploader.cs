@@ -58,6 +58,9 @@ public abstract class BatchUploader : BatchTask
 
 			int initialSucceeded = m_succeeded.Count;
 			int totalKeys = TotalKeyCount;
+			int licenseFailures = 0;
+			int uploadDeclined = 0;
+
 			if (totalKeys < 0)
 			{
 				// assume everything was downloaded
@@ -67,8 +70,12 @@ public abstract class BatchUploader : BatchTask
 			{
 				m_heartbeatData["nTotal"] = totalKeys;
 			}
-			int licenseFailures = 0;
-			int uploadDeclined = 0;
+			m_heartbeatData["nCompleted"] = m_succeeded.Count;
+			m_heartbeatData["nDownloaded"] = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
+			m_heartbeatData["nFailed"] = m_failMessages.Count;
+			m_heartbeatData["nFailedLicense"] = licenseFailures;
+			m_heartbeatData["nDeclined"] = uploadDeclined;
+			
 			StartHeartbeat();
 
 			if (m_config.randomizeOrder)
@@ -87,7 +94,7 @@ public abstract class BatchUploader : BatchTask
 					File.Delete(stopFile);
 					return;
 				}
-
+				
 				foreach (string metadataFile in metadataFiles)
 				{
 					string key = Path.GetFileNameWithoutExtension(metadataFile);

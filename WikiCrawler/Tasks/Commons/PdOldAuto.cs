@@ -91,7 +91,7 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 				Do(commonsApi, wikidataApi, articleContent);
 				if (articleContent.Dirty)
 				{
-					commonsApi.SetPage(articleContent, articleContent.GetEditSummary(), false, true, true);
+					commonsApi.EditPage(articleContent, articleContent.GetEditSummary());
 				}
 			}
 			return;
@@ -108,7 +108,7 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 					Do(commonsApi, wikidataApi, articleContent);
 					if (articleContent.Dirty)
 					{
-						commonsApi.SetPage(articleContent, articleContent.GetEditSummary(), false, true, true);
+						commonsApi.EditPage(articleContent, articleContent.GetEditSummary());
 						successLimit--;
 						if (successLimit <= 0) break;
 					}

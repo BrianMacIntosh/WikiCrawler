@@ -195,7 +195,7 @@ namespace OEC
 				+ "{{Superseded|" + article.title + "}}\n"
 				+ oldImage.revisions[0].text.Substring(startIndex);
 
-			Api.SetPage(oldImage, "Superseded by [[:" + article.title + "]]", false, true);
+			Api.EditPage(oldImage, "Superseded by [[:" + article.title + "]]");
 		}
 
 		private IEnumerable<XElement> ElementsFlat(XElement element)
