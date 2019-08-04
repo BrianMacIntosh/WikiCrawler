@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace MediaWiki
 {
@@ -14,13 +15,27 @@ namespace MediaWiki
         /// </summary>
         public static string RemoveCategory(string name, string text)
 		{
+			if (name.Length <= 0) throw new ArgumentException("Category name cannot be empty.", "name");
+
+			name = name.TrimStart("Category:").TrimStart("category:");
+			name = Regex.Escape(name);
+
+			// if the first character is a letter, it can be upper or lowercase
+			if (char.IsLetter(name[0]))
+			{
+				name = "[" + char.ToUpper(name[0]).ToString() + char.ToLower(name[0]).ToString() + "]" + name.Substring(1);
+			}
+
+			Regex regex = new Regex(@"\[\[[Cc]ategory:" + name + "\\]\\][\r\n]?");
+
 			//TODO: whitespace on ends is legal
-			string cat = "[[" + name + "]]";
-			return text.Replace(cat + "\n", "").Replace(cat, "");
+			text = regex.Replace(text, "");
+			return text;
 		}
 
 		public static string RemoveDuplicateCategories(string text)
 		{
+			//TODO: handle invariant-case first character
 			HashSet<string> alreadySeen = new HashSet<string>();
 			foreach (string s in GetCategories(text))
 			{
@@ -45,14 +60,11 @@ namespace MediaWiki
 		{
 			if (name.Length <= 0) throw new ArgumentException("Category name cannot be empty.", "name");
 
-			if (name.StartsWith("Category:") || name.StartsWith("category:"))
-			{
-				name = name.Substring("Category:".Length);
-			}
+			name = name.TrimStart("Category:").TrimStart("category:");
 
 			foreach (string cat in GetCategories(text))
 			{
-				string catName = cat.Substring("Category:".Length);
+				string catName = cat.TrimStart("Category:").TrimStart("category:");
 				if (char.ToLower(catName[0]) == char.ToLower(name[0])
 					&& catName.Substring(1) == name.Substring(1))
 				{
@@ -295,6 +307,29 @@ namespace MediaWiki
 				template = "";
 				return text;
 			}
+		}
+
+		/// <summary>
+		/// Returns true if the specified page text contains the specified template.
+		/// </summary>\
+		public static bool HasTemplate(string text, string template)
+		{
+			// template names are case-insensitive on the first letter
+			return text.Contains("{{" + template.ToLowerFirst()) || text.Contains("{{" + template.ToUpperFirst());
+		}
+
+		/// <summary>
+		/// Adds a Check Categories template to the specified page text.
+		/// </summary>
+		public static string AddCheckCategories(string text)
+		{
+			if (!HasTemplate(text, "Check categories"))
+			{
+				string uncatTemplate;
+				text = RemoveTemplate("uncategorized", text, out uncatTemplate);
+				text = "{{subst:chc}}\n" + text;
+			}
+			return text;
 		}
 
 		/// <summary>

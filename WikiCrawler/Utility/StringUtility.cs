@@ -118,6 +118,22 @@ public static class StringUtility
 	}
 
 	/// <summary>
+	/// Converts the first character of the string to lower case.
+	/// </summary>
+	public static string ToLowerFirst(this string text)
+	{
+		return char.ToLower(text[0]).ToString() + text.Substring(1);
+	}
+
+	/// <summary>
+	/// Converts the first character of the string to upper case.
+	/// </summary>
+	public static string ToUpperFirst(this string text)
+	{
+		return char.ToUpper(text[0]).ToString() + text.Substring(1);
+	}
+
+	/// <summary>
 	/// Capitalizes the first letter of each word.
 	/// </summary>
 	public static string ToTitleCase(this string text)

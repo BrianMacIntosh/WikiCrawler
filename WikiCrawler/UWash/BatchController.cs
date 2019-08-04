@@ -121,6 +121,21 @@ namespace WikiCrawler
 
 			string succeededFile = Path.Combine(projectDir, "succeeded.json");
 			succeeded.Sort();
+
+			// clean up metadata for already-succeeded files
+			foreach (string id in succeeded)
+			{
+				string metadataFile = Path.Combine(projectDir, "data_cache", id + ".json");
+				if (File.Exists(metadataFile))
+				{
+					//TODO: create trash directory
+					//TODO: get filenames from central source
+					File.Move(
+						metadataFile,
+						Path.Combine(projectDir, "data_trash", id + ".json"));
+				}
+			}
+
 			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded, Formatting.Indented));
 		}
 
