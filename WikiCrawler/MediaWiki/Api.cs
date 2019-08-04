@@ -226,10 +226,11 @@ namespace MediaWiki
 			{
 				baseQuery += "&cldir=" + UrlEncode(cldir);
 			}
-			HttpWebRequest request = CreateApiRequest(baseQuery);
+
+			HttpWebRequest request = CreateApiRequest();
 
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
+			using (StreamReader read = new StreamReader(EasyWeb.Post(request, baseQuery)))
 			{
 				json = read.ReadToEnd();
 			}
