@@ -1,16 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	class MassDownloader
+	public static class MassDownloader
 	{
+		[BatchTask]
 		public static void Do()
 		{
 			/*List<string> lines = new List<string>();

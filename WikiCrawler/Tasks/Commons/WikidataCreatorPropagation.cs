@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
+using System.Text;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	static class WikidataCreatorPropagation
+	public static class WikidataCreatorPropagation
 	{
 		private static MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
 		private static MediaWiki.Api WikidataApi = new MediaWiki.Api(new Uri("http://www.wikidata.org/"));
 
+		[BatchTask]
 		public static void Do()
 		{
 			Console.WriteLine("Logging in...");

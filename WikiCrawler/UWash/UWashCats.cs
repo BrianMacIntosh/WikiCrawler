@@ -1,18 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
+using System.Linq;
 using WikiCrawler;
 
-namespace UWash
+namespace Tasks
 {
-	static class UWashCats
+	public static class UWashCats
 	{
 		private static Dictionary<string, string> categoryMap = new Dictionary<string, string>();
 
 		private static int completed = 0;
 
+		[BatchTask]
 		public static void Do()
 		{
 			//load mapped categories

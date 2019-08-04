@@ -6,9 +6,9 @@ using System.IO;
 using MySql.Data.MySqlClient;
 using MediaWiki;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	class TaxonCategoryUpdate
+	public static class TaxonCategoryUpdate
 	{
 		private static Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
 		private static Api SpeciesApi = new Api(new Uri("http://species.wikimedia.org/"));
@@ -43,8 +43,9 @@ namespace WikiCrawler
 		 * * {{ITIS|<INDEX>|''<DISPLAYNAME>'' <AUTHOR>, <YEAR>|nv}}
 		 * * {{WRMS|<INDEX>|}}
 		 * * {{NCBI|<INDEX>|}}
-		 */
-
+		*/
+		
+		[BatchTask]
 		public static void Do()
 		{
 			// read todo list

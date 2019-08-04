@@ -5,10 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	class RequestMassCatMove
+	public static class RequestMassCatMove
 	{
+		/// <summary>
+		/// Produces Commons Delinker move commands for a large list of categories.
+		/// </summary>
+		[BatchTask]
 		public static void Do()
 		{
 			MediaWiki.Api commonsApi = new MediaWiki.Api(new Uri("https://commons.wikimedia.org"));

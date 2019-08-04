@@ -7,10 +7,14 @@ using System.IO;
 using System.Web.Script.Serialization;
 using System.Net;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	class DropboxDownloader
+	/// <summary>
+	/// Given JSON data from a Dropbox folder, downloads all the files in that folder.
+	/// </summary>
+	public static class DropboxDownloader
 	{
+		[BatchTask]
 		public static void Do()
 		{
 			string json;

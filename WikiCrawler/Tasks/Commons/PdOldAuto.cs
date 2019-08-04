@@ -1,12 +1,11 @@
 ﻿using MediaWiki;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	static class PdOldAuto
+	public static class PdOldAuto
 	{
 		private const int s_TestLimit = 1;
 
@@ -77,6 +76,7 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 
 		//TODO: also fix [[Category:PD Old auto: no death date]]
 
+		[BatchTask]
 		public static void Do()
 		{
 			Console.WriteLine("Logging in...");

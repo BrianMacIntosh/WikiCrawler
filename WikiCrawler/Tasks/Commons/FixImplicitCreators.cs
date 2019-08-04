@@ -1,13 +1,12 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
-using MediaWiki;
+using System.Text;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	static class FixImplicitCreators
+	public static class FixImplicitCreators
 	{
 		private const int s_TestLimit = int.MaxValue;
 		private const int s_SearchDepth = 1;
@@ -18,6 +17,7 @@ namespace WikiCrawler
 		//Category:Author matching Creator template, Creator template not used
 		//Category:Book template with implicit creator
 
+		[BatchTask]
 		public static void Do()
 		{
 			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));

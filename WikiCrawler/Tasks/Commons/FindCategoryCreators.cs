@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MediaWiki;
+﻿using MediaWiki;
+using System;
 
-namespace WikiCrawler
+namespace Tasks
 {
 	public class FindCategoryCreators
 	{
+		/// <summary>
+		/// Produces a list of users who have created subcategories of a given category.
+		/// </summary>
+		[BatchTask]
 		public static void Find()
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
@@ -17,9 +17,10 @@ namespace WikiCrawler
 			
 			Api.AutoLogIn();
 
-			foreach (Article article in Api.GetCategoryEntries("Category:Ships by name (flat list)", "subcat"))
+			foreach (Article article in Api.GetCategoryEntries("Category:Ships by name (flat list)", cmtype: CMType.subcat))
 			{
 				Article articleContent = Api.GetPage(article);
+				throw new NotImplementedException();
 			}
 		}
 	}

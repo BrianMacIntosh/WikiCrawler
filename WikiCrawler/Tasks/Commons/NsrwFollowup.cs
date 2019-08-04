@@ -5,12 +5,16 @@ using System.Text;
 using System.IO;
 using System.Globalization;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	class NsrwFollowup
+	public static class NsrwFollowup
 	{
 		private static MediaWiki.Api Api;
 
+		/// <summary>
+		/// Updates page text for images extracted from NSRW after extracting them with CropTool.
+		/// </summary>
+		[BatchTask]
 		public static void Do()
 		{
 			//Read queue

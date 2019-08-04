@@ -5,9 +5,9 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	class CommonsCreatorFromWikidata
+	public static class CommonsCreatorFromWikidata
 	{
 		private static Api Wikidata = new Api(new Uri("https://www.wikidata.org/"));
 
@@ -22,6 +22,7 @@ namespace WikiCrawler
 		/// <summary>
 		/// Creates creator templates as indicated by 'Category:Creator templates to be created by a bot'.
 		/// </summary>
+		[BatchTask]
 		public static void MakeCreatorsFromCat()
 		{
 			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
@@ -555,6 +556,7 @@ namespace WikiCrawler
 		/// <summary>
 		/// Creates creator templates from the wikidata ids in 'creator_queue.txt'.
 		/// </summary>
+		[BatchTask]
 		public static void MakeCreators()
 		{
 			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
