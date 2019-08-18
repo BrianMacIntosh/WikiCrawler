@@ -67,7 +67,7 @@ namespace Tasks
 						}
 
 						int productionStart = fromIndex + fromNeedle.Length;
-						string productionName = title.Substring(productionStart, closeIndex - productionStart).Trim();
+						string productionName = title.Substring(productionStart, closeIndex - productionStart).Trim().Trim(',');
 
 						// check for the existence of that category
 						Article productionCategory = Api.GetPage("Category:" + productionName);
@@ -126,7 +126,7 @@ namespace Tasks
 			try
 			{
 				string stopFile = Path.Combine(Configuration.DataDirectory, "STOP");
-
+				
 				foreach (Article file in Api.GetCategoryEntries("Category:Images from the J. Willis Sayre Collection of Theatrical Photographs to check", cmtype: CMType.file))
 				{
 					if (File.Exists(stopFile))
