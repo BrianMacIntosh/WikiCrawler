@@ -109,6 +109,7 @@
     <Compile Include="Batch\Tropenmuseum\Tropenmuseum.cs" />
     <Compile Include="Utility\Wayback.cs" />
     <Compile Include="Utility\Creator.cs" />
+    <Compile Include="Utility\MimeUtility.cs" />
     <Compile Include="Utility\WindowsUtility.cs" />
     <Compile Include="UWash\DataStructures\UWashFailure.cs" />
     <Compile Include="UWash\DataStructures\UWashProjectConfig.cs" />

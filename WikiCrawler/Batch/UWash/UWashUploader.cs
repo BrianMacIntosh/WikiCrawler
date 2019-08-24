@@ -844,7 +844,7 @@ namespace UWash
 
 			// submit the edit
 			targetArticle.revisions[0].text = text;
-			return Api.EditPage(targetArticle, "(BOT) recording duplicate image from UWash collection");
+			return Api.EditPage(targetArticle, "(BOT) recording duplicate record from UWash collection");
 		}
 
 		private static Dictionary<string, string> PreprocessMetadata(Dictionary<string, string> data)

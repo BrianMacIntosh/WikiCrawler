@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -120,6 +121,10 @@ namespace NPGallery
 				{
 					m_databaseErrorHash = md5.ComputeHash(stream);
 				}
+				using (FileStream stream = File.OpenRead(Path.Combine(ProjectDataDirectory, "corrupted-record.pdf")))
+				{
+					m_corruptedRecordErrorHash = md5.ComputeHash(stream);
+				}
 			}
 		}
 		
@@ -127,6 +132,7 @@ namespace NPGallery
 
 		private byte[] m_fileSystemErrorHash;
 		private byte[] m_databaseErrorHash;
+		private byte[] m_corruptedRecordErrorHash;
 
 		public override int TotalKeyCount
 		{
@@ -165,13 +171,13 @@ namespace NPGallery
 
 			HashSet<string> categories = new HashSet<string>();
 
-			if (metadata.TryGetValue("Intended Audience", out outValue))
+			/*if (metadata.TryGetValue("Intended Audience", out outValue))
 			{
 				if (outValue != "Public")
 				{
 					throw new Exception("Unrecognized Intended Audience");
 				}
-			}
+			}*/
 
 			// check for different copyright text
 			/*if (metadata.TryGetValue("Copyright", out outValue))
@@ -211,6 +217,19 @@ namespace NPGallery
 				&& !outValue.Contains(", Code: "))
 			{
 				authorString = GetAuthor(outValue, "", out creator);
+			}
+
+			if (metadata.TryGetValue("Author", out outValue))
+			{
+				if (string.IsNullOrEmpty(authorString))
+				{
+					infoTemplate = "Information";
+					authorString = GetAuthor(outValue, "", out creator);
+				}
+				else
+				{
+					throw new Exception("Multiple author fields present");
+				}
 			}
 
 			if (creator != null)
@@ -268,10 +287,22 @@ namespace NPGallery
 			}
 			if (metadata.TryGetValue("Time Submitted", out outValue))
 			{
-				DateTime timeSubmitted = DateTime.Parse(outValue);
+				System.DateTime timeSubmitted = System.DateTime.Parse(outValue);
 				if (timeSubmitted.Year < dateMetadata.PreciseYear)
 				{
-					throw new Exception("Time Submitted is before than Create/Content Date(s)");
+					// The current create date is definitely wrong. Try embedded time.
+					System.DateTime embeddedDateTime;
+					if (embeddedTimestampMetadata != DateParseMetadata.Unknown
+						&& System.DateTime.TryParse(metadata["Embedded Timestamp"], out embeddedDateTime)
+						&& (embeddedDateTime.Month != 1 || embeddedDateTime.Day != 1))
+					{
+						dateMetadata = embeddedTimestampMetadata;
+						date = embeddedTimestamp;
+					}
+					else
+					{
+						throw new Exception("Time Submitted is before than Create/Content Date(s)");
+					}
 				}
 			}
 
@@ -291,9 +322,10 @@ namespace NPGallery
 			// get description
 			List<string> descriptionBlocks = new List<string>();
 			bool needScopeCheck = false;
+			bool needFopCheck = false;
 			if (metadata.TryGetValue("AltText", out outValue))
 			{
-				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue, ref needFopCheck) || needScopeCheck;
 			}
 			if (metadata.TryGetValue("Image Details", out outValue))
 			{
@@ -302,19 +334,19 @@ namespace NPGallery
 					infoTemplate = "Information";
 				}
 
-				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue, ref needFopCheck) || needScopeCheck;
 			}
 			if (metadata.TryGetValue("Description", out outValue))
 			{
-				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue, ref needFopCheck) || needScopeCheck;
 			}
 			if (metadata.TryGetValue("Table Of Contents", out outValue))
 			{
-				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue, ref needFopCheck) || needScopeCheck;
 			}
 			if (metadata.TryGetValue("Comment", out outValue))
 			{
-				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue) || needScopeCheck;
+				needScopeCheck = !AddDescriptionBlock(descriptionBlocks, outValue, ref needFopCheck) || needScopeCheck;
 			}
 			if (metadata.TryGetValue("Subject", out outValue))
 			{
@@ -347,7 +379,12 @@ namespace NPGallery
 
 			if (metadata.TryGetValue("Constraints Information", out outValue))
 			{
-				if (outValue == "Restrictions apply on use and/or reproduction")
+				if (outValue == "Restrictions apply on use and/or reproduction"
+					|| outValue == "Restrictions apply on use and/or reproduction:This image is for research and study purposes only. This work may be protected by U.S. copyright law (Title 17, U.S. Code), which governs reproduction, distribution, public display, and other uses of protected works. Uses may be allowed with permission from the copyright holder, or if the copyright on the work has expired, or if the use is \"fair use\" or within another exemption. The user of this work is responsible for compliance with the law."
+					|| outValue == "NO KNOWN COPYRIGHT: The organization that has made the Item available reasonably believes that the Item is not restricted by copyright or related rights, but a conclusive determination could not be made. Please refer to the organization that has made the Item available for more information. You are free to use this Item in any way that is permitted by the copyright and related rights legislation that applies to your use. Reference http://rightsstatements.org/vocab/NKC/1.0/"
+					|| outValue == "Restrictions apply on use and/or reproduction:Copyright Unknown"
+					|| outValue == "Restrictions apply on use and/or reproduction:Copyrighted material"
+					|| outValue == "Restrictions apply on use and/or reproduction (Copyrighted material):Full Granting Rights")
 				{
 
 				}
@@ -405,16 +442,29 @@ namespace NPGallery
 			}
 
 			// determine the location
-			string location = parkName;
+			string location = "";
 
 			if (metadata.TryGetValue("Locations", out outValue))
 			{
 				string[] locationSplit = outValue.Split(StringUtility.LineBreak, StringSplitOptions.RemoveEmptyEntries);
-				if (locationSplit.Length > 2)
+				if (locationSplit.Length % 2 == 1)
 				{
-					throw new Exception("Unrecognized Locations format");
+					location = string.Join("; ", locationSplit);
 				}
-				location = locationSplit[0];
+				else
+				{
+					for (int i = 0; i < locationSplit.Length; i++)
+					{
+						if (!locationSplit[i].StartsWith("Latitude: "))
+						{
+							location = StringUtility.Join("; ", location, locationSplit[i]);
+						}
+					}
+				}
+			}
+			else
+			{
+				location = parkName;
 			}
 
 			if (metadata.TryGetValue("Categories", out outValue))
@@ -650,8 +700,7 @@ namespace NPGallery
 			}
 
 			// now that this looks like a success, redownload and start over
-			string version;
-			if (!metadata.TryGetValue("~Version", out version) || int.Parse(version) < NPGalleryDownloader.Version)
+			if (!metadata.TryGetValue("~Version", out string version) || int.Parse(version) < NPGalleryDownloader.Version)
 			{
 				Console.WriteLine("Old version, redownloading");
 				metadata = m_downloader.Download(key);
@@ -664,23 +713,12 @@ namespace NPGallery
 
 			string catCheckTag = GetCheckCategoriesTag(categories.Count);
 			categories.Add(m_config.checkCategory);
-			
-			string author;
-			if (metadata.TryGetValue("Author", out author))
+			if (needFopCheck)
 			{
-				if (string.IsNullOrEmpty(authorString))
-				{
-					infoTemplate = "Information";
-					authorString = author;
-				}
-				else
-				{
-					throw new Exception("Multiple author fields present");
-				}
+				categories.Add("Category:Images from NPGallery to check for copyrighted sculptures");
 			}
 
-			string publisher;
-			metadata.TryGetValue("Publisher", out publisher);
+			metadata.TryGetValue("Publisher", out string publisher);
 
 			// if the date has an accurate month, day, and year, use {{taken on|}}
 			if (infoTemplate == "Photograph"
@@ -758,16 +796,16 @@ namespace NPGallery
 		/// 
 		/// </summary>
 		/// <returns>False if the image needs a scope check</returns>
-		private bool AddDescriptionBlock(List<string> descriptionBlocks, string descriptionBlock)
+		private bool AddDescriptionBlock(List<string> descriptionBlocks, string descriptionBlock, ref bool checkFop)
 		{
 			descriptionBlock = descriptionBlock.RemoveIndentation().RemoveExtraneousLines();
 
 			descriptionBlocks.AddUnique(descriptionBlock);
 
 			// check for FOP issues
-			if (descriptionBlock.Contains("statue "))
+			if (descriptionBlock.Contains(" statue "))
 			{
-				throw new Exception("Possible FOP issue");
+				checkFop = true;
 			}
 
 			// add an additional check category to possible out-of-scope photos
@@ -811,6 +849,66 @@ namespace NPGallery
 			base.SaveOut();
 
 			NPSDirectoryQuery.SaveOut();
+		}
+
+		protected override bool TryAddDuplicate(string targetPage, string key, Dictionary<string, string> metadata)
+		{
+			Console.WriteLine("Checking to record duplicate " + key + " with existing page '" + targetPage + "'");
+
+			// Fetch the target duplicate
+			Article targetArticle = Api.GetPage(targetPage);
+			string text = targetArticle.revisions[0].text;
+
+			// Check that it's one of ours
+			if (!text.Contains("|source=" + m_config.sourceTemplate))
+			{
+				return false;
+			}
+
+			// Insert a link to the duplicate file
+			int accessionPropIndex = text.IndexOf("|accession number=");
+			if (accessionPropIndex < 0)
+			{
+				return false;
+			}
+
+			int insertionPoint = text.IndexOf('\n', accessionPropIndex);
+			if (insertionPoint < 0)
+			{
+				return false;
+			}
+
+			string accession = "{{NPGallery-accession|" + key + "}}";
+			if (text.Contains(accession))
+			{
+				return false;
+			}
+			text = text.Substring(0, insertionPoint) + "\n" + accession + text.Substring(insertionPoint);
+
+			// submit the edit
+			targetArticle.revisions[0].text = text;
+			return Api.EditPage(targetArticle, "(BOT) recording duplicate record from NPGallery");
+		}
+
+		/// <summary>
+		/// Returns true if the specified item should be marked as complete and not uploaded.
+		/// </summary>
+		public override bool ShouldSkipForever(string key, Dictionary<string, string> metadata)
+		{
+			using (MD5 md5 = MD5.Create())
+			{
+				string imagePath = GetImageCacheFilename(key, metadata);
+				using (FileStream stream = File.OpenRead(imagePath))
+				{
+					byte[] hash = md5.ComputeHash(stream);
+					if (hash.SequenceEqual(m_corruptedRecordErrorHash))
+					{
+						return true;
+					}
+				}
+			}
+
+			return base.ShouldSkipForever(key, metadata);
 		}
 
 		public override void ValidateDownload(string imagePath)
@@ -885,6 +983,8 @@ namespace NPGallery
 		public override string GetTitle(string key, Dictionary<string, string> metadata)
 		{
 			string title = HttpUtility.HtmlDecode(metadata["Title"]);
+
+			title = title.Replace("''", "\"");
 
 			if (title.Length > 129)
 			{

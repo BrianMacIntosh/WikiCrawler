@@ -734,20 +734,19 @@ namespace MediaWiki
 
             HttpWebRequest request = CreateApiRequest();
 
-            string filetype = "application/octet-stream";
-			switch (Path.GetExtension(path))
-            {
-                case ".gif": filetype = "image/gif"; break;
-                case ".jpg": filetype = "image/jpeg"; break;
-                case ".png": filetype = "image/png"; break;
-                case ".bmp": filetype = "image/bmp"; break;
-            }
+            string filetype = MimeUtility.GetMimeFromExtension(Path.GetExtension(path));
 
 			byte[] rawfile;
 			using (BinaryReader reader = new BinaryReader(new FileStream(path, FileMode.Open)))
 			{
 				rawfile = reader.ReadBytes((int)reader.BaseStream.Length);
 			}
+
+			if (rawfile.Length > 104857600)
+			{
+				throw new Exception("Chunked upload required");
+			}
+
 			object[] dupes = GetDuplicateFiles(rawfile);
 			if (dupes != null && dupes.Length > 0)
 			{
@@ -777,7 +776,7 @@ namespace MediaWiki
 				}
 				else
 				{
-					return false;
+					throw e;
 				}
 			}
 
@@ -785,6 +784,19 @@ namespace MediaWiki
             if (deser.ContainsKey("error"))
             {
 				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
+				if ((string)error["code"] == "verification-error")
+				{
+					object[] details = (object[])error["details"];
+					if ((string)details[0] == "filetype-mime-mismatch")
+					{
+						// attempt to automatically fix extension/mime mismatch
+						string mime = (string)details[2];
+						string actualExt = MimeUtility.GetExtensionFromMime(mime);
+						newpage.title = Path.ChangeExtension(newpage.title, actualExt);
+						return UploadFromLocal(newpage, path, summary, bot);
+					}
+				}
+				
 				throw new WikimediaException(error["code"] + ": " + error["info"]);
 			}
             return true;

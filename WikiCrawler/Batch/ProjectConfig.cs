@@ -45,6 +45,11 @@ public class ProjectConfig
 	public bool randomizeOrder = false;
 	public bool manualApproval = false;
 
+	/// <summary>
+	/// Should uploads that are dupes of a manually-uploaded file be succeeded instead of failed?
+	/// </summary>
+	public bool succeedManualDupes = false;
+
 	[OnDeserialized]
 	internal void OnDeserializedMethod(StreamingContext context)
 	{

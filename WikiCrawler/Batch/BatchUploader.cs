@@ -12,6 +12,13 @@ using MediaWiki;
 
 public abstract class BatchUploader : BatchTask
 {
+	protected enum SuccessType
+	{
+		Failed,
+		Succeeded,
+		SkippedSucceeded,
+	}
+
 	protected Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
 
 	public string PreviewDirectory
@@ -39,7 +46,7 @@ public abstract class BatchUploader : BatchTask
 		{
 			Directory.CreateDirectory(ImageCacheDirectory);
 		}
-		
+
 		Api.AutoLogIn();
 
 		CreatorUtility.Initialize(Api);
@@ -75,7 +82,7 @@ public abstract class BatchUploader : BatchTask
 			m_heartbeatData["nFailed"] = m_failMessages.Count;
 			m_heartbeatData["nFailedLicense"] = licenseFailures;
 			m_heartbeatData["nDeclined"] = uploadDeclined;
-			
+
 			StartHeartbeat();
 
 			if (m_config.randomizeOrder)
@@ -94,7 +101,7 @@ public abstract class BatchUploader : BatchTask
 					File.Delete(stopFile);
 					return;
 				}
-				
+
 				foreach (string metadataFile in metadataFiles)
 				{
 					string key = Path.GetFileNameWithoutExtension(metadataFile);
@@ -164,6 +171,15 @@ public abstract class BatchUploader : BatchTask
 		art.revisions[0] = new Revision();
 		art.revisions[0].text = BuildPage(key, metadata);
 
+		// permanently skip files
+		if (ShouldSkipForever(key, metadata))
+		{
+			Console.WriteLine("Permanently skipping");
+			m_succeeded.Add(key);
+			DeleteCachedFiles(key, metadata);
+			return;
+		}
+
 		string previewFile = GetPreviewFileFilename(key);
 		using (StreamWriter writer = new StreamWriter(new FileStream(previewFile, FileMode.Create)))
 		{
@@ -214,8 +230,8 @@ public abstract class BatchUploader : BatchTask
 
 		// creates any pages that the new page will be dependent on
 		PreUpload(key, art);
-		
-		bool uploadSuccess;
+
+		SuccessType uploadSuccess;
 		try
 		{
 			string editMessage = "Batch upload";
@@ -223,18 +239,22 @@ public abstract class BatchUploader : BatchTask
 			{
 				editMessage += " ([[" + m_config.projectPage + "]])";
 			}
-			uploadSuccess = Api.UploadFromLocal(art, imagePath, editMessage, true);
+			uploadSuccess = Api.UploadFromLocal(art, imagePath, editMessage, true) ? SuccessType.Succeeded : SuccessType.Failed;
 		}
 		catch (DuplicateFileException e)
 		{
 			if (e.Duplicates.Length == 1 && e.IsSelfDuplicate)
 			{
 				// It looks like we already did this one
-				uploadSuccess = true;
+				uploadSuccess = SuccessType.SkippedSucceeded;
 			}
 			else if (e.Duplicates.Length == 1 && TryAddDuplicate(e.DuplicateTitles.First(), key, metadata))
 			{
-				uploadSuccess = true;
+				uploadSuccess = SuccessType.SkippedSucceeded;
+			}
+			else if (m_config.succeedManualDupes)
+			{
+				uploadSuccess = SuccessType.SkippedSucceeded;
 			}
 			else
 			{
@@ -246,19 +266,22 @@ public abstract class BatchUploader : BatchTask
 			throw new UWashException(e.Message);
 		}
 
-		if (uploadSuccess)
+		if (uploadSuccess != SuccessType.Failed)
 		{
 			// failures in PostUpload will have to be fixed manually for now
 			m_succeeded.Add(key);
 
-			PostUpload(key, metadata, art);
+			if (uploadSuccess == SuccessType.Succeeded)
+			{
+				PostUpload(key, metadata, art);
+			}
 		}
 		else
 		{
 			throw new UWashException("upload failed");
 		}
 
-		DeleteImageCache(key, metadata);
+		DeleteCachedFiles(key, metadata);
 	}
 
 	/// <summary>
@@ -305,7 +328,7 @@ public abstract class BatchUploader : BatchTask
 		}
 	}
 
-	private void DeleteImageCache(string key, Dictionary<string, string> metadata)
+	private void DeleteCachedFiles(string key, Dictionary<string, string> metadata)
 	{
 		string path = GetImageCacheFilename(key, metadata);
 		if (File.Exists(path))
@@ -384,7 +407,15 @@ public abstract class BatchUploader : BatchTask
 	}
 
 	/// <summary>
-	/// Checks the downloaded image file. If it's invalid, throws an exception.
+	/// Returns true if the specified item should be marked as complete and not uploaded.
+	/// </summary>
+	public virtual bool ShouldSkipForever(string key, Dictionary<string, string> metadata)
+	{
+		return false;
+	}
+
+	/// <summary>
+	/// Checks the downloaded image file. Throws an exception if it's invalid and needs to be redownloaded.
 	/// </summary>
 	public virtual void ValidateDownload(string imagePath)
 	{
