@@ -1,25 +1,46 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Net;
 using System.IO;
+using System.Net;
+using System.Text;
 
 static class MultipartUpload
 {
-    //UploadFilesToServer(new Uri(Util.UPLOAD_BACKUP), Params, Path.GetFileName(dbFile.Path), "application/octet-stream", fileBytes);
+	/// <summary>
+	/// Creates HTTP POST request & uploads file to server. Author : Brian MacIntosh
+	/// </summary>
+	public static Stream UploadFile(HttpWebRequest request, Dictionary<string, string> data,
+		string fileName, string fileContentType, string filekey,
+		Stream fileData)
+	{
+		return UploadFile(request, data, fileName, fileContentType, filekey,
+			(Stream s) => fileData.CopyTo(s));
+	}
 
-    /// <summary>
-    /// Creates HTTP POST request & uploads database to server. Author : Farhan Ghumra
-    /// </summary>
-    public static Stream UploadFile(HttpWebRequest request, Dictionary<string, string> data, string fileName, string fileContentType, Stream fileData)
+	/// <summary>
+	/// Creates HTTP POST request & uploads file to server. Author : Brian MacIntosh
+	/// </summary>
+	public static Stream UploadFile(HttpWebRequest request, Dictionary<string, string> data,
+		string fileName, string fileContentType, string filekey,
+		byte[] fileData, int fileDataOffset, int fileDataLength)
+	{
+		return UploadFile(request, data, fileName, fileContentType, filekey,
+			(Stream s) => s.Write(fileData, fileDataOffset, fileDataLength));
+	}
+
+	/// <summary>
+	/// Creates HTTP POST request & uploads database to server. Author : Farhan Ghumra
+	/// </summary>
+	public static Stream UploadFile(HttpWebRequest request, Dictionary<string, string> data,
+		string fileName, string fileContentType, string filekey,
+		Action<Stream> writeFileData)
     {
         string boundary = "----------" + DateTime.Now.Ticks.ToString("x");
         request.ContentType = "multipart/form-data; boundary=" + boundary;
         request.Method = "POST";
         request.Timeout = 600000;
         Stream requestStream = request.GetRequestStream();
-        WriteMultipartForm(requestStream, boundary, data, fileName, fileContentType, fileData);
+        WriteMultipartForm(requestStream, boundary, data, fileName, fileContentType, filekey, writeFileData);
         requestStream.Flush();
         requestStream.Close();
         return request.GetResponse().GetResponseStream();
@@ -28,18 +49,20 @@ static class MultipartUpload
     /// <summary>
     /// Writes multi part HTTP POST request. Author : Farhan Ghumra
     /// </summary>
-    private static void WriteMultipartForm(Stream s, string boundary, Dictionary<string, string> data, string fileName, string fileContentType, Stream fileData)
+    private static void WriteMultipartForm(Stream s, string boundary, Dictionary<string, string> data,
+		string fileName, string fileContentType, string fileKey,
+		Action<Stream> writeFileData)
     {
-        /// The first boundary
+        // The first boundary
         byte[] boundarybytes = Encoding.UTF8.GetBytes("--" + boundary + "\r\n");
-        /// the last boundary.
+        // the last boundary.
         byte[] trailer = Encoding.UTF8.GetBytes("\r\n--" + boundary + "–-\r\n");
-        /// the form data, properly formatted
+        // the form data, properly formatted
         string formdataTemplate = "Content-Disposition: form-data; name=\"{0}\"\r\n\r\n{1}";
-        /// the form-data file upload, properly formatted
+        // the form-data file upload, properly formatted
         string fileheaderTemplate = "Content-Disposition: file; name=\"{0}\"; filename=\"{1}\";\r\nContent-Type: {2}\r\n\r\n";
 
-        /// Added to track if we need a CRLF or not.
+        // Added to track if we need a CRLF or not.
         bool bNeedsCRLF = false;
 
         if (data != null)
@@ -59,14 +82,14 @@ static class MultipartUpload
             }
         }
 
-        /// If we don't have keys, we don't need a crlf.
+        // If we don't have keys, we don't need a crlf.
         if (bNeedsCRLF)
             WriteToStream(s, "\r\n");
 
         WriteToStream(s, boundarybytes);
-        WriteToStream(s, string.Format(fileheaderTemplate, "file", fileName, fileContentType));
-        /// Write the file data to the stream.
-        fileData.CopyTo(s);
+        WriteToStream(s, string.Format(fileheaderTemplate, fileKey, fileName, fileContentType));
+		// Write the file data to the stream.
+		writeFileData(s);
         WriteToStream(s, trailer);
     }
 

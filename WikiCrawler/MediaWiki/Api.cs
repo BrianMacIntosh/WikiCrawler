@@ -742,48 +742,96 @@ namespace MediaWiki
 				rawfile = reader.ReadBytes((int)reader.BaseStream.Length);
 			}
 
-			if (rawfile.Length > 104857600)
-			{
-				throw new Exception("Chunked upload required");
-			}
-
 			object[] dupes = GetDuplicateFiles(rawfile);
 			if (dupes != null && dupes.Length > 0)
 			{
 				throw new DuplicateFileException(newpage.title, dupes);
 			}
 
-		reupload:
-			string json;
-			try
+			string finalResponseJson;
+
+			if (rawfile.Length > 104857600)
 			{
-				//Read response
-				using (FileStream filestream = new FileStream(path, FileMode.Open))
+				Console.WriteLine("Using chunked upload.");
+
+				int chunkSize = 1024 * 1024;
+				int fileOffset = 0;
+
+				data["filesize"] = rawfile.Length.ToString();
+				data["stash"] = "1";
+
+				//TODO: test me
+				
+				do
 				{
-					using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, filestream)))
+					int thisChunkSize = Math.Min(chunkSize, rawfile.Length - fileOffset);
+					data["offset"] = fileOffset.ToString();
+
+					//TODO: error handling
+
+					// do filenames need to be unique?
+					using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, "chunk",
+						rawfile, fileOffset, thisChunkSize)))
 					{
-						json = read.ReadToEnd();
+						string responseJson = read.ReadToEnd();
+
+						Dictionary<string, object> response = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(responseJson);
+						Dictionary<string, object> upload = (Dictionary<string, object>)response["upload"];
+						fileOffset = (int)upload["offset"];
+						data["filekey"] = (string)upload["filekey"];
+						string responseResult = (string)upload["result"];
+						if (responseResult != "Continue")
+						{
+							throw new WikimediaException("Chunked upload result was '" + responseResult + "'");
+						}
 					}
 				}
+				while (fileOffset < rawfile.Length);
+
+				// commit completed upload
+				data.Remove("filesize");
+				data.Remove("stash");
+				data.Remove("offset");
+				using (StreamReader read = new StreamReader(EasyWeb.Post(request, data)))
+				{
+					finalResponseJson = read.ReadToEnd();
+				}
 			}
-			catch (WebException e)
+			else
 			{
-				if (e.Status == WebExceptionStatus.ProtocolError
-					&& ((HttpWebResponse)e.Response).StatusCode == HttpStatusCode.ServiceUnavailable)
+				// single-part upload
+				bool retry = false;
+				do
 				{
-					System.Threading.Thread.Sleep(60000);
-					goto reupload;
-				}
-				else
-				{
-					throw e;
-				}
+					try
+					{
+						//Read response
+						using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, "file", rawfile)))
+						{
+							finalResponseJson = read.ReadToEnd();
+						}
+					}
+					catch (WebException e)
+					{
+						if (e.Status == WebExceptionStatus.ProtocolError
+							&& ((HttpWebResponse)e.Response).StatusCode == HttpStatusCode.ServiceUnavailable)
+						{
+							System.Threading.Thread.Sleep(60000);
+							retry = true;
+							finalResponseJson = null; //HACK: suppress unassigned warning
+						}
+						else
+						{
+							throw e;
+						}
+					}
+				} while (retry);
 			}
 
-            Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
-            if (deser.ContainsKey("error"))
+            Dictionary<string, object> finalResponse = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(finalResponseJson);
+            if (finalResponse.ContainsKey("error"))
             {
-				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
+				Dictionary<string, object> error = (Dictionary<string, object>)finalResponse["error"];
 				if ((string)error["code"] == "verification-error")
 				{
 					object[] details = (object[])error["details"];

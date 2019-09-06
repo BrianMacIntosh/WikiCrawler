@@ -68,6 +68,20 @@ class EasyWeb
 		}
 	}
 
+	public static Stream Post(HttpWebRequest request, Dictionary<string, string> data)
+	{
+		string dataString = "";
+		foreach (KeyValuePair<string, string> pair in data)
+		{
+			if (!string.IsNullOrEmpty(dataString))
+			{
+				dataString += "&";
+			}
+			dataString += pair.Key + "=" + System.Web.HttpUtility.UrlEncode(pair.Value);
+		}
+		return Post(request, data);
+	}
+
 	public static Stream Post(HttpWebRequest request, string data)
 	{
 		byte[] datainflate = Encoding.UTF8.GetBytes(data);
@@ -85,8 +99,22 @@ class EasyWeb
 	}
 
 	public static Stream Upload(HttpWebRequest request, Dictionary<string, string> data,
-		string filename, string filetype, Stream filedata)
+		string filename, string filetype, string filekey, Stream filedata)
 	{
-		return MultipartUpload.UploadFile(request, data, filename, filetype, filedata);
+		return MultipartUpload.UploadFile(request, data, filename, filetype, filekey, filedata);
+	}
+
+	public static Stream Upload(HttpWebRequest request, Dictionary<string, string> data,
+		string filename, string filetype, string filekey, byte[] filedata)
+	{
+		return MultipartUpload.UploadFile(request, data, filename, filetype, filekey,
+			filedata, 0, filedata.Length);
+	}
+
+	public static Stream Upload(HttpWebRequest request, Dictionary<string, string> data,
+		string filename, string filetype, string filekey, byte[] filedata, int fileDataOffset, int fileDataLength)
+	{
+		return MultipartUpload.UploadFile(request, data, filename, filetype, filekey,
+			filedata, fileDataOffset, fileDataLength);
 	}
 }
