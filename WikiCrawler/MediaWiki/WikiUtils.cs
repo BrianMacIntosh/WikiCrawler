@@ -374,5 +374,35 @@ namespace MediaWiki
 				return "";
 			}
 		}
+
+		/// <summary>
+		/// If the page title starts with "Category:", removes it.
+		/// </summary>
+		public static string GetCategoryName(string category)
+		{
+			if (category.StartsWith("Category:", StringComparison.CurrentCultureIgnoreCase))
+			{
+				return category.Substring("Category:".Length);
+			}
+			else
+			{
+				return category;
+			}
+		}
+
+		/// <summary>
+		/// If the page title doesn't start with "Category:", prepends it.
+		/// </summary>
+		public static string GetCategoryCategory(string category)
+		{
+			if (!category.StartsWith("Category:", StringComparison.CurrentCultureIgnoreCase))
+			{
+				return "Category:" + category;
+			}
+			else
+			{
+				return category;
+			}
+		}
 	}
 }

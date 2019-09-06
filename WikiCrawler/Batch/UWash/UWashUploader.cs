@@ -107,6 +107,27 @@ namespace UWash
 			get { return (UWashProjectConfig)m_config; }
 		}
 
+		/// <summary>
+		/// Holds intermediate data for one media file that is passed around to various functions.
+		/// </summary>
+		private class IntermediateData
+		{
+			public Dictionary<string, string> Metadata;
+
+			public HashSet<string> Categories = new HashSet<string>();
+
+			public DateParseMetadata DateParseMetadata;
+
+			public string PublisherLocCategory;
+
+			public string SureLocationCategory;
+
+			public IntermediateData(Dictionary<string, string> metadata)
+			{
+				Metadata = metadata;
+			}
+		}
+
 		private static char[] s_punctuation = { '.', ' ', '\t', '\n', ',', '-' };
 		private static string[] s_categorySplitters = { "|", ";", "<br/>", "<br />", "<br>" };
 		private static string[] s_captionSplitters = new string[] { "--", "|" };
@@ -233,6 +254,7 @@ namespace UWash
 		protected override string BuildPage(string key, Dictionary<string, string> metadata)
 		{
 			metadata = PreprocessMetadata(metadata);
+			IntermediateData intermediate = new IntermediateData(metadata);
 
 			string lang = "en";
 
@@ -240,19 +262,18 @@ namespace UWash
 
 			Creator creator;
 			string author = GetAuthor(metadata, lang, out creator);
-
-			DateParseMetadata dateParseMetadata;
-			string dateTag = GetDate(metadata, out dateParseMetadata);
+			
+			string dateTag = GetDate(metadata, out intermediate.DateParseMetadata);
 
 			// must have been published before author's death
 			int latestYear;
-			if (creator != null && dateParseMetadata.LatestYear == 9999)
+			if (creator != null && intermediate.DateParseMetadata.LatestYear == 9999)
 			{
 				latestYear = creator.DeathYear;
 			}
 			else
 			{
-				latestYear = dateParseMetadata.LatestYear;
+				latestYear = intermediate.DateParseMetadata.LatestYear;
 			}
 
 			string pubCountry;
@@ -277,164 +298,11 @@ namespace UWash
 			}
 			if (string.IsNullOrEmpty(licenseTag))
 			{
-				throw new LicenseException(dateParseMetadata.LatestYear, pubCountry);
+				throw new LicenseException(intermediate.DateParseMetadata.LatestYear, pubCountry);
 			}
 
-			HashSet<string> categories = new HashSet<string>();
-
-			// pipe-delimited categories to parse
-			string catparse = "";
-
-			//categories for people
-			/*catparse = "";
-			if (data.ContainsKey("Artist/Photographer"))
-			{
-				foreach (string auth in ParseAuthor(data["Artist/Photographer"]))
-					catparse += "|" + auth;
-			}
-			else if (data.ContainsKey("Image Source Author"))
-			{
-				foreach (string auth in ParseAuthor(data["Image Source Author"]))
-					catparse += "|" + auth;
-			}
-			foreach (string s in catparse.Split(pipe, StringSplitOptions.RemoveEmptyEntries))
-			{
-				string cat = TranslatePersonCategory(s);
-				if (!string.IsNullOrEmpty(cat))
-				{
-					if (cat != "N/A")
-					{
-						foreach (string catsplit in cat.Split('|'))
-						{
-							if (!categories.Contains(catsplit)) categories.Add(catsplit);
-						}
-					}
-				}
-				else
-				{
-					throw new UWashException("unknown cat");
-				}
-			}*/
-
-			//categories for tags
-			if (metadata.TryGetValue("LCTGM", out temp)) catparse = CollectCategories(catparse, temp);
-			if (metadata.TryGetValue("LCSH", out temp)) catparse = CollectCategories(catparse, temp);
-			if (metadata.TryGetValue("Category", out temp)) catparse = CollectCategories(catparse, temp);
-			if (metadata.TryGetValue("Keywords", out temp)) catparse = CollectCategories(catparse, temp);
-			/*if (data.ContainsKey("Caption"))
-			{
-				//max 50
-				foreach (string s in data["Caption"].Split(s_captionSplitters, StringSplitOptions.RemoveEmptyEntries))
-				{
-					if (s.Length < 50) catparse += "|" + s;
-				}
-			}*/
-			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
-			{
-				IEnumerable<string> cats = CategoryTranslation.TranslateTagCategory(s.Trim());
-				if (cats != null)
-				{
-					foreach (string catsplit in cats)
-					{
-						if (!categories.Contains(catsplit)) categories.Add(catsplit);
-					}
-				}
-			}
-
-			//categories for locations
-			string sureLocationCategory = "";
-			catparse = "";
-			if (metadata.TryGetValue("Location Depicted", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Geographic Location", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Mountain Range", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Preserve or Park", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Judicial District", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Secondary Glacier", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Additional Glaciers", out temp)) catparse += "|" + temp;
-			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
-			{
-				IEnumerable<string> cats = CategoryTranslation.TranslateLocationCategory(s.Trim());
-				if (cats != null)
-				{
-					foreach (string catsplit in cats)
-					{
-						if (string.IsNullOrEmpty(sureLocationCategory)) sureLocationCategory = catsplit;
-						if (!categories.Contains(catsplit)) categories.Add(catsplit);
-					}
-				}
-			}
-
-			string publisherLocation = "";
-			if (metadata.TryGetValue("Publisher Location", out publisherLocation))
-			{
-				IEnumerable<string> pubLocCats = CategoryTranslation.TranslateLocationCategory(publisherLocation);
-				publisherLocation = pubLocCats == null ? "" : pubLocCats.FirstOrDefault();
-				if (publisherLocation.StartsWith("Category:")) publisherLocation = publisherLocation.Substring("Category:".Length);
-			}
-
-			// advertisement categories
-			if (metadata.ContainsKey("Advertisement") && dateParseMetadata.LatestYear != 9999)
-			{
-				string latestYearString = dateParseMetadata.LatestYear.ToString();
-				string adYearCat = "Category:" + latestYearString + " advertisements in the United States";
-				Article existingYearCat = CategoryTranslation.TryFetchCategory(Api, adYearCat);
-				if (existingYearCat == null)
-				{
-					existingYearCat = new Article(adYearCat);
-					existingYearCat.revisions = new Revision[1];
-					existingYearCat.revisions[0] = new Revision();
-					existingYearCat.revisions[0].text = "{{AdvertisUSYear|" + latestYearString.Substring(0, 3)
-						+ "|" + latestYearString.Substring(3) + "}}";
-					Api.CreatePage(existingYearCat, "(BOT) creating category");
-				}
-				categories.Add(adYearCat);
-
-				if (!string.IsNullOrEmpty(publisherLocation))
-				{
-					string adLocCat = "Category:Advertisements in " + publisherLocation.Split(',')[0];
-					Article existingLocCat = CategoryTranslation.TryFetchCategory(Api, adLocCat);
-					if (existingLocCat != null)
-					{
-						categories.Add(existingLocCat.title);
-					}
-					else
-					{
-						//throw new UWashException("No adloc cat: " + adLocCat);
-					}
-				}
-			}
-
-			// some other categories
-			if (!string.IsNullOrEmpty(sureLocationCategory))
-			{
-				string sureLocation = sureLocationCategory.Substring("Category:".Length);
-
-				if (m_config.informationTemplate == "Photograph")
-				{
-					//TODO: check that the image is black and white
-					if (false)
-					{
-						string blackAndWhiteCat = "Category:Black and white photographs of " + sureLocation;
-						Article existingBwCat = CategoryTranslation.TryFetchCategory(Api, blackAndWhiteCat);
-						if (existingBwCat != null)
-						{
-							categories.Add(existingBwCat.title);
-						}
-					}
-				}
-
-				if (dateParseMetadata.PreciseYear != 0)
-				{
-					string yearLocCat = "Category:" + dateParseMetadata.PreciseYear.ToString() + " in " + sureLocation;
-					Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
-					if (existingYearLocCat != null)
-					{
-						categories.Add(existingYearLocCat.title);
-					}
-				}
-			}
-
-			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
+			// collect all the categories that should be used
+			ProduceCategories(intermediate);
 
 			//check for new, unknown metadata
 			string unused = "";
@@ -458,7 +326,7 @@ namespace UWash
 				}
 			}
 
-			if (dateParseMetadata.LatestYear < 1897 && author == "{{Creator:Asahel Curtis}}")
+			if (intermediate.DateParseMetadata.LatestYear < 1897 && author == "{{Creator:Asahel Curtis}}")
 			{
 				//throw new UWashException("Curtis - check author");
 			}
@@ -467,7 +335,7 @@ namespace UWash
 
 			StringBuilder content = new StringBuilder();
 
-			content.AppendLine(GetCheckCategoriesTag(categories.Count));
+			content.AppendLine(GetCheckCategoriesTag(intermediate.Categories.Count));
 
 			string informationTemplate = m_config.informationTemplate;
 			if (metadata.ContainsKey("~art"))
@@ -570,10 +438,9 @@ namespace UWash
 				content.AppendLine("}}");
 			}
 
-			if (!string.IsNullOrEmpty(sureLocationCategory))
+			if (!string.IsNullOrEmpty(intermediate.SureLocationCategory))
 			{
-				if (sureLocationCategory.StartsWith("Category:")) sureLocationCategory = sureLocationCategory.Substring("Category:".Length);
-				content.AppendLine("|depicted place=" + sureLocationCategory);
+				content.AppendLine("|depicted place=" + WikiUtils.GetCategoryName(intermediate.SureLocationCategory));
 			}
 			else if (metadata.TryGetValue("Location Depicted", out temp))
 			{
@@ -585,10 +452,9 @@ namespace UWash
 			{
 				IEnumerable<string> locCats = CategoryTranslation.TranslateLocationCategory(placeOfCreation);
 				string placeOfCreationCat = locCats == null ? "" : locCats.FirstOrDefault();
-				if (placeOfCreationCat.StartsWith("Category:")) placeOfCreationCat = placeOfCreationCat.Substring("Category:".Length);
 				if (!string.IsNullOrEmpty(placeOfCreationCat))
 				{
-					content.AppendLine("|place of creation=" + placeOfCreationCat);
+					content.AppendLine("|place of creation=" + WikiUtils.GetCategoryName(placeOfCreationCat));
 				}
 				else
 				{
@@ -680,9 +546,9 @@ namespace UWash
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Company/Advertising Agency|value=" + temp + "}}");
 			}
-			if (!string.IsNullOrEmpty(publisherLocation))
+			if (!string.IsNullOrEmpty(intermediate.PublisherLocCategory))
 			{
-				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publisher Location|value=" + publisherLocation + "}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publisher Location|value=" + WikiUtils.GetCategoryName(intermediate.PublisherLocCategory) + "}}");
 			}
 			if (metadata.TryGetValue("Publication Source", out temp))
 			{
@@ -750,11 +616,7 @@ namespace UWash
 			}*/
 			if (!string.IsNullOrEmpty(m_config.checkCategory))
 			{
-				if (!m_config.checkCategory.StartsWith("Category:"))
-				{
-					m_config.checkCategory = "Category:" + m_config.checkCategory;
-				}
-				content.AppendLine("[[" + m_config.checkCategory + "]]");
+				content.AppendLine("[[" + WikiUtils.GetCategoryCategory(m_config.checkCategory) + "]]");
 			}
 			if (m_config.additionalCategories != null)
 			{
@@ -768,12 +630,9 @@ namespace UWash
 				content.AppendLine("[[" + creator.Category + "]]");
 			}
 
-			foreach (string s in categories)
+			foreach (string s in intermediate.Categories)
 			{
-				if (!s.StartsWith("Category:"))
-					content.AppendLine("[[Category:" + s + "]]");
-				else
-					content.AppendLine("[[" + s + "]]");
+				content.AppendLine("[[" + WikiUtils.GetCategoryCategory(s) + "]]");
 			}
 
 			if (latestYear == 9999)
@@ -793,6 +652,168 @@ namespace UWash
 			}
 
 			return content.ToString();
+		}
+
+		/// <summary>
+		/// Determines which categories the image should go in.
+		/// </summary>
+		private void ProduceCategories(IntermediateData data)
+		{
+			Dictionary<string, string> metadata = data.Metadata;
+			HashSet<string> categories = data.Categories;
+			string temp;
+
+			// pipe-delimited categories to parse
+			string catparse = "";
+
+			//categories for people
+			/*catparse = "";
+			if (data.ContainsKey("Artist/Photographer"))
+			{
+				foreach (string auth in ParseAuthor(data["Artist/Photographer"]))
+					catparse += "|" + auth;
+			}
+			else if (data.ContainsKey("Image Source Author"))
+			{
+				foreach (string auth in ParseAuthor(data["Image Source Author"]))
+					catparse += "|" + auth;
+			}
+			foreach (string s in catparse.Split(pipe, StringSplitOptions.RemoveEmptyEntries))
+			{
+				string cat = TranslatePersonCategory(s);
+				if (!string.IsNullOrEmpty(cat))
+				{
+					if (cat != "N/A")
+					{
+						foreach (string catsplit in cat.Split('|'))
+						{
+							if (!categories.Contains(catsplit)) categories.Add(catsplit);
+						}
+					}
+				}
+				else
+				{
+					throw new UWashException("unknown cat");
+				}
+			}*/
+
+			//categories for tags
+			if (metadata.TryGetValue("LCTGM", out temp)) catparse = CollectCategories(catparse, temp);
+			if (metadata.TryGetValue("LCSH", out temp)) catparse = CollectCategories(catparse, temp);
+			if (metadata.TryGetValue("Category", out temp)) catparse = CollectCategories(catparse, temp);
+			if (metadata.TryGetValue("Keywords", out temp)) catparse = CollectCategories(catparse, temp);
+			/*if (data.ContainsKey("Caption"))
+			{
+				//max 50
+				foreach (string s in data["Caption"].Split(s_captionSplitters, StringSplitOptions.RemoveEmptyEntries))
+				{
+					if (s.Length < 50) catparse += "|" + s;
+				}
+			}*/
+			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
+			{
+				IEnumerable<string> cats = CategoryTranslation.TranslateTagCategory(s.Trim());
+				if (cats != null)
+				{
+					foreach (string catsplit in cats)
+					{
+						if (!categories.Contains(catsplit)) categories.Add(catsplit);
+					}
+				}
+			}
+
+			//categories for locations
+			catparse = "";
+			if (metadata.TryGetValue("Location Depicted", out temp)) catparse += "|" + temp;
+			if (metadata.TryGetValue("Geographic Location", out temp)) catparse += "|" + temp;
+			if (metadata.TryGetValue("Mountain Range", out temp)) catparse += "|" + temp;
+			if (metadata.TryGetValue("Preserve or Park", out temp)) catparse += "|" + temp;
+			if (metadata.TryGetValue("Judicial District", out temp)) catparse += "|" + temp;
+			if (metadata.TryGetValue("Secondary Glacier", out temp)) catparse += "|" + temp;
+			if (metadata.TryGetValue("Additional Glaciers", out temp)) catparse += "|" + temp;
+			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
+			{
+				IEnumerable<string> cats = CategoryTranslation.TranslateLocationCategory(s.Trim());
+				if (cats != null)
+				{
+					foreach (string catsplit in cats)
+					{
+						if (string.IsNullOrEmpty(data.SureLocationCategory)) data.SureLocationCategory = catsplit;
+						if (!categories.Contains(catsplit)) categories.Add(catsplit);
+					}
+				}
+			}
+			
+			if (metadata.TryGetValue("Publisher Location", out data.PublisherLocCategory))
+			{
+				IEnumerable<string> pubLocCats = CategoryTranslation.TranslateLocationCategory(data.PublisherLocCategory);
+				data.PublisherLocCategory = pubLocCats == null ? "" : pubLocCats.FirstOrDefault();
+			}
+
+			// advertisement categories
+			if (metadata.ContainsKey("Advertisement") && data.DateParseMetadata.LatestYear != 9999)
+			{
+				string latestYearString = data.DateParseMetadata.LatestYear.ToString();
+				string adYearCat = "Category:" + latestYearString + " advertisements in the United States";
+				Article existingYearCat = CategoryTranslation.TryFetchCategory(Api, adYearCat);
+				if (existingYearCat == null)
+				{
+					existingYearCat = new Article(adYearCat);
+					existingYearCat.revisions = new Revision[1];
+					existingYearCat.revisions[0] = new Revision();
+					existingYearCat.revisions[0].text = "{{AdvertisUSYear|" + latestYearString.Substring(0, 3)
+						+ "|" + latestYearString.Substring(3) + "}}";
+					Api.CreatePage(existingYearCat, "(BOT) creating category");
+				}
+				categories.Add(adYearCat);
+
+				if (!string.IsNullOrEmpty(data.PublisherLocCategory))
+				{
+					string pubLocCatName = WikiUtils.GetCategoryName(data.PublisherLocCategory);
+					string adLocCat = "Category:Advertisements in " + pubLocCatName.Split(',')[0];
+					Article existingLocCat = CategoryTranslation.TryFetchCategory(Api, adLocCat);
+					if (existingLocCat != null)
+					{
+						categories.Add(existingLocCat.title);
+					}
+					else
+					{
+						//throw new UWashException("No adloc cat: " + adLocCat);
+					}
+				}
+			}
+
+			// some other categories
+			if (!string.IsNullOrEmpty(data.SureLocationCategory))
+			{
+				string sureLocation = WikiUtils.GetCategoryName(data.SureLocationCategory);
+
+				if (m_config.informationTemplate == "Photograph")
+				{
+					//TODO: check that the image is black and white
+					if (false)
+					{
+						string blackAndWhiteCat = "Category:Black and white photographs of " + sureLocation;
+						Article existingBwCat = CategoryTranslation.TryFetchCategory(Api, blackAndWhiteCat);
+						if (existingBwCat != null)
+						{
+							categories.Add(existingBwCat.title);
+						}
+					}
+				}
+
+				if (data.DateParseMetadata.PreciseYear != 0)
+				{
+					string yearLocCat = "Category:" + data.DateParseMetadata.PreciseYear.ToString() + " in " + sureLocation;
+					Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
+					if (existingYearLocCat != null)
+					{
+						categories.Add(existingYearLocCat.title);
+					}
+				}
+			}
+
+			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
 		}
 
 		private string CollectCategories(string accumulator, string newCats)

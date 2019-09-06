@@ -451,6 +451,14 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Returns the appropriate category check tag.
 	/// </summary>
+	protected static string GetCheckCategoriesTag(IList<string> categories)
+	{
+		return GetCheckCategoriesTag(categories.Count);
+	}
+
+	/// <summary>
+	/// Returns the appropriate category check tag.
+	/// </summary>
 	protected static string GetCheckCategoriesTag(int categoryCount)
 	{
 		string dmy = "day=" + System.DateTime.Now.Day + "|month="
