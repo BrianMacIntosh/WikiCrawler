@@ -79,7 +79,7 @@
     <Compile Include="Batch\ProjectConfig.cs" />
     <Compile Include="MediaWiki\Formats\ImageInfo.cs" />
     <Compile Include="MediaWiki\Formats\Revision.cs" />
-    <Compile Include="Tasks\Commons\SayreCategorize.cs" />
+    <Compile Include="UWash\SayreCategorize.cs" />
     <Compile Include="Tasks\BatchTaskAttribute.cs" />
     <Compile Include="Utility\Exceptions\LicenseException.cs" />
     <Compile Include="Utility\Exceptions\RedownloadException.cs" />

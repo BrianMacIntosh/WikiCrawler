@@ -661,7 +661,7 @@ namespace UWash
 		{
 			Dictionary<string, string> metadata = data.Metadata;
 			HashSet<string> categories = data.Categories;
-			string temp;
+			string outValue;
 
 			// pipe-delimited categories to parse
 			string catparse = "";
@@ -698,10 +698,10 @@ namespace UWash
 			}*/
 
 			//categories for tags
-			if (metadata.TryGetValue("LCTGM", out temp)) catparse = CollectCategories(catparse, temp);
-			if (metadata.TryGetValue("LCSH", out temp)) catparse = CollectCategories(catparse, temp);
-			if (metadata.TryGetValue("Category", out temp)) catparse = CollectCategories(catparse, temp);
-			if (metadata.TryGetValue("Keywords", out temp)) catparse = CollectCategories(catparse, temp);
+			if (metadata.TryGetValue("LCTGM", out outValue)) catparse = CollectCategories(catparse, outValue);
+			if (metadata.TryGetValue("LCSH", out outValue)) catparse = CollectCategories(catparse, outValue);
+			if (metadata.TryGetValue("Category", out outValue)) catparse = CollectCategories(catparse, outValue);
+			if (metadata.TryGetValue("Keywords", out outValue)) catparse = CollectCategories(catparse, outValue);
 			/*if (data.ContainsKey("Caption"))
 			{
 				//max 50
@@ -724,13 +724,13 @@ namespace UWash
 
 			//categories for locations
 			catparse = "";
-			if (metadata.TryGetValue("Location Depicted", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Geographic Location", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Mountain Range", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Preserve or Park", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Judicial District", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Secondary Glacier", out temp)) catparse += "|" + temp;
-			if (metadata.TryGetValue("Additional Glaciers", out temp)) catparse += "|" + temp;
+			if (metadata.TryGetValue("Location Depicted", out outValue)) catparse += "|" + outValue;
+			if (metadata.TryGetValue("Geographic Location", out outValue)) catparse += "|" + outValue;
+			if (metadata.TryGetValue("Mountain Range", out outValue)) catparse += "|" + outValue;
+			if (metadata.TryGetValue("Preserve or Park", out outValue)) catparse += "|" + outValue;
+			if (metadata.TryGetValue("Judicial District", out outValue)) catparse += "|" + outValue;
+			if (metadata.TryGetValue("Secondary Glacier", out outValue)) catparse += "|" + outValue;
+			if (metadata.TryGetValue("Additional Glaciers", out outValue)) catparse += "|" + outValue;
 			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
 			{
 				IEnumerable<string> cats = CategoryTranslation.TranslateLocationCategory(s.Trim());
@@ -812,6 +812,8 @@ namespace UWash
 					}
 				}
 			}
+
+			SayreCategorize.ProduceSayreCategories(Api, CategoryTranslation.CategoryTree, data.Metadata, data.Categories);
 
 			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
 		}
