@@ -127,8 +127,17 @@ public static class ImageUtils
 
 		FreeImage.Unload(bitmap);
 
+		int newWidth = Math.Abs(right - left);
+		int newHeight = Math.Abs(top - bottom);
+
 		if (left == 0 && right == width && bottom == 0 && top == height)
 		{
+			// that would be the whole image
+			return false;
+		}
+		else if (Math.Abs(newWidth - width) < 6 && Math.Abs(newHeight - height) < 6)
+		{
+			// that's not very consequential
 			return false;
 		}
 		else

@@ -460,7 +460,7 @@ namespace UWash
 
 			if (dateParseMetadata.LatestYear < 1897 && author == "{{Creator:Asahel Curtis}}")
 			{
-				throw new UWashException("Curtis - check author");
+				//throw new UWashException("Curtis - check author");
 			}
 
 			//======== BUILD PAGE TEXT

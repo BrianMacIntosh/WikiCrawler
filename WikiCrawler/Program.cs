@@ -118,6 +118,10 @@ namespace WikiCrawler
 
 			Console.WriteLine("Done");
 			WindowsUtility.FlashWindowEx(Process.GetCurrentProcess().MainWindowHandle);
+
+			// shut down
+			//WindowsUtility.DoExitWin(WindowsUtility.EWX.EWX_SHUTDOWN);
+
 			Console.ReadLine();
         }
     }

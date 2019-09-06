@@ -7,7 +7,7 @@ public static class MimeUtility
 	/// </summary>
 	public static string GetExtensionFromMime(string mime)
 	{
-		switch (mime)
+		switch (mime.ToLowerInvariant())
 		{
 			case "image/gif":  return ".gif";
 			case "image/jpeg": return ".jpg";
@@ -25,11 +25,12 @@ public static class MimeUtility
 	/// </summary>
 	public static string GetMimeFromExtension(string ext)
 	{
-		switch (ext)
+		switch (ext.ToLowerInvariant())
 		{
             case ".gif": return "image/gif";
             case ".jpg": return "image/jpeg";
-            case ".png": return "image/png";
+			case ".jpeg": return "image/jpeg";
+			case ".png": return "image/png";
             case ".bmp": return "image/bmp";
 			case ".tif": return "image/tiff";
 			case ".pdf": return "application/pdf";

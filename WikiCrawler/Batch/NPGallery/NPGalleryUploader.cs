@@ -221,15 +221,8 @@ namespace NPGallery
 
 			if (metadata.TryGetValue("Author", out outValue))
 			{
-				if (string.IsNullOrEmpty(authorString))
-				{
-					infoTemplate = "Information";
-					authorString = GetAuthor(outValue, "", out creator);
-				}
-				else
-				{
-					throw new Exception("Multiple author fields present");
-				}
+				infoTemplate = "Information";
+				authorString = GetAuthor(outValue, "", out creator);
 			}
 
 			if (creator != null)
@@ -355,7 +348,7 @@ namespace NPGallery
 			string description;
 			if (descriptionBlocks.Count == 0)
 			{
-				description = metadata["Title"];
+				metadata.TryGetValue("Title", out description);
 			}
 			else if (descriptionBlocks.Count == 1)
 			{
@@ -384,20 +377,27 @@ namespace NPGallery
 					|| outValue == "NO KNOWN COPYRIGHT: The organization that has made the Item available reasonably believes that the Item is not restricted by copyright or related rights, but a conclusive determination could not be made. Please refer to the organization that has made the Item available for more information. You are free to use this Item in any way that is permitted by the copyright and related rights legislation that applies to your use. Reference http://rightsstatements.org/vocab/NKC/1.0/"
 					|| outValue == "Restrictions apply on use and/or reproduction:Copyright Unknown"
 					|| outValue == "Restrictions apply on use and/or reproduction:Copyrighted material"
-					|| outValue == "Restrictions apply on use and/or reproduction (Copyrighted material):Full Granting Rights")
+					|| outValue == "Restrictions apply on use and/or reproduction (Copyrighted material):Full Granting Rights"
+					|| outValue == "Public domain:Abandoned mineral features may pose safety hazards, be archeological sites, or be endangered species habitat."
+					|| outValue == "Restrictions apply on use and/or reproduction:Copyright Undetermined."
+					|| outValue == "Public domain"
+					|| outValue == "Public domain:Full Granting Rights"
+					|| outValue == "All Rights Reserved")
 				{
 
 				}
-				else if (!outValue.Contains(", Code: ")
-					&& outValue != "Public domain"
-					&& outValue != "Public domain:Full Granting Rights") //TODO: use this
+				else if (!outValue.Contains(", Code: "))
 				{
 					throw new Exception("'Constraints Information' contained something other than a park name");
 				}
 			}
-			else if (metadata.TryGetValue("Attribution", out outValue) && !outValue.Contains(", Code: "))
+			else if (metadata.TryGetValue("Attribution", out outValue))
 			{
-				throw new Exception("'Attribution' contained something other than a park name");
+				if (!outValue.Contains(", Code: ")
+					&& outValue != "Restrictions apply on use and/or reproduction")
+				{
+					throw new Exception("'Attribution' contained something other than a park name");
+				}
 			}
 
 			// determine the park name
@@ -729,14 +729,20 @@ namespace NPGallery
 				date = "{{taken on|" + date + "}}";
 			}
 
+			string title = "";
+			metadata.TryGetValue("Title", out title);
+
 			string page = catCheckTag + "\n"
 				+ "=={{int:filedesc}}==\n"
 				+ "{{" + infoTemplate + "\n";
 			if (infoTemplate == "Photograph")
 			{
-				page += "|photographer=" + authorString + "\n"
-					+ "|title={{en|" + metadata["Title"] + "}}\n"
-					+ "|depicted place={{en|" + location + "}}\n"
+				page += "|photographer=" + authorString + "\n";
+				if (!string.IsNullOrEmpty(title))
+				{
+					page += "|title={{en|" + metadata["Title"] + "}}\n";
+				}
+				page += "|depicted place={{en|" + location + "}}\n"
 					+ "|accession number={{NPGallery-accession|" + key + "}}\n";
 				if (!string.IsNullOrEmpty(publisher))
 				{
@@ -810,25 +816,28 @@ namespace NPGallery
 
 			// add an additional check category to possible out-of-scope photos
 			string[] split = descriptionBlock.ToLower().Split(' ');
-			if (split[0] == "a" || split[0] == "one"
-				|| split[0] == "two" || split[0] == "three"
-				|| split[0] == "four" || split[0] == "five"
-				|| split[0] == "six" || split[0] == "seven"
-				|| split[0] == "eight" || split[0] == "nine"
-				|| split[0] == "ten")
+			if (split.Length >= 2)
 			{
-				if (split[1] == "person" || split[1]  == "people"
-					//|| split[1] == "man" || split[1] == "men"
-					//|| split[1] == "woman" || split[1] == "women"
-					|| split[1] == "hiker" || split[1] == "hikers"
-					|| split[1] == "camper" || split[1] == "campers"
-					|| split[1] == "visitor" || split[1] == "visitors"
-					|| split[1] == "young child" || split[1] == "young children"
-					|| split[1] == "child" || split[1] == "children"
-					|| split[1] == "kid" || split[1] == "kids"
-					|| split[1] == "teenager" || split[1] == "teenagers")
+				if (split[0] == "a" || split[0] == "one"
+					|| split[0] == "two" || split[0] == "three"
+					|| split[0] == "four" || split[0] == "five"
+					|| split[0] == "six" || split[0] == "seven"
+					|| split[0] == "eight" || split[0] == "nine"
+					|| split[0] == "ten")
 				{
-					return false;
+					if (split[1] == "person" || split[1] == "people"
+						//|| split[1] == "man" || split[1] == "men"
+						//|| split[1] == "woman" || split[1] == "women"
+						|| split[1] == "hiker" || split[1] == "hikers"
+						|| split[1] == "camper" || split[1] == "campers"
+						|| split[1] == "visitor" || split[1] == "visitors"
+						|| split[1] == "young child" || split[1] == "young children"
+						|| split[1] == "child" || split[1] == "children"
+						|| split[1] == "kid" || split[1] == "kids"
+						|| split[1] == "teenager" || split[1] == "teenagers")
+					{
+						return false;
+					}
 				}
 			}
 
@@ -982,8 +991,17 @@ namespace NPGallery
 
 		public override string GetTitle(string key, Dictionary<string, string> metadata)
 		{
-			string title = HttpUtility.HtmlDecode(metadata["Title"]);
+			string title;
+			if (metadata.TryGetValue("Title", out title))
+			{ }
+			else if (metadata.TryGetValue("Description", out title))
+			{ }
+			else
+			{
+				throw new Exception("No title");
+			}
 
+			title = HttpUtility.HtmlDecode(title);
 			title = title.Replace("''", "\"");
 
 			if (title.Length > 129)
