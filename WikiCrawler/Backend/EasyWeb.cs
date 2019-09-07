@@ -79,7 +79,7 @@ class EasyWeb
 			}
 			dataString += pair.Key + "=" + System.Web.HttpUtility.UrlEncode(pair.Value);
 		}
-		return Post(request, data);
+		return Post(request, dataString);
 	}
 
 	public static Stream Post(HttpWebRequest request, string data)

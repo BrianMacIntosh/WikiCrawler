@@ -16,7 +16,7 @@ namespace WikiCrawler
 				   | SecurityProtocolType.Tls11
 				   | SecurityProtocolType.Tls12
 				   | SecurityProtocolType.Ssl3;
-
+			
 			try
 			{
 				Console.Write("Task>");

@@ -732,8 +732,6 @@ namespace MediaWiki
                 data["text"] = newpage.revisions[0].text;
             }
 
-            HttpWebRequest request = CreateApiRequest();
-
             string filetype = MimeUtility.GetMimeFromExtension(Path.GetExtension(path));
 
 			byte[] rawfile;
@@ -769,6 +767,8 @@ namespace MediaWiki
 
 					//TODO: error handling
 
+					HttpWebRequest request = CreateApiRequest();
+
 					// do filenames need to be unique?
 					using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, "chunk",
 						rawfile, fileOffset, thisChunkSize)))
@@ -777,24 +777,38 @@ namespace MediaWiki
 
 						Dictionary<string, object> response = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(responseJson);
 						Dictionary<string, object> upload = (Dictionary<string, object>)response["upload"];
-						fileOffset = (int)upload["offset"];
-						data["filekey"] = (string)upload["filekey"];
 						string responseResult = (string)upload["result"];
-						if (responseResult != "Continue")
+						if (responseResult == "Success")
+						{
+							Console.WriteLine("100%");
+							data["filekey"] = (string)upload["filekey"];
+							break;
+						}
+						else if (responseResult == "Continue")
+						{
+							fileOffset = (int)upload["offset"];
+							data["filekey"] = (string)upload["filekey"];
+						}
+						else
 						{
 							throw new WikimediaException("Chunked upload result was '" + responseResult + "'");
 						}
+
+						Console.WriteLine(((int)(100f * fileOffset / (float)rawfile.Length)).ToString() + "%");
 					}
 				}
 				while (fileOffset < rawfile.Length);
 
 				// commit completed upload
-				data.Remove("filesize");
-				data.Remove("stash");
-				data.Remove("offset");
-				using (StreamReader read = new StreamReader(EasyWeb.Post(request, data)))
 				{
-					finalResponseJson = read.ReadToEnd();
+					data.Remove("filesize");
+					data.Remove("stash");
+					data.Remove("offset");
+					HttpWebRequest request = CreateApiRequest();
+					using (StreamReader read = new StreamReader(EasyWeb.Post(request, data)))
+					{
+						finalResponseJson = read.ReadToEnd();
+					}
 				}
 			}
 			else
@@ -806,6 +820,7 @@ namespace MediaWiki
 					try
 					{
 						//Read response
+						HttpWebRequest request = CreateApiRequest();
 						using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, "file", rawfile)))
 						{
 							finalResponseJson = read.ReadToEnd();
