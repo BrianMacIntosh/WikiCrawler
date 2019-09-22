@@ -1,10 +1,12 @@
 ﻿using MediaWiki;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
+using System.Text;
 using System.Web;
 using WikiCrawler;
 
@@ -103,7 +105,7 @@ namespace NPGallery
 			// load existing assetlist, only to count how many keys there are
 			string assetlistFile = Path.Combine(ProjectDataDirectory, "assetlist.json");
 			string json = File.ReadAllText(assetlistFile);
-			List<NPGalleryAsset> allAssets = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
+			List<NPGalleryAsset> allAssets = JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
 			m_assetCount = allAssets.Count(asset => asset.AssetType == "Standard");
 
 			// we'll need to redownload data when the Albums key is missing
@@ -126,7 +128,17 @@ namespace NPGallery
 					m_corruptedRecordErrorHash = md5.ComputeHash(stream);
 				}
 			}
+
+			// read unit code locations
+			string unitCodeLocsPath = Path.Combine(Configuration.DataDirectory, "npsunit-parents.json");
+			string unitCodeLocsText = File.ReadAllText(unitCodeLocsPath, Encoding.UTF8);
+			s_unitCodeToCommonsLoc = JsonConvert.DeserializeObject<Dictionary<string, string[]>>(unitCodeLocsText);
 		}
+
+		/// <summary>
+		/// Maps NPS unit codes to commons location categories.
+		/// </summary>
+		private static Dictionary<string, string[]> s_unitCodeToCommonsLoc = new Dictionary<string, string[]>();
 		
 		public static string[] KeywordSplitters = { "<br/>", "<br />", "<br>", "\r", "\n", "," };
 
@@ -370,6 +382,7 @@ namespace NPGallery
 				throw new LicenseException(dateMetadata.LatestYear, m_config.defaultPubCountry);
 			}
 
+			bool useCopyrightStatement = false;
 			if (metadata.TryGetValue("Constraints Information", out outValue))
 			{
 				if (outValue == "Restrictions apply on use and/or reproduction"
@@ -385,6 +398,10 @@ namespace NPGallery
 					|| outValue == "All Rights Reserved")
 				{
 
+				}
+				else if (outValue == "Public domain:however please use copyright statement.")
+				{
+					useCopyrightStatement = true;
 				}
 				else if (!outValue.Contains(", Code: "))
 				{
@@ -424,7 +441,7 @@ namespace NPGallery
 					if (dateMetadata.PreciseYear != 0)
 					{
 						string yearLocCat = "Category:" + dateMetadata.PreciseYear.ToString() + " in " + definiteLocation;
-						MediaWiki.Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
+						Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
 						if (existingYearLocCat != null)
 						{
 							categories.Add(existingYearLocCat.title);
@@ -477,11 +494,8 @@ namespace NPGallery
 						// not useful
 						continue;
 					}
-					IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(subject);
-					if (mappedCats != null)
-					{
-						categories.AddRange(mappedCats);
-					}
+
+					CollectCategories(categories, subject, parkCodes);
 				}
 			}
 			string keywordsToParse = "";
@@ -510,11 +524,7 @@ namespace NPGallery
 					// park codes will not map to meaningful categories
 					if (!parkCodes.Contains(dataTrimmed, StringComparer.CurrentCultureIgnoreCase))
 					{
-						IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(dataTrimmed);
-						if (mappedCats != null)
-						{
-							categories.AddRange(mappedCats);
-						}
+						CollectCategories(categories, dataTrimmed, parkCodes);
 					}
 
 					if (!parsedKeywords.Contains(dataTrimmed, StringComparer.CurrentCultureIgnoreCase))
@@ -532,11 +542,7 @@ namespace NPGallery
 				foreach (string dataSplit in outValue.Split(','))
 				{
 					string subject = dataSplit.Trim();
-					IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(subject);
-					if (mappedCats != null)
-					{
-						categories.AddRange(mappedCats);
-					}
+					CollectCategories(categories, subject, parkCodes);
 				}
 			}
 
@@ -621,11 +627,7 @@ namespace NPGallery
 					{
 						relatedAlbums.Add(relatedTitle);
 
-						IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(relatedTitle);
-						if (mappedCats != null)
-						{
-							categories.AddRange(mappedCats);
-						}
+						CollectCategories(categories, relatedTitle, parkCodes);
 					}
 				}
 
@@ -694,7 +696,7 @@ namespace NPGallery
 				authorString = "{{en|" + authorString + "}}";
 			}
 
-			if (categories.Contains("Category:Graves") && parkCodes.Contains("MACA"))
+			if (description.Contains("grave marker") && parkCodes.Contains("MACA"))
 			{
 				throw new UploadDeclinedException("Gravestone");
 			}
@@ -781,8 +783,20 @@ namespace NPGallery
 				otherVersions = "<gallery>" + otherVersions + "</gallery>";
 			}
 
-			page += "|permission=" + licenseTag + "\n"
-				+ "|other_versions=" + otherVersions + "\n"
+			page += "|permission=" + licenseTag + "\n";
+			if (useCopyrightStatement)
+			{
+				string copyrightStatement;
+				if (!metadata.TryGetValue("Copyright", out copyrightStatement))
+				{
+					throw new Exception("No requested Copyright statement");
+				}
+				else
+				{
+					page += "'''" + copyrightStatement + "'''\n";
+				}
+			}
+			page += "|other_versions=" + otherVersions + "\n"
 				+ "|other_fields=" + otherFields + "\n";
 			if (!string.IsNullOrEmpty(photoInfo))
 			{
@@ -796,6 +810,42 @@ namespace NPGallery
 			}
 
 			return page;
+		}
+
+		private void CollectCategories(HashSet<string> categories, string tag, IList<string> unitCodes)
+		{
+			IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(tag);
+			if (mappedCats != null)
+			{
+				foreach (string mappedCat in mappedCats)
+				{
+					// see if an "in (location)" or "of (location)" subcat exists and use that instead
+					foreach (string unitCode in unitCodes)
+					{
+						if (s_unitCodeToCommonsLoc.TryGetValue(unitCode, out string[] parentLocs))
+						{
+							foreach (string parentLoc in parentLocs)
+							{
+								Article parentLocCat = CategoryTranslation.TryFetchCategory(Api, mappedCat + " in " + parentLoc);
+								if (parentLocCat != null)
+								{
+									categories.Add(parentLocCat.title);
+									return;
+								}
+
+								parentLocCat = CategoryTranslation.TryFetchCategory(Api, mappedCat + " of " + parentLoc);
+								if (parentLocCat != null)
+								{
+									categories.Add(parentLocCat.title);
+									return;
+								}
+							}
+						}
+					}
+
+					categories.Add(mappedCat);
+				}
+			}
 		}
 
 		/// <summary>
@@ -991,12 +1041,20 @@ namespace NPGallery
 
 		public override string GetTitle(string key, Dictionary<string, string> metadata)
 		{
-			string title;
-			if (metadata.TryGetValue("Title", out title))
-			{ }
-			else if (metadata.TryGetValue("Description", out title))
-			{ }
-			else
+			string title = "", outValue;
+			if (metadata.TryGetValue("Title", out outValue))
+			{
+				title = outValue;
+			}
+			if (string.IsNullOrEmpty(title) || title.Split(' ').Length <= 3)
+			{
+				if (metadata.TryGetValue("Description", out outValue))
+				{
+					if (title.Split(' ').Length < outValue.Split(' ').Length)
+						title = outValue;
+				}
+			}
+			if (string.IsNullOrEmpty(title))
 			{
 				throw new Exception("No title");
 			}

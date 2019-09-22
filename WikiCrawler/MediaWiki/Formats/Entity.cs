@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MediaWiki
 {
@@ -43,7 +40,7 @@ namespace MediaWiki
 			if (json.ContainsKey("descriptions"))
 				descriptions = ParseLanguageValue((Dictionary<string, object>)json["descriptions"]);
 
-			claims = new Dictionary<string, Claim[]>();
+			claims = new Dictionary<string, Claim[]>(StringComparer.InvariantCultureIgnoreCase);
 			if (json.ContainsKey("claims"))
 			{
 				Dictionary<string, object> claimData = (Dictionary<string, object>)json["claims"];
@@ -59,7 +56,7 @@ namespace MediaWiki
 				}
 			}
 
-			sitelinks = new Dictionary<string, string>();
+			sitelinks = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
 			if (json.ContainsKey("sitelinks"))
 			{
 				Dictionary<string, object> sitelinkData = (Dictionary<string, object>)json["sitelinks"];

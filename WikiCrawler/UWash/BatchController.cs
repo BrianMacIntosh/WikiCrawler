@@ -130,9 +130,15 @@ namespace WikiCrawler
 				{
 					//TODO: create trash directory
 					//TODO: get filenames from central source
-					File.Move(
-						metadataFile,
-						Path.Combine(projectDir, "data_trash", id + ".json"));
+					string targetFile = Path.Combine(projectDir, "data_trash", id + ".json");
+					if (File.Exists(targetFile))
+					{
+						File.Delete(metadataFile);
+					}
+					else
+					{
+						File.Move(metadataFile, targetFile);
+					}
 				}
 			}
 

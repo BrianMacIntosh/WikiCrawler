@@ -318,4 +318,47 @@ namespace MediaWiki
 		public const string subcat = "subcat";
 		public const string file = "file";
 	}
+	
+	public static class WBProp
+	{
+		/// <summary>
+		/// 
+		/// </summary>
+		public const string info = "info";
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public const string sitelinks = "sitelinks";
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public const string sitelinksurls = "sitelinks/urls";
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public const string aliases = "aliases";
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public const string labels = "labels";
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public const string descriptions = "descriptions";
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public const string claims = "claims";
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public const string datatype = "datatype";
+	}
 }

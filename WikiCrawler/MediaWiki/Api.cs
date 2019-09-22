@@ -21,7 +21,15 @@ namespace MediaWiki
 
         private CookieContainer m_cookies;
 
+		private static JavaScriptSerializer s_jsonSerializer;
+
 		private static string s_edittoken;
+
+		static Api()
+		{
+			s_jsonSerializer = new JavaScriptSerializer();
+			s_jsonSerializer.MaxJsonLength = 16000000;
+		}
 
 		public Api(Uri domain)
 		{
@@ -577,17 +585,81 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns the Wiki entity data for all of the specified pages
 		/// </summary>
-		public Entity[] GetEntities(IList<string> ids)
+		public Entity[] GetEntities(IList<string> ids = null,
+			string sites = "",
+			string titles = "",
+			bool? redirects = null,
+			string props = "info|sitelinks|aliases|labels|descriptions|claims|datatype",
+			string languages = "",
+			bool? languageFallback = null,
+			bool? normalize = null,
+			string sitefilter = "")
 		{
-			//TODO: continue support?
-
 			if (ids.Count == 0) return new Entity[0];
-			
+
+			// maximum simultaneous request is 500 for bots on Wikidata
+			const int maxEntities = 500;
+			if (ids.Count > maxEntities)
+			{
+				int index = 0;
+				List<string> idBuffer = new List<string>(maxEntities);
+				List<Entity> results = new List<Entity>(maxEntities);
+				while (true)
+				{
+					for (int i = 0; i < maxEntities; i++)
+					{
+						if (index + i >= ids.Count) break;
+						idBuffer.Add(ids[index + i]);
+					}
+					Entity[] intermediateEntities = GetEntities(idBuffer, sites, titles, redirects, props, languages, languageFallback, normalize, sitefilter);
+					results.AddRange(intermediateEntities);
+					if (index >= ids.Count)
+					{
+						return results.ToArray();
+					}
+					index += maxEntities;
+					idBuffer.Clear();
+				}
+			}
+
 			string baseQuery = "format=json"
-				+ "&action=wbgetentities"
-				+ "&ids=" + UrlEncode(string.Join("|", ids));
+				+ "&action=wbgetentities";
+			if (ids != null)
+			{
+				baseQuery += "&ids=" + UrlEncode(string.Join("|", ids));
+			}
+			if (!string.IsNullOrEmpty(sites))
+			{
+				baseQuery += "&sites=" + UrlEncode(sites);
+			}
+			if (!string.IsNullOrEmpty(titles))
+			{
+				baseQuery += "&titles=" + UrlEncode(titles);
+			}
+			if (redirects.HasValue)
+			{
+				baseQuery += "&redirects=" + (redirects.Value ? "yes" : "no");
+			}
+			if (!string.IsNullOrEmpty(props))
+			{
+				baseQuery += "&props=" + UrlEncode(props);
+			}
+			if (!string.IsNullOrEmpty(languages))
+			{
+				baseQuery += "&languages=" + UrlEncode(languages);
+			}
+			if (languageFallback.HasValue)
+			{
+				baseQuery += "&languageFallback=" + languageFallback.Value.ToString();
+			}
+			if (normalize.HasValue)
+			{
+				baseQuery += "&normalize=" + normalize.Value.ToString();
+			}
+
 			HttpWebRequest request = CreateApiRequest(baseQuery);
 
+			// Read response
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
 			{
@@ -595,7 +667,8 @@ namespace MediaWiki
 			}
 
 			//Parse and read
-			Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+			//TODO: error handling?
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 			if (!deser.ContainsKey("entities"))
 			{
 				return new Entity[0];
@@ -769,6 +842,8 @@ namespace MediaWiki
 
 					HttpWebRequest request = CreateApiRequest();
 
+					Console.Write("0%");
+
 					// do filenames need to be unique?
 					using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, "chunk",
 						rawfile, fileOffset, thisChunkSize)))
@@ -780,7 +855,7 @@ namespace MediaWiki
 						string responseResult = (string)upload["result"];
 						if (responseResult == "Success")
 						{
-							Console.WriteLine("100%");
+							Console.WriteLine("\r100%");
 							data["filekey"] = (string)upload["filekey"];
 							break;
 						}
@@ -794,7 +869,7 @@ namespace MediaWiki
 							throw new WikimediaException("Chunked upload result was '" + responseResult + "'");
 						}
 
-						Console.WriteLine(((int)(100f * fileOffset / (float)rawfile.Length)).ToString() + "%");
+						Console.Write("\r" + ((int)(100f * fileOffset / (float)rawfile.Length)).ToString() + "%");
 					}
 				}
 				while (fileOffset < rawfile.Length);

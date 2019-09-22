@@ -69,6 +69,7 @@
     <Compile Include="Batch\ContentDmDownloader.cs" />
     <Compile Include="Batch\Dsal\DsalParseMetadata.cs" />
     <Compile Include="Batch\Dsal\DsalUploader.cs" />
+    <Compile Include="Batch\NPGallery\CollectParkLocationsTask.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryAssetListDownloader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryData.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryDownloader.cs" />
