@@ -889,9 +889,10 @@ namespace MediaWiki
 			else
 			{
 				// single-part upload
-				bool retry = false;
+				bool retry;
 				do
 				{
+					retry = false;
 					try
 					{
 						//Read response
