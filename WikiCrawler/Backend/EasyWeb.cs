@@ -87,7 +87,7 @@ class EasyWeb
 		byte[] datainflate = Encoding.UTF8.GetBytes(data);
 		request.Method = "POST";
 		request.ContentType = "application/x-www-form-urlencoded";
-		request.ContentLength = datainflate.Length;
+		//request.ContentLength = datainflate.Length;
 
 		WaitForDelay(request.RequestUri);
 
