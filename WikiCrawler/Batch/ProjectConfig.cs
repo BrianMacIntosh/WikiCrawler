@@ -14,6 +14,7 @@ public class ProjectConfig
 	public string sourceTemplate;
 	public string defaultAuthor = "unknown";
 	public string defaultPubCountry;
+	public bool omitCheckWarning;
 
 	/// <summary>
 	/// Full English name of the collection.

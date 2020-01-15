@@ -49,6 +49,7 @@ namespace UWash
 			"Subjects (TGM)",
 			"Category",
 			"Location Depicted",
+			"Location depicted",
 			"Secondary Glacier",
 			"Additional Glaciers",
 			"Geographic Location",
@@ -336,6 +337,10 @@ namespace UWash
 			StringBuilder content = new StringBuilder();
 
 			content.AppendLine(GetCheckCategoriesTag(intermediate.Categories.Count));
+			if (!m_config.omitCheckWarning)
+			{
+				content.AppendLine("{{UWash-Check-Needed|" + m_config.collectionName + "}}");
+			}
 
 			string informationTemplate = m_config.informationTemplate;
 			if (metadata.ContainsKey("~art"))
@@ -373,19 +378,19 @@ namespace UWash
 			List<string> notes = new List<string>();
 			if (metadata.TryGetValue("Notes", out temp))
 			{
-				notes.Add(temp.Trim());
+				notes.AddRange(temp.Split(new string[] { @"\n\n" }, StringSplitOptions.RemoveEmptyEntries));
 			}
 			if (metadata.TryGetValue("Contextual Notes", out temp))
 			{
-				notes.Add(temp.Trim());
+				notes.Add(temp);
 			}
 			if (metadata.TryGetValue("Historical Notes", out temp))
 			{
-				notes.Add(temp.Trim());
+				notes.Add(temp);
 			}
 			if (metadata.TryGetValue("Scrapbook Notes", out temp))
 			{
-				notes.Add(temp.Trim());
+				notes.Add(temp);
 			}
 			if (notes.Count == 0)
 			{
@@ -395,11 +400,11 @@ namespace UWash
 			bool multipleDescs = notes.Count > 1;
 			if (multipleDescs)
 			{
-				descText.AppendLine(notes[0]);
+				descText.AppendLine("<p>" + string.Join("</p>\n<p>", notes) + "</p>");
 			}
 			else
 			{
-				descText.AppendLine("<p>" + string.Join("</p>\n<p>", notes) + "</p>");
+				descText.AppendLine(notes[0]);
 			}
 
 			if (metadata.TryGetValue("Geographic Coverage", out temp))
@@ -443,6 +448,10 @@ namespace UWash
 				content.AppendLine("|depicted place=" + WikiUtils.GetCategoryName(intermediate.SureLocationCategory));
 			}
 			else if (metadata.TryGetValue("Location Depicted", out temp))
+			{
+				content.AppendLine("|depicted place={{" + lang + "|" + temp + "}}");
+			}
+			else if (metadata.TryGetValue("Location depicted", out temp))
 			{
 				content.AppendLine("|depicted place={{" + lang + "|" + temp + "}}");
 			}
@@ -614,7 +623,7 @@ namespace UWash
 			{
 				content.AppendLine("[[Category:Media uploaded for Public Domain Day 2019]]");
 			}*/
-			if (!string.IsNullOrEmpty(m_config.checkCategory))
+			if (m_config.omitCheckWarning && !string.IsNullOrEmpty(m_config.checkCategory))
 			{
 				content.AppendLine("[[" + WikiUtils.GetCategoryCategory(m_config.checkCategory) + "]]");
 			}
@@ -725,6 +734,7 @@ namespace UWash
 			//categories for locations
 			catparse = "";
 			if (metadata.TryGetValue("Location Depicted", out outValue)) catparse += "|" + outValue;
+			if (metadata.TryGetValue("Location depicted", out outValue)) catparse += "|" + outValue;
 			if (metadata.TryGetValue("Geographic Location", out outValue)) catparse += "|" + outValue;
 			if (metadata.TryGetValue("Mountain Range", out outValue)) catparse += "|" + outValue;
 			if (metadata.TryGetValue("Preserve or Park", out outValue)) catparse += "|" + outValue;
