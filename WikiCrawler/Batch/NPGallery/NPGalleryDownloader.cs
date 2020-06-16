@@ -48,7 +48,7 @@ namespace NPGallery
 			const string valueTagOpen = "<div class=\"col-md-7 col-sm-7"; // text-left\">
 			const string valueTagClose = "</div>";
 
-			int readHead = pageContent.IndexOf("<!-- Metadata (Middle) Section -->");
+			int readHead = pageContent.IndexOf("<!-- Metadata (Middle) Section");
 
 			Dictionary<string, string> metadata = new Dictionary<string, string>();
 			do

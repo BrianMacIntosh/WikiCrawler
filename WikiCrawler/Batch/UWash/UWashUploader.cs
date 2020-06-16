@@ -657,7 +657,7 @@ namespace UWash
 				{
 					creator.UploadableUsage++;
 				}
-				throw new UWashException("unrecognized creator");
+				throw new UWashException("unrecognized creator '" + author + "'");
 			}
 
 			return content.ToString();

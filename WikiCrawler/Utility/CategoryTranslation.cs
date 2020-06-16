@@ -246,6 +246,9 @@ namespace WikiCrawler
 				//get country for place
 				if (place.HasClaim("P17"))
 				{
+					//TODO: instead, verify ALL pieces are present
+					throw new Exception();
+
 					IEnumerable<MediaWiki.Entity> parents = place.GetClaimValuesAsEntity("P17", s_wikidataApi);
 					if (place.HasClaim("P131"))
 					{
