@@ -77,7 +77,7 @@ namespace UWash
 			{
 				string nametrim = name.Trim().TrimStart("Actress ").TrimStart("Actor ");
 				Article personCategory = commonsApi.GetPage("Category:" + nametrim);
-				if (!personCategory.missing)
+				if (personCategory != null && !personCategory.missing)
 				{
 					// check that it's an actor/ess
 					catTree.AddToTree(personCategory.title, 6);
