@@ -144,6 +144,13 @@ public static class DateUtility
 			parseMetadata.PreciseYear = 0;
 			return "{{other date|ca|" + dateStr + "}}";
 		}
+		else if (date.StartsWith("c.", StringComparison.InvariantCultureIgnoreCase))
+		{
+			int rml = "c.".Length;
+			string dateStr = ParseDate(date.Substring(rml, date.Length - rml).Trim(), out parseMetadata);
+			parseMetadata.PreciseYear = 0;
+			return "{{other date|ca|" + dateStr + "}}";
+		}
 		else if (date.StartsWith("ca.", StringComparison.InvariantCultureIgnoreCase))
 		{
 			int rml = "ca.".Length;
