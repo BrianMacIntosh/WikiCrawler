@@ -236,6 +236,10 @@ namespace UWash
 						{
 							// It looks like we already did this one, and that's fine
 						}
+						else if (m_config.succeedManualDupes)
+						{
+
+						}
 						else
 						{
 							throw new UWashException(e.Message);
