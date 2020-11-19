@@ -200,12 +200,14 @@ public abstract class BatchDownloader : BatchTask
 					}
 					else
 					{
-						throw;
+						Console.WriteLine("Other Error - Retrying");
+						System.Threading.Thread.Sleep(60000);
 					}
 				}
 				else
 				{
-					throw;
+					Console.WriteLine("Other Error - Retrying");
+					System.Threading.Thread.Sleep(60000);
 				}
 			}
 			catch (IOException e)

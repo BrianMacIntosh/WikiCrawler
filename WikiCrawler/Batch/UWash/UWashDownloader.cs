@@ -9,7 +9,7 @@ namespace UWash
 	{
 		private string MetadataUrlFormat
 		{
-			get { return "http://digitalcollections.lib.washington.edu/cdm/singleitem/collection/" + UWashConfig.digitalCollectionsKey + "/id/{0}"; }
+			get { return "https://digitalcollections.lib.washington.edu/cdm/singleitem/collection/" + UWashConfig.digitalCollectionsKey + "/id/{0}"; }
 		}
 
 		private UWashProjectConfig UWashConfig

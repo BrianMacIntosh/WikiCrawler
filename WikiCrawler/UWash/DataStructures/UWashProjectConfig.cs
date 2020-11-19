@@ -12,6 +12,8 @@ namespace UWash
 		public int minIndex;
 		public int maxIndex;
 
+		public string department = "{{UWASH-Special-Collections}}";
+
 		public bool allowCrop = true;
 	}
 }

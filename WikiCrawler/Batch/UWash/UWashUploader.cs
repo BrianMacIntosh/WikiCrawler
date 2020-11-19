@@ -1,13 +1,12 @@
-﻿using Newtonsoft.Json;
+﻿using MediaWiki;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using WikiCrawler;
-using MediaWiki;
 
 namespace UWash
 {
@@ -31,6 +30,7 @@ namespace UWash
 			"Advertisement",
 			"Photographer",
 			"Creator",
+			"Author",
 			"Original Creator",
 			"Date of Photo",
 			"Date",
@@ -38,11 +38,13 @@ namespace UWash
 			"Publication Date",
 			"Notes",
 			"Caption Text",
+			"Caption",
 			"Contextual Notes",
 			"Historical Notes",
 			"Scrapbook Notes",
 			"Album/Page",
 			"Keywords",
+			"Personal Names",
 			"Subjects",
 			"Subjects (LCTGM)",
 			"Subjects (LCSH)",
@@ -50,6 +52,7 @@ namespace UWash
 			"Category",
 			"Location Depicted",
 			"Location depicted",
+			"Places",
 			"Secondary Glacier",
 			"Additional Glaciers",
 			"Geographic Location",
@@ -65,6 +68,7 @@ namespace UWash
 			"Advertisement Text",
 			"Company/Advertising Agency",
 			"Publisher",
+			"Printer",
 			"Publication Source",
 			"Publisher Location",
 			"Place of Publication",
@@ -75,6 +79,7 @@ namespace UWash
 			"Reference Number on Photograph",
 			"Print Location",
 			"Condition",
+			"Credit Line",
 
 			"LCSH",
 			"LCTGM",
@@ -84,6 +89,7 @@ namespace UWash
 			// unused
 			"Object Description",
 			"Object ID",
+			"ID Number",
 			"Brand Name/Product",
 			"Digital Reproduction Information",
 			"Rights URI",
@@ -101,6 +107,8 @@ namespace UWash
 			"Negative Number",
 			"Negative",
 			"Photographer's Reference Number",
+			"Image Number",
+			"Ordering and Contact Information",
 		};
 
 		private UWashProjectConfig UWashConfig
@@ -191,14 +199,29 @@ namespace UWash
 		{
 			base.PostUpload(key, metadata, article);
 
+			bool allowGeneralCrop = UWashConfig.allowCrop;
+			bool allowWatermarkCrop = true;
+			
+			if (UWashConfig.filenameSuffix == "MOHAI"
+				&& metadata.TryGetValue("Object Type", out string tempValue)
+				&& tempValue.Contains("ephemera"))
+			{
+				allowGeneralCrop = false;
+				allowWatermarkCrop = false;
+			}
+
 			// try to crop the image
 			string imagePath = GetImageCacheFilename(key, metadata);
 			string cropPath = GetImageCroppedFilename(key, metadata);
-			bool watermarkCrop = ImageUtils.CropUwashWatermark(imagePath, cropPath);
+			bool watermarkCrop = false;
 			bool otherCrop = false;
-			if (UWashConfig.allowCrop)
+			if (allowWatermarkCrop)
 			{
-				otherCrop = ImageUtils.AutoCropJpg(cropPath, cropPath, 0xffffffff, 0.95f, 16, ImageUtils.Side.Left | ImageUtils.Side.Right);
+				watermarkCrop = ImageUtils.CropUwashWatermark(imagePath, cropPath);
+			}
+			if (allowGeneralCrop)
+			{
+				otherCrop = ImageUtils.AutoCropJpg(cropPath, cropPath, 0xffffffff, 0.95f, 16, new CropParams(ImageUtils.Side.Left | ImageUtils.Side.Right, true));
 				System.Threading.Thread.Sleep(50);
 				if (!File.Exists(cropPath))
 				{
@@ -306,6 +329,16 @@ namespace UWash
 				throw new LicenseException(intermediate.DateParseMetadata.LatestYear, pubCountry);
 			}
 
+			// check it's not a MOHAI modern photo
+			string objectType;
+			if (metadata.TryGetValue("Object Type", out objectType))
+			{
+				if (UWashConfig.filenameSuffix == "MOHAI" && objectType.Contains("artifact"))
+				{
+					throw new UWashException("MOHAI: artifact");
+				}
+			}
+
 			// collect all the categories that should be used
 			ProduceCategories(intermediate);
 
@@ -380,6 +413,10 @@ namespace UWash
 			StringBuilder descText = new StringBuilder();
 
 			List<string> notes = new List<string>();
+			if (metadata.TryGetValue("Caption", out temp))
+			{
+				notes.Add(temp);
+			}
 			if (metadata.TryGetValue("Notes", out temp))
 			{
 				notes.AddRange(temp.Split(new string[] { @"\n\n" }, StringSplitOptions.RemoveEmptyEntries));
@@ -435,6 +472,10 @@ namespace UWash
 			{
 				descText.AppendLine("*Keywords: " + temp.Replace(StringUtility.LineBreak, "; "));
 			}
+			if (metadata.TryGetValue("Personal Names", out temp))
+			{
+				descText.AppendLine("*People: " + temp.Replace(StringUtility.LineBreak, "; "));
+			}
 
 			if (descText.Length > 0)
 			{
@@ -456,6 +497,10 @@ namespace UWash
 				content.AppendLine("|depicted place={{" + lang + "|" + temp + "}}");
 			}
 			else if (metadata.TryGetValue("Location depicted", out temp))
+			{
+				content.AppendLine("|depicted place={{" + lang + "|" + temp + "}}");
+			}
+			else if (metadata.TryGetValue("Places", out temp))
 			{
 				content.AppendLine("|depicted place={{" + lang + "|" + temp + "}}");
 			}
@@ -506,13 +551,13 @@ namespace UWash
 			if (m_config.informationTemplate == "Information")
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Institution|value={{Institution:University of Washington}}}}");
-				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Department|value={{UWASH-Special-Collections}}}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Department|value=" + UWashConfig.department + "}}");
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Accession number|value={{UWASH-digital-accession|" + UWashConfig.digitalCollectionsKey + "|" + key + "}}}}");
 			}
 			else
 			{
 				content.AppendLine("|institution={{Institution:University of Washington}}");
-				content.AppendLine("|department={{UWASH-Special-Collections}}");
+				content.AppendLine("|department=" + UWashConfig.department);
 				content.AppendLine("|accession number={{UWASH-digital-accession|" + UWashConfig.digitalCollectionsKey + "|" + key + "}}");
 			}
 
@@ -534,6 +579,10 @@ namespace UWash
 			if (metadata.TryGetValue("Publisher", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publisher|value=" + temp + "}}");
+			}
+			if (metadata.TryGetValue("Printer", out temp))
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Printer|value=" + temp + "}}");
 			}
 			if (metadata.TryGetValue("Order Number", out temp))
 			{
@@ -591,6 +640,10 @@ namespace UWash
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Condition|value=" + temp + "}}");
 			}
+			if (metadata.TryGetValue("Credit Line", out temp))
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Credit Line|value=" + temp + "}}");
+			}
 
 			string additionalGlaciers = "";
 			if (metadata.TryGetValue("Secondary Glacier", out temp))
@@ -622,11 +675,7 @@ namespace UWash
 			}
 
 			content.AppendLine();
-
-			/*if (latestYear == 1923)
-			{
-				content.AppendLine("[[Category:Media uploaded for Public Domain Day 2019]]");
-			}*/
+			
 			if (m_config.omitCheckWarning && !string.IsNullOrEmpty(m_config.checkCategory))
 			{
 				content.AppendLine("[[" + WikiUtils.GetCategoryCategory(m_config.checkCategory) + "]]");
@@ -680,8 +729,7 @@ namespace UWash
 			string catparse = "";
 
 			//categories for people
-			/*catparse = "";
-			if (data.ContainsKey("Artist/Photographer"))
+			/*if (data.ContainsKey("Artist/Photographer"))
 			{
 				foreach (string auth in ParseAuthor(data["Artist/Photographer"]))
 					catparse += "|" + auth;
@@ -710,6 +758,20 @@ namespace UWash
 				}
 			}*/
 
+			if (metadata.TryGetValue("Title", out outValue))
+			{
+				foreach (string split in outValue.Split(new string[] { " and ", "," }, StringSplitOptions.RemoveEmptyEntries))
+				{
+					//HACK: years are a bit too vague
+					if (int.TryParse(split, out int result))
+					{
+						continue;
+					}
+
+					catparse += "|" + split.Trim();
+				}
+			}
+
 			//categories for tags
 			if (metadata.TryGetValue("LCTGM", out outValue)) catparse = CollectCategories(catparse, outValue);
 			if (metadata.TryGetValue("LCSH", out outValue)) catparse = CollectCategories(catparse, outValue);
@@ -731,6 +793,24 @@ namespace UWash
 					foreach (string catsplit in cats)
 					{
 						if (!categories.Contains(catsplit)) categories.Add(catsplit);
+					}
+				}
+			}
+
+			//categories for names
+			if (metadata.TryGetValue("Personal Names", out outValue))
+			{
+				foreach (string rawName in outValue.Split('\n', ';'))
+				{
+					string[] nameSplit = rawName.Split(',');
+					if (nameSplit.Length < 2 || nameSplit.Length > 3)
+					{
+						throw new Exception("Personal Names failed to parse");
+					}
+					string nameAssembled = nameSplit[1].Trim() + " " + nameSplit[0].Trim();
+					foreach (string cat in CategoryTranslation.TranslatePersonCategory(nameAssembled, false))
+					{
+						if (!categories.Contains(cat)) categories.Add(cat);
 					}
 				}
 			}
@@ -797,6 +877,44 @@ namespace UWash
 				}
 			}
 
+			// portrait categories
+			if (metadata.TryGetValue("Digital Collection", out outValue))
+			{
+				if (outValue == "Portraits Collection")
+				{
+					if (metadata.TryGetValue("Object Type", out outValue))
+					{
+						if (outValue.Contains("Photo"))
+						{
+							int decade;
+							if (data.DateParseMetadata.IsPrecise)
+							{
+								categories.Add(string.Format("Category:{0} portrait photographs", data.DateParseMetadata.PreciseYear));
+							}
+							else if (DateUtility.GetDecade(data.DateParseMetadata, out decade))
+							{
+								categories.Add(string.Format("Category:{0}s portrait photographs", decade));
+							}
+
+							// occupation
+							foreach (string category in categories)
+							{
+								string catname = WikiUtils.GetCategoryName(category);
+								Article existingCat = CategoryTranslation.TryFetchCategory(Api, "Category:Portrait photographs of " + catname.ToLower());
+								if (!Article.IsNullOrMissing(existingCat))
+								{
+									categories.Add(existingCat.title);
+									break;
+								}
+							}
+
+							//HACK: assume US
+							categories.Add("Category:Portrait photographs of the United States");
+						}
+					}
+				}
+			}
+
 			// some other categories
 			if (!string.IsNullOrEmpty(data.SureLocationCategory))
 			{
@@ -816,7 +934,7 @@ namespace UWash
 					}
 				}
 
-				if (data.DateParseMetadata.PreciseYear != 0)
+				if (data.DateParseMetadata.IsPrecise)
 				{
 					string yearLocCat = "Category:" + data.DateParseMetadata.PreciseYear.ToString() + " in " + sureLocation;
 					Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
@@ -898,6 +1016,12 @@ namespace UWash
 			}
 
 			string temp;
+			if (data.TryGetValue("Subjects", out temp))
+			{
+				//HACK: is this always LCTGM? Added for imlsmohai
+				lctgm = StringUtility.Join("|", lctgm, temp);
+				data.Remove("Subjects");
+			}
 			if (data.TryGetValue("Subjects (TGM)", out temp))
 			{
 				lctgm = StringUtility.Join("|", lctgm, temp);
@@ -1079,6 +1203,7 @@ namespace UWash
 			if (data.TryGetValue("Original Creator", out author)
 				|| data.TryGetValue("Creator", out author)
 				|| data.TryGetValue("Photographer", out author)
+				|| data.TryGetValue("Author", out author)
 				|| data.TryGetValue("Company/Advertising Agency", out author)
 				|| data.TryGetValue("Publisher", out author))
 			{
