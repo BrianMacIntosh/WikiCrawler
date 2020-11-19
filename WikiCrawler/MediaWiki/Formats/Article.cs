@@ -156,6 +156,11 @@ namespace MediaWiki
 			while (lhcontinue);
 		}
 
+		public static bool IsNullOrMissing(Article article)
+		{
+			return article == null || article.missing;
+		}
+
 		public static bool IsNullOrEmpty(Article article)
 		{
 			return article == null || article.missing || article.revisions == null

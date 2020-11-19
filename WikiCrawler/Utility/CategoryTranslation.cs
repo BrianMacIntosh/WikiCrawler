@@ -427,6 +427,8 @@ namespace WikiCrawler
 			return MapCategory(input, TranslateCategory(s_commonsApi, input));
 		}
 
+		private static string[] seperatorReplacements = new string[] { " in ", " of " };
+
 		public static string TranslateCategory(MediaWiki.Api api, string input)
 		{
 			string catname = input.Trim(s_trim);
@@ -438,18 +440,7 @@ namespace WikiCrawler
 			}
 
 			// Check if this category exists literally
-			catname = TryMapCategory0(api, catname);
-			if (!string.IsNullOrEmpty(catname)) return catname;
-
-			//Failed to map
-			return "";
-		}
-
-		private static string[] seperatorReplacements = new string[] { " in ", " of " };
-
-		private static string TryMapCategory0(MediaWiki.Api api, string input)
-		{
-			string catname = TryMapCategoryFinal(api, input, true);
+			catname = TryMapCategoryFinal(api, input, true);
 			if (!string.IsNullOrEmpty(catname)) return catname;
 
 			//TOPIC--BIG--SMALL
@@ -471,28 +462,29 @@ namespace WikiCrawler
 					}
 				}
 
+				List<string> catChecks = new List<string>();
+
 				foreach (string s in seperatorReplacements)
 				{
-					catname = TryMapCategoryFinal(api, string.Join(s, split), false);
-					if (!string.IsNullOrEmpty(catname)) return catname;
+					catChecks.Add(string.Join(s, split));
 
 					for (int i = split.Length - 1; i > 0; i--)
 					{
-						catname = TryMapCategoryFinal(api, split[0] + s + split[i], false);
-						if (!string.IsNullOrEmpty(catname)) return catname;
+						catChecks.Add(split[0] + s + split[i]);
 					}
 				}
 
 				//Exact match on first word
-				catname = TryMapCategoryFinal(api, split[0], false);
+				catChecks.Add(split[0]);
+
+				catname = TryMapCategoryFinal(api, catChecks, false);
 				if (!string.IsNullOrEmpty(catname)) return catname;
 			}
 			else
 			{
-				catname = TryMapCategoryFinal(api, input + "s", false);
-				if (!string.IsNullOrEmpty(catname)) return catname;
+				string[] pluralizations = new string[] { input + "s", input + "es" };
 
-				catname = TryMapCategoryFinal(api, input + "es", false);
+				catname = TryMapCategoryFinal(api, pluralizations, false);
 				if (!string.IsNullOrEmpty(catname)) return catname;
 			}
 
@@ -500,10 +492,28 @@ namespace WikiCrawler
 			return "";
 		}
 
+		private static string TryMapCategoryFinal(MediaWiki.Api api, IList<string> cats, bool couldBeAnimal)
+		{
+			//remove dupe spaces
+			for (int i = 0; i < cats.Count; i++)
+			{
+				cats[i] = string.Join(" ", cats[i].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+			}
+
+			MediaWiki.Article[] resultArts = TryFetchCategories(api, cats);
+			foreach (MediaWiki.Article resultArt in resultArts)
+			{
+				if (resultArt != null && !resultArt.missing)
+				{
+					return resultArt.title;
+				}
+			}
+
+			return "";
+		}
+
 		private static string TryMapCategoryFinal(MediaWiki.Api api, string cat, bool couldBeAnimal)
 		{
-			string scientific = "";
-
 			//remove dupe spaces
 			cat = string.Join(" ", cat.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
 
@@ -618,11 +628,58 @@ namespace WikiCrawler
 		}
 
 		/// <summary>
+		/// Look for the specified categories. Return the actual categories used.
+		/// </summary>
+		public static MediaWiki.Article[] TryFetchCategories(MediaWiki.Api api, IList<string> cats)
+		{
+			// preprocess names
+			for (int i = 0; i < cats.Count; i++)
+			{
+				cats[i] = MediaWiki.WikiUtils.GetCategoryCategory(cats[i]);
+			}
+
+			// don't request cats we already know about
+			List<string> requestCats = new List<string>();
+			foreach (string inCat in cats)
+			{
+				if (!s_extantCategories.ContainsKey(inCat))
+				{
+					requestCats.Add(inCat);
+				}
+			}
+
+			// request and map cats
+			MediaWiki.Article[] arts = GetCategories(api, requestCats);
+			for (int i = 0; i < arts.Length; i++)
+			{
+				if (arts[i] != null && !arts[i].missing)
+				{
+					arts[i] = ProcessCategoryRedirects(api, arts[i]);
+					s_extantCategories.Add(requestCats[i], arts[i]);
+				}
+				else
+				{
+					s_extantCategories.Add(requestCats[i], null);
+				}
+			}
+
+			// collect the full list (previously- and freshly-mapped ones)
+			MediaWiki.Article[] resultArts = new MediaWiki.Article[cats.Count];
+			for (int i = 0; i < cats.Count; i++)
+			{
+				resultArts[i] = s_extantCategories[cats[i]];
+				if (resultArts[i] != null && resultArts[i].missing) resultArts[i] = null;
+			}
+			return resultArts;
+		}
+
+		/// <summary>
 		/// Look for the specified category. Return the actual category used.
 		/// </summary>
 		public static MediaWiki.Article TryFetchCategory(MediaWiki.Api api, string cat)
 		{
-			if (!cat.StartsWith("Category:")) cat = "Category:" + cat;
+			// preprocess name
+			cat = MediaWiki.WikiUtils.GetCategoryCategory(cat);
 
 			MediaWiki.Article extant;
 			if (s_extantCategories.TryGetValue(cat, out extant))
@@ -633,6 +690,16 @@ namespace WikiCrawler
 			Console.WriteLine("FETCH: '" + cat + "'");
 
 			MediaWiki.Article art = GetCategory(api, ref cat);
+			art = ProcessCategoryRedirects(api, art);
+			s_extantCategories[cat] = art;
+			return art;
+		}
+
+		/// <summary>
+		/// If the specified article is a category redirect, returns the article redirected to.
+		/// </summary>
+		private static MediaWiki.Article ProcessCategoryRedirects(MediaWiki.Api api, MediaWiki.Article art)
+		{
 			if (art != null)
 			{
 				string arttext = art.revisions[0].text;
@@ -655,25 +722,27 @@ namespace WikiCrawler
 				if (catstart >= 0)
 				{
 					//found redirect, look it up
-					cat = arttext.Substring(catstart, arttext.IndexOf("}}", catstart) - catstart);
+					string cat = arttext.Substring(catstart, arttext.IndexOf("}}", catstart) - catstart);
 					cat = cat.Split('|')[0];
 					if (cat.Contains("=")) cat = cat.Split('=')[1];
 					MediaWiki.Article redir = TryFetchCategory(api, cat);
-					s_extantCategories[cat] = redir;
 					return redir;
 				}
 				else
 				{
 					//no redirect, just return
-					s_extantCategories[cat] = art;
 					return art;
 				}
 			}
 			else
 			{
-				s_extantCategories[cat] = null;
 				return null;
 			}
+		}
+
+		private static MediaWiki.Article[] GetCategories(MediaWiki.Api api, IList<string> cats)
+		{
+			return api.GetPages(cats);
 		}
 
 		private static MediaWiki.Article GetCategory(MediaWiki.Api api, ref string cat)

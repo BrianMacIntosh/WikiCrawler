@@ -66,7 +66,7 @@ namespace MediaWiki
 		/// <returns>False if the category does not exist.</returns>
 		public bool AddToTree(string rootCat, int maxdepth)
 		{
-			if (!rootCat.StartsWith("Category:")) rootCat = "Category:" + rootCat;
+			rootCat = WikiUtils.GetCategoryCategory(rootCat);
 
 			if (s_CategoriesByCategory.ContainsKey(rootCat)) return true;
 			
