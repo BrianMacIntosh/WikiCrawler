@@ -34,7 +34,7 @@ namespace Dsal
 			{
 				location = locationCat.Substring("Category:".Length);
 
-				if (dateMetadata.PreciseYear != 0)
+				if (dateMetadata.IsPrecise)
 				{
 					string yearLocCat = "Category:" + dateMetadata.PreciseYear.ToString() + " in " + location;
 					MediaWiki.Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);

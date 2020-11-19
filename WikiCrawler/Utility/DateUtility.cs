@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 public struct DateParseMetadata : IEquatable<DateParseMetadata>
 {
-	public static DateParseMetadata Unknown = new DateParseMetadata(0, 9999);
+	public static DateParseMetadata Unknown = new DateParseMetadata(0, 0, 9999);
 
 	/// <summary>
 	/// If the date had an exact year, the year.
@@ -12,18 +12,29 @@ public struct DateParseMetadata : IEquatable<DateParseMetadata>
 	public int PreciseYear;
 
 	/// <summary>
+	/// The earliest year that could apply to this date.
+	/// </summary>
+	public int EarliestYear;
+
+	/// <summary>
 	/// The latest year that could apply to this date.
 	/// </summary>
 	public int LatestYear;
 
+	public bool IsPrecise
+	{
+		get { return PreciseYear != 0; }
+	}
+
 	public DateParseMetadata(int preciseYear)
-		: this(preciseYear, preciseYear)
+		: this(preciseYear, preciseYear, preciseYear)
 	{
 
 	}
 
-	public DateParseMetadata(int preciseYear, int latestYear)
+	public DateParseMetadata(int preciseYear, int earliestYear, int latestYear)
 	{
+		EarliestYear = earliestYear;
 		LatestYear = latestYear;
 		PreciseYear = preciseYear;
 	}
@@ -32,12 +43,15 @@ public struct DateParseMetadata : IEquatable<DateParseMetadata>
 	{
 		return new DateParseMetadata(
 			a.PreciseYear == b.PreciseYear ? a.PreciseYear : 0,
+			Math.Min(a.EarliestYear, b.EarliestYear),
 			Math.Max(a.LatestYear, b.LatestYear));
 	}
 
 	public bool Equals(DateParseMetadata other)
 	{
-		return PreciseYear == other.PreciseYear && LatestYear == other.LatestYear;
+		return PreciseYear == other.PreciseYear
+			&& EarliestYear == other.EarliestYear
+			&& LatestYear == other.LatestYear;
 	}
 
 	public override bool Equals(object obj)
@@ -49,6 +63,7 @@ public struct DateParseMetadata : IEquatable<DateParseMetadata>
 	{
 		var hashCode = 1050958002;
 		hashCode = hashCode * -1521134295 + PreciseYear.GetHashCode();
+		hashCode = hashCode * -1521134295 + EarliestYear.GetHashCode();
 		hashCode = hashCode * -1521134295 + LatestYear.GetHashCode();
 		return hashCode;
 	}
@@ -99,6 +114,26 @@ public static class DateUtility
 			case 12: return "December";
 			default:
 				throw new ArgumentOutOfRangeException();
+		}
+	}
+
+	/// <summary>
+	/// If the specified date is entirely contained within a decade, returns it.
+	/// </summary>
+	/// <returns>True if the date fit within one decade.</returns>
+	public static bool GetDecade(DateParseMetadata parse, out int decade)
+	{
+		int earlyDecade = parse.EarliestYear / 10;
+		int lateDecade = parse.LatestYear / 10;
+		if (earlyDecade == lateDecade)
+		{
+			decade = earlyDecade * 10;
+			return true;
+		}
+		else
+		{
+			decade = 0;
+			return false;
 		}
 	}
 
@@ -158,10 +193,11 @@ public static class DateUtility
 			parseMetadata.PreciseYear = 0;
 			return "{{other date|ca|" + dateStr + "}}";
 		}
-		else if (date.StartsWith("circa", StringComparison.InvariantCultureIgnoreCase))
+		else if (date.StartsWith("circa ", StringComparison.InvariantCultureIgnoreCase))
 		{
-			int rml = "circa".Length;
+			int rml = "circa ".Length;
 			string yearStr = date.Substring(rml, date.Length - rml).Trim();
+			parseMetadata.PreciseYear = 0;
 			return "{{other date|ca|" + ParseDate(yearStr, out parseMetadata) + "}}";
 		}
 		else if (date.StartsWith("before"))
@@ -170,7 +206,7 @@ public static class DateUtility
 			string yearStr = date.Substring(rml, date.Length - rml).Trim();
 			int yearInt;
 			parseMetadata = int.TryParse(yearStr, out yearInt)
-				? new DateParseMetadata(yearInt)
+				? new DateParseMetadata(0, 0, yearInt - 1)
 				: DateParseMetadata.Unknown;
 			return "{{other date|before|" + yearStr + "}}";
 		}
@@ -180,7 +216,7 @@ public static class DateUtility
 			string yearStr = date.Substring(rml, date.Length - rml).Trim();
 			int yearInt;
 			parseMetadata = int.TryParse(yearStr, out yearInt)
-				? new DateParseMetadata(yearInt)
+				? new DateParseMetadata(0, 0, yearInt - 1)
 				: DateParseMetadata.Unknown;
 			return "{{other date|before|" + yearStr + "}}";
 		}

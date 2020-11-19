@@ -127,6 +127,10 @@ namespace NPGallery
 				{
 					m_corruptedRecordErrorHash = md5.ComputeHash(stream);
 				}
+				using (FileStream stream = File.OpenRead(Path.Combine(ProjectDataDirectory, "not-authorized.png")))
+				{
+					m_notAuthorizedHash = md5.ComputeHash(stream);
+				}
 			}
 
 			// read unit code locations
@@ -145,6 +149,7 @@ namespace NPGallery
 		private byte[] m_fileSystemErrorHash;
 		private byte[] m_databaseErrorHash;
 		private byte[] m_corruptedRecordErrorHash;
+		private byte[] m_notAuthorizedHash;
 
 		public override int TotalKeyCount
 		{
@@ -405,7 +410,7 @@ namespace NPGallery
 				}
 				else if (!outValue.Contains(", Code: "))
 				{
-					throw new Exception("'Constraints Information' contained something other than a park name");
+					throw new Exception("'Constraints Information' contained something unrecognized");
 				}
 			}
 			else if (metadata.TryGetValue("Attribution", out outValue))
@@ -438,7 +443,7 @@ namespace NPGallery
 				{
 					string definiteLocation = category.Substring("Category:".Length);
 
-					if (dateMetadata.PreciseYear != 0)
+					if (dateMetadata.IsPrecise)
 					{
 						string yearLocCat = "Category:" + dateMetadata.PreciseYear.ToString() + " in " + definiteLocation;
 						Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
@@ -963,6 +968,10 @@ namespace NPGallery
 					if (hash.SequenceEqual(m_corruptedRecordErrorHash))
 					{
 						return true;
+					}
+					if (hash.SequenceEqual(m_notAuthorizedHash))
+					{
+						throw new Exception("Not Authorized Error");
 					}
 				}
 			}
