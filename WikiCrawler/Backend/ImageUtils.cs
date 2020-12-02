@@ -79,7 +79,7 @@ public static class ImageUtils
 		int width = (int)FreeImage.GetWidth(bitmap);
 		int height = (int)FreeImage.GetHeight(bitmap);
 
-		int bottomBorder = GetBottomBorder(bitmap, 0xffffffff, 0.985f, 15);
+		int bottomBorder = GetBottomBorder(bitmap, 0xffffffff, 0.981f, 15);
 
 		FreeImage.Unload(bitmap);
 

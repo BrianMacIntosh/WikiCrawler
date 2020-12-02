@@ -335,7 +335,7 @@ namespace UWash
 			{
 				if (UWashConfig.filenameSuffix == "MOHAI" && objectType.Contains("artifact"))
 				{
-					throw new UWashException("MOHAI: artifact");
+					throw new LicenseException(9999, "artifact");
 				}
 			}
 
@@ -642,6 +642,20 @@ namespace UWash
 			}
 			if (metadata.TryGetValue("Credit Line", out temp))
 			{
+				if (temp.EndsWith("[image number") || temp.EndsWith("[ID number"))
+				{
+					string imageNumber;
+					if (!metadata.TryGetValue("Image Number", out imageNumber)
+						&& !metadata.TryGetValue("ID Number", out imageNumber))
+					{
+						throw new UWashException("No Image Number for wildcard");
+					}
+
+					imageNumber = imageNumber.Trim();
+
+					temp = temp.Replace("[image number", imageNumber);
+					temp = temp.Replace("[ID number", imageNumber);
+				}
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Credit Line|value=" + temp + "}}");
 			}
 
@@ -802,15 +816,23 @@ namespace UWash
 			{
 				foreach (string rawName in outValue.Split('\n', ';'))
 				{
+					if (string.IsNullOrWhiteSpace(rawName)) continue;
+
 					string[] nameSplit = rawName.Split(',');
-					if (nameSplit.Length < 2 || nameSplit.Length > 3)
+					if (nameSplit.Length >= 2 && nameSplit.Length <= 3)
 					{
-						throw new Exception("Personal Names failed to parse");
+						string nameAssembled = nameSplit[1].Trim() + " " + nameSplit[0].Trim();
+						foreach (string cat in CategoryTranslation.TranslatePersonCategory(nameAssembled, false))
+						{
+							if (!categories.Contains(cat)) categories.Add(cat);
+						}
 					}
-					string nameAssembled = nameSplit[1].Trim() + " " + nameSplit[0].Trim();
-					foreach (string cat in CategoryTranslation.TranslatePersonCategory(nameAssembled, false))
+					else
 					{
-						if (!categories.Contains(cat)) categories.Add(cat);
+						foreach (string cat in CategoryTranslation.TranslateTagCategory(rawName))
+						{
+							if (!categories.Contains(cat)) categories.Add(cat);
+						}
 					}
 				}
 			}
