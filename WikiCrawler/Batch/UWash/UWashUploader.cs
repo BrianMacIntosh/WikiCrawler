@@ -26,19 +26,23 @@ namespace UWash
 		{
 			//used
 			"Title",
+			"Alternative Title",
 			"Subtitle",
 			"Advertisement",
 			"Photographer",
+			"Cartographer",
 			"Creator",
 			"Author",
 			"Original Creator",
 			"Date of Photo",
 			"Date",
+			"Century Published",
 			"Dates",
 			"Publication Date",
 			"Notes",
 			"Caption Text",
 			"Caption",
+			"Descriptive Notes",
 			"Contextual Notes",
 			"Historical Notes",
 			"Scrapbook Notes",
@@ -104,6 +108,7 @@ namespace UWash
 			"Digital Collection",
 			"Collection Note",
 			"Source",
+			"Language",
 			"Negative Number",
 			"Negative",
 			"Photographer's Reference Number",
@@ -164,6 +169,7 @@ namespace UWash
 		{
 			string title;
 			if (!metadata.TryGetValue("Title", out title)
+				&& !metadata.TryGetValue("Alternative Title", out title)
 				&& !metadata.TryGetValue("Advertisement", out title))
 			{
 				throw new UWashException("No title");
@@ -421,6 +427,10 @@ namespace UWash
 			{
 				notes.AddRange(temp.Split(new string[] { @"\n\n" }, StringSplitOptions.RemoveEmptyEntries));
 			}
+			if (metadata.TryGetValue("Descriptive Notes", out temp))
+			{
+				notes.Add(temp);
+			}
 			if (metadata.TryGetValue("Contextual Notes", out temp))
 			{
 				notes.Add(temp);
@@ -533,6 +543,7 @@ namespace UWash
 				string medium;
 				Dimensions dimensions;
 				ParsePhysicalDescription(metadata["Physical Description"], out medium, out dimensions);
+				medium = medium.Trim();
 				if (!string.IsNullOrEmpty(medium))
 				{
 					content.AppendLine("|medium={{en|" + medium + "}}");
@@ -1225,6 +1236,7 @@ namespace UWash
 			if (data.TryGetValue("Original Creator", out author)
 				|| data.TryGetValue("Creator", out author)
 				|| data.TryGetValue("Photographer", out author)
+				|| data.TryGetValue("Cartographer", out author)
 				|| data.TryGetValue("Author", out author)
 				|| data.TryGetValue("Company/Advertising Agency", out author)
 				|| data.TryGetValue("Publisher", out author))
@@ -1243,7 +1255,8 @@ namespace UWash
 			if (!data.TryGetValue("Date of Photo", out date)
 				&& !data.TryGetValue("Date", out date)
 				&& !data.TryGetValue("Publication Date", out date)
-				&& !data.TryGetValue("Dates", out date))
+				&& !data.TryGetValue("Dates", out date)
+				&& !data.TryGetValue("Century Published", out date))
 			{
 				parseMetadata = DateParseMetadata.Unknown;
 				return "{{unknown|date}}";

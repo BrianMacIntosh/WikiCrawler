@@ -82,6 +82,10 @@ public static class LicenseUtility
 				return "GBR";
 			case "FRANCE":
 				return "FRA";
+			case "UNITED STATES":
+				return "USA";
+			case "NETHERLANDS":
+				return "NLD";
 			default:
 				return "";
 		}
