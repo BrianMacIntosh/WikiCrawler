@@ -399,8 +399,10 @@ namespace NPGallery
 					|| outValue == "Public domain:Abandoned mineral features may pose safety hazards, be archeological sites, or be endangered species habitat."
 					|| outValue == "Restrictions apply on use and/or reproduction:Copyright Undetermined."
 					|| outValue == "Public domain"
+					|| outValue == "Public domain:Harvard University"
 					|| outValue == "Public domain:Full Granting Rights"
-					|| outValue == "All Rights Reserved")
+					|| outValue == "All Rights Reserved"
+					|| outValue.StartsWith("Public domain:The Liberator"))
 				{
 
 				}
@@ -971,7 +973,7 @@ namespace NPGallery
 					}
 					if (hash.SequenceEqual(m_notAuthorizedHash))
 					{
-						throw new Exception("Not Authorized Error");
+						return true;
 					}
 				}
 			}
@@ -1070,6 +1072,7 @@ namespace NPGallery
 
 			title = HttpUtility.HtmlDecode(title);
 			title = title.Replace("''", "\"");
+			title = title.TrimStart("File-");
 
 			if (title.Length > 129)
 			{

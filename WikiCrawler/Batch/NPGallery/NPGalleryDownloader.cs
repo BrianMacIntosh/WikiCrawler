@@ -21,6 +21,16 @@ namespace NPGallery
 			string assetlistFile = Path.Combine(ProjectDataDirectory, "assetlist.json");
 			string json = File.ReadAllText(assetlistFile);
 			m_allAssets = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
+
+			List<string> assetTypes = new List<string>();
+			foreach (NPGalleryAsset asset in m_allAssets)
+			{
+				if (!assetTypes.Contains(asset.AssetType))
+				{
+					assetTypes.Add(asset.AssetType);
+					Console.WriteLine(asset.AssetType);
+				}
+			}
 		}
 
 		private const string MetadataUriFormat = "https://npgallery.nps.gov/AssetDetail/{0}";
@@ -34,7 +44,8 @@ namespace NPGallery
 		{
 			foreach (NPGalleryAsset asset in m_allAssets)
 			{
-				if (asset.AssetType == "Standard")
+				if (asset.AssetType == "Standard"
+					|| asset.AssetType == "Standard File")
 				{
 					yield return asset.AssetID;
 				}
