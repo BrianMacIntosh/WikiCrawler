@@ -118,6 +118,21 @@ public static class StringUtility
 	}
 
 	/// <summary>
+	/// Returns true if the string is all lower-case.
+	/// </summary>
+	public static bool IsAllLower(this string text)
+	{
+		for (int i = 0; i < text.Length; i++)
+		{
+			if (!char.IsLower(text[i]))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/// <summary>
 	/// Converts the first character of the string to lower case.
 	/// </summary>
 	public static string ToLowerFirst(this string text)
