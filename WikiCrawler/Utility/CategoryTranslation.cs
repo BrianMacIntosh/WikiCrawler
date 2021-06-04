@@ -443,6 +443,13 @@ namespace WikiCrawler
 			catname = TryMapCategoryFinal(api, input, true);
 			if (!string.IsNullOrEmpty(catname)) return catname;
 
+			// If the category is all lowercase, try title-casing it
+			if (input.IsAllLower())
+			{
+				catname = TryMapCategoryFinal(api, input.ToTitleCase(), true);
+				if (!string.IsNullOrEmpty(catname)) return catname;
+			}
+
 			//TOPIC--BIG--SMALL
 			//TOPIC--LOC
 			//BIG--SMALL--SMALLER
