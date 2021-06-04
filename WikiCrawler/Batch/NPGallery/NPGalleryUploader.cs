@@ -561,23 +561,23 @@ namespace NPGallery
 			string otherFields = "";
 			if (metadata.TryGetValue("Collector", out outValue))
 			{
-				otherFields += "\n{{Information field|name=Collector|value={{en|" + outValue + "}}}}";
+				otherFields += "\n{{Information field|name=Collector|value={{en|1=" + outValue + "}}}}";
 			}
 			if (metadata.TryGetValue("Editor", out outValue))
 			{
-				otherFields += "\n{{Information field|name=Editor|value={{en|" + outValue + "}}}}";
+				otherFields += "\n{{Information field|name=Editor|value={{en|1=" + outValue + "}}}}";
 			}
 			if (metadata.TryGetValue("Sponsor", out outValue))
 			{
-				otherFields += "\n{{Information field|name=Sponsor|value={{en|" + outValue + "}}}}";
+				otherFields += "\n{{Information field|name=Sponsor|value={{en|1=" + outValue + "}}}}";
 			}
 			if (metadata.TryGetValue("Cataloguer", out outValue))
 			{
-				otherFields += "\n{{Information field|name=Cataloguer|value={{en|" + outValue + "}}}}";
+				otherFields += "\n{{Information field|name=Cataloguer|value={{en|1=" + outValue + "}}}}";
 			}
 			if (metadata.TryGetValue("Contacts", out outValue))
 			{
-				otherFields += "\n{{Information field|name=Contacts|value={{en|" + outValue + "}}}}";
+				otherFields += "\n{{Information field|name=Contacts|value={{en|1=" + outValue + "}}}}";
 			}
 			if (parkCodes.Count > 0)
 			{
@@ -585,7 +585,7 @@ namespace NPGallery
 			}
 			if (metadata.TryGetValue("Compiler", out outValue))
 			{
-				otherFields += "\n{{Information field|name=Compiler|value={{en|" + outValue + "}}}}";
+				otherFields += "\n{{Information field|name=Compiler|value={{en|1=" + outValue + "}}}}";
 			}
 			if (metadata.TryGetValue("Related System IDs", out outValue))
 			{
@@ -612,7 +612,7 @@ namespace NPGallery
 			{
 				if (!m_usedKeys.Contains(kv.Key))
 				{
-					otherFields += "\n{{Information field|name=" + kv.Key + "|value={{en|" + kv.Value + "}}}}";
+					otherFields += "\n{{Information field|name=" + kv.Key + "|value={{en|1=" + kv.Value + "}}}}";
 				}
 			}
 
@@ -640,7 +640,7 @@ namespace NPGallery
 
 				if (relatedAlbums.Count > 0)
 				{
-					otherFields += "\n{{Information field|name=Album(s)|value={{en|" + string.Join("; ", relatedAlbums) + "}}}}";
+					otherFields += "\n{{Information field|name=Album(s)|value={{en|1=" + string.Join("; ", relatedAlbums) + "}}}}";
 				}
 				else if (related.Length == 3)
 				{
@@ -700,7 +700,7 @@ namespace NPGallery
 			}
 			else if (!authorString.StartsWith("{{"))
 			{
-				authorString = "{{en|" + authorString + "}}";
+				authorString = "{{en|1=" + authorString + "}}";
 			}
 
 			if (description.Contains("grave marker") && parkCodes.Contains("MACA"))
@@ -713,6 +713,11 @@ namespace NPGallery
 			{
 				Console.WriteLine("Old version, redownloading");
 				metadata = m_downloader.Download(key);
+				if (metadata == null)
+				{
+					File.Delete(GetMetadataCacheFilename(key)); //HACK:?
+					throw new Exception("Metadata redownload failed");
+				}
 				return BuildPage(key, metadata);
 			}
 
@@ -749,27 +754,27 @@ namespace NPGallery
 				page += "|photographer=" + authorString + "\n";
 				if (!string.IsNullOrEmpty(title))
 				{
-					page += "|title={{en|" + metadata["Title"] + "}}\n";
+					page += "|title={{en|1=" + metadata["Title"] + "}}\n";
 				}
-				page += "|depicted place={{en|" + location + "}}\n"
+				page += "|depicted place={{en|1=" + location + "}}\n"
 					+ "|accession number={{NPGallery-accession|" + key + "}}\n";
 				if (!string.IsNullOrEmpty(publisher))
 				{
-					page += "|publisher={{en|" + publisher + "}}\n";
+					page += "|publisher={{en|1=" + publisher + "}}\n";
 				}
 			}
 			else
 			{
 				page += "|author=" + authorString + "\n";
-				otherFields += "\n{{Information field|name=Depicted Place|value={{en|" + location + "}}}}"
+				otherFields += "\n{{Information field|name=Depicted Place|value={{en|1=" + location + "}}}}"
 					+ "\n{{Information field|name=Accession Number|value={{NPGallery-accession|" + key + "}}}}";
 				if (!string.IsNullOrEmpty(publisher))
 				{
-					otherFields += "\n{{Information field|name=Publisher|value={{en|" + publisher + "}}}}";
+					otherFields += "\n{{Information field|name=Publisher|value={{en|1=" + publisher + "}}}}";
 				}
 			}
 			page += "|description=\n"
-				+ "{{en|" + description + "}}\n"
+				+ "{{en|1=" + description + "}}\n"
 				+ "|date=" + date + "\n"
 				+ "|source=" + m_config.sourceTemplate + "\n";
 
@@ -781,7 +786,7 @@ namespace NPGallery
 				}
 				else
 				{
-					otherFields += "\n{{Information field|name=References|value={{en|" + outValue + "}}}}";
+					otherFields += "\n{{Information field|name=References|value={{en|1=" + outValue + "}}}}";
 				}
 			}
 
