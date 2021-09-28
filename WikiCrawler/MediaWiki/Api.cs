@@ -314,8 +314,7 @@ namespace MediaWiki
                 + "&summary=" + UrlEncode(summary)
                 //+ "&md5=" + UrlEncode(md5)
                 + "&starttimestamp=" + UrlEncode(newpage.starttimestamp)
-                + "&token=" + UrlEncode(newpage.edittoken)
-				+ "&assert=bot";
+                + "&token=" + UrlEncode(newpage.edittoken);
 			if (!string.IsNullOrEmpty(tags))
 			{
 				baseQuery += "&tags=" + UrlEncode(tags);
@@ -323,6 +322,7 @@ namespace MediaWiki
 			if (bot)
 			{
 				baseQuery += "&bot";
+				baseQuery += "&assert=bot";
 			}
 			if (minor)
 			{
