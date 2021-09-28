@@ -324,6 +324,10 @@ namespace MediaWiki
 				baseQuery += "&bot";
 				baseQuery += "&assert=bot";
 			}
+			else
+			{
+				baseQuery += "&assert=user";
+			}
 			if (minor)
 			{
 				baseQuery += "&minor";
