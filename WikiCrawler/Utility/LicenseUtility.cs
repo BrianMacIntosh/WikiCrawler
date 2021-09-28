@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 public static class LicenseUtility
 {
 	/// <summary>
-	/// A very safe estimate of the lifetime of an author after creating a work, used if the deathyear is no known.
+	/// A very safe estimate of the lifetime of an author after creating a work, used if the deathyear is not known.
 	/// </summary>
 	private const int SafeLifetimeYears = 80;
 
@@ -62,8 +62,17 @@ public static class LicenseUtility
 	{
 		switch (country)
 		{
-			case "GBR":
+			case "CAN":
+			case "CHN":
+				return 50;
+			case "AUT":
+			case "DEU":
+			case "DNK":
 			case "FRA":
+			case "GBR":
+			case "NLD":
+			case "SWE":
+			case "CHE":
 				return 70;
 			default:
 				return 9999;
@@ -78,16 +87,36 @@ public static class LicenseUtility
 		string[] split = location.Split(new string[] { "--" }, StringSplitOptions.RemoveEmptyEntries);
 		switch (split[0].Trim().ToUpper())
 		{
+			case "AUSTRIA":
+				return "AUT";
+			case "CANADA":
+				return "CAN";
+			case "CHINA":
+				return "CHN";
+			case "DENMARK":
+				return "DNK";
 			case "ENGLAND":
+			case "GREAT BRITAIN":
 				return "GBR";
 			case "FRANCE":
 				return "FRA";
-			case "UNITED STATES":
-				return "USA";
+			case "GERMANY":
+				return "DEU";
+			case "ITALY":
+				return "ITA";
 			case "NETHERLANDS":
 				return "NLD";
+			case "RUSSIA":
+				return "RUS";
+			case "SWEDEN":
+				return "SWE";
+			case "SWITZERLAND":
+				return "CHE";
+			case "UNITED STATES":
+			case "UNITES STATES":
+				return "USA";
 			default:
-				return "";
+				throw new Exception("Failed to parse country '" + location + "'");
 		}
 	}
 
