@@ -8,6 +8,7 @@ namespace MediaWiki
 		public string url;
 		public string descriptionurl;
 		public string descriptionshorturl;
+		public Dictionary<string, string> metadata;
 
 		public ImageInfo()
 		{
@@ -33,6 +34,17 @@ namespace MediaWiki
 			if (json.TryGetValue("descriptionshorturl", out value))
 			{
 				descriptionshorturl = (string)value;
+			}
+			if (json.TryGetValue("metadata", out value))
+			{
+				metadata = new Dictionary<string, string>();
+				foreach (object item in (object[])value)
+				{
+					Dictionary<string, object> itemDict = (Dictionary<string, object>)item;
+					object nameObj = itemDict["name"];
+					object valueObj = itemDict["value"];
+					metadata.Add((string)nameObj, valueObj.ToString());
+				}
 			}
 		}
 	}
