@@ -22,6 +22,9 @@ namespace WikiCrawler
 				Console.Write("Task>");
 				string task = Console.ReadLine();
 
+				// disable sleep while task runs
+				WindowsUtility.SetThreadExecutionState(WindowsUtility.EXECUTION_STATE.ES_SYSTEM_REQUIRED | WindowsUtility.EXECUTION_STATE.ES_CONTINUOUS);
+
 				switch (task)
 				{
 					case "watermarkdl":
@@ -114,6 +117,9 @@ namespace WikiCrawler
 			{
 				//TODO: check dirty
 				CategoryTranslation.SaveOut();
+
+				// allow sleep
+				WindowsUtility.SetThreadExecutionState(WindowsUtility.EXECUTION_STATE.ES_CONTINUOUS);
 			}
 
 			Console.WriteLine("Done");
