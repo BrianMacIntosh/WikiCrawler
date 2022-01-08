@@ -9,7 +9,7 @@ namespace NPGallery
 	{
 		private List<NPGalleryAsset> m_allAssets = new List<NPGalleryAsset>();
 
-		private const string MetadataUriFormat = "https://npgallery.nps.gov/SearchResults/86bf834852ce4c7a881bf76ae04a2f47?page={0}&showfilters=false&filterUnitssc=10&view=grid&sort=date-desc";
+		private const string MetadataUriFormat = "https://npgallery.nps.gov/SearchResults/4dca244562884407b693b14cb3d0fe54?page={0}&showfilters=false&filterUnitssc=10&view=grid&sort=date-desc";
 
 		public NPGalleryAssetListDownloader(string key)
 			: base(key)
@@ -20,6 +20,11 @@ namespace NPGallery
 			string assetlistFile = Path.Combine(ProjectDataDirectory, "assetlist.json");
 			string json = File.ReadAllText(assetlistFile);
 			m_allAssets = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
+		}
+
+		protected override bool GetSaveFinishedKeys()
+		{
+			return false;
 		}
 
 		protected override void SaveOut()
@@ -56,18 +61,21 @@ namespace NPGallery
 				string jsonText = pageContent.Substring(jsonStart, javascriptEnd - jsonStart + 1);
 				NPGallerySearchResults results = Newtonsoft.Json.JsonConvert.DeserializeObject<NPGallerySearchResults>(jsonText);
 
+				int Dupes = 0;
 				foreach (NPGallerySearchResult result in results.Results)
 				{
 					if (m_allAssets.Contains(result.Asset))
 					{
-						// we are up-to-date
-						Finished = true;
+						Dupes++;
 					}
 					else
 					{
 						m_allAssets.Add(result.Asset);
 					}
 				}
+
+				int DupePct = (int)Math.Round(100f * Dupes / results.Results.Length);
+				Console.WriteLine(string.Format("Dupes: {0}/{1} ({2}%)", Dupes, results.Results.Length, DupePct));
 			}
 			else
 			{

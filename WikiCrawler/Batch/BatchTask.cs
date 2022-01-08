@@ -38,6 +38,11 @@ public abstract class BatchTask
 
 	public bool HeartbeatEnabled = true;
 
+	/// <summary>
+	/// Should this task remember which keys were finished and save them between runs?
+	/// </summary>
+	protected virtual bool GetSaveFinishedKeys() { return true; }
+
 	private Uri m_heartbeatEndpoint;
 	private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(60f);
 	private Thread m_heartbeatThread;
@@ -75,13 +80,16 @@ public abstract class BatchTask
 		m_heartbeatData["terminate"] = false;
 
 		// load already-succeeded uploads
-		string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
-		if (File.Exists(succeededFile))
+		if (GetSaveFinishedKeys())
 		{
-			string[] succeeded = JsonConvert.DeserializeObject<string[]>(File.ReadAllText(succeededFile, Encoding.UTF8));
-			foreach (string suc in succeeded)
+			string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
+			if (File.Exists(succeededFile))
 			{
-				m_succeeded.Add(suc);
+				string[] succeeded = JsonConvert.DeserializeObject<string[]>(File.ReadAllText(succeededFile, Encoding.UTF8));
+				foreach (string suc in succeeded)
+				{
+					m_succeeded.Add(suc);
+				}
 			}
 		}
 	}
@@ -136,10 +144,13 @@ public abstract class BatchTask
 
 	protected virtual void SaveOut()
 	{
-		string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
-		List<string> succeeded = m_succeeded.ToList();
-		succeeded.Sort();
-		File.WriteAllText(succeededFile, JsonConvert.SerializeObject(m_succeeded, Formatting.Indented));
+		if (GetSaveFinishedKeys())
+		{
+			string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
+			List<string> succeeded = m_succeeded.ToList();
+			succeeded.Sort();
+			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(m_succeeded, Formatting.Indented));
+		}
 
 		string failedFile = Path.Combine(ProjectDataDirectory, "failed.txt");
 		File.WriteAllLines(failedFile, m_failMessages);
