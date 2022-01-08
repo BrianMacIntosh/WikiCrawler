@@ -209,6 +209,38 @@ namespace MediaWiki
 			return text;
 		}
 
+		private static Marker s_templateStartMarker = new Marker("{{");
+		private static Marker s_templateEndMarker = new Marker("}}");
+
+		/// <summary>
+		/// Returns the index of the }} at the end of this template.
+		/// </summary>
+		/// <param name="templateStart">The index of the {{ at the start of the template.</param>
+		public static int GetTemplateEnd(string text, int templateStart)
+		{
+			int templatesOpen = 0;
+			for (int index = templateStart; index < text.Length; ++index)
+			{
+				if (s_templateStartMarker.MatchAgainst(text, index))
+				{
+					templatesOpen++;
+				}
+				else if (s_templateEndMarker.MatchAgainst(text, index))
+				{
+					templatesOpen--;
+					if (templatesOpen == 0)
+					{
+						return index;
+					}
+					else if (templatesOpen < 0)
+					{
+						throw new Exception();
+					}
+				}
+			}
+			return -1;
+		}
+
 		public static string GetTemplateParameter(string param, string text)
 		{
 			int eat;
@@ -218,6 +250,7 @@ namespace MediaWiki
 		public static string GetTemplateParameter(string param, string text, out int paramValueLocation)
 		{
 			int state = 0;
+			int nestedTemplates = 0;
 			Marker paramName = new Marker(param, true);
 			paramValueLocation = 0;
 			for (int c = 0; c < text.Length; c++)
@@ -225,13 +258,14 @@ namespace MediaWiki
 				if (state == 1)
 				{
 					//parameter name
-					if (paramName.MatchAgainst(text[c]))
+					if (nestedTemplates <= 0 && paramName.MatchAgainst(text, c))
 					{
 						state = 2;
+						c += paramName.Length - 1;
 						continue;
 					}
 				}
-				if (state == 2)
+				else if (state == 2)
 				{
 					//equals
 					if (text[c] == '=')
@@ -240,7 +274,7 @@ namespace MediaWiki
 						continue;
 					}
 				}
-				if (state == 3)
+				else if (state == 3)
 				{
 					//eat whitespace
 					if (!char.IsWhiteSpace(text[c]))
@@ -249,21 +283,51 @@ namespace MediaWiki
 						paramValueLocation = c;
 					}
 				}
+
+				// template nesting
+				if (text[c] == '{' && text[c + 1] == '{')
+				{
+					nestedTemplates++;
+					c++;
+					continue;
+				}
+				else if (text[c] == '}' && text[c + 1] == '}')
+				{
+					nestedTemplates--;
+					c++;
+					continue;
+				}
+
 				if (state == 4)
 				{
 					//read param content
-					bool templateEnd = c < text.Length - 1 && text[c] == '}' && text[c + 1] == '}';
-					if (text[c] == '|' || templateEnd)
+					bool templateEnd = c >= text.Length - 1;
+
+					bool paramEnd = nestedTemplates <= 0 && text[c] == '|';
+					if (paramEnd)
+					{
+						// do not include any trailing line returns
+						for (int d = c - 1; d >= 0; d--)
+						{
+							if (text[d] != '\n')
+							{
+								c = d + 1;
+								paramValueLocation = Math.Min(paramValueLocation, c);
+								break;
+							}
+						}
+					}
+
+					if (paramEnd || templateEnd)
 					{
 						return text.Substring(paramValueLocation, c - paramValueLocation).Trim();
 					}
 				}
 
 				//pipe resets any time
-				if (text[c] == '|')
+				if (nestedTemplates <= 0 && text[c] == '|')
 				{
 					state = 1;
-					paramName.Reset();
 					continue;
 				}
 			}

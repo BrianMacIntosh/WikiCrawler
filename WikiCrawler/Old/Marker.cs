@@ -1,9 +1,7 @@
 ﻿
-[System.Obsolete("This class is a lie.")]
 class Marker
 {
     private string matches;
-    private int currentIndex = 0;
     private bool caseInsense = false;
 
     public int Length { get { return matches.Length; } }
@@ -16,29 +14,40 @@ class Marker
     }
 
     //Returns true if the entire marker was matched
-    public bool MatchAgainst(char c)
+    public bool MatchAgainst(string str, int position)
     {
-		if (c == matches[currentIndex]
-			|| (caseInsense && Lower(c) == Lower(matches[currentIndex])))
-		{
-			currentIndex++;
-			if (currentIndex >= matches.Length)
-			{
-				currentIndex = 0;
-				return true;
-			}
-		}
-		else
-		{
-			currentIndex = 0;
-		}
+        int currentIndex = 0;
+        for (int i = position; i < str.Length - Length; ++i)
+        {
+            char currentChar = str[i];
+            if (currentChar == matches[currentIndex]
+                || (caseInsense && Lower(currentChar) == Lower(matches[currentIndex])))
+            {
+                currentIndex++;
+                if (currentIndex >= matches.Length)
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
         return false;
     }
 
+    [System.Obsolete()]
+    public bool MatchAgainst(char c)
+	{
+        return false;
+	}
+
+    [System.Obsolete()]
     public void Reset()
-    {
-        currentIndex = 0;
-    }
+	{
+
+	}
 
     private static char Lower(char c)
     {
