@@ -26,7 +26,7 @@ class EasyWeb
 	/// <summary>
 	/// Default time in seconds between page loads
 	/// </summary>
-	public static float crawlDelay = 4f;
+	public static float crawlDelay = 5f;
 
 	private static Dictionary<string, float> overrideDelays = new Dictionary<string, float>();
 
