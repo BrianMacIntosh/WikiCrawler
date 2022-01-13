@@ -66,8 +66,10 @@ namespace WikiCrawler
 					return new Dsal.DsalUploader(projectKey);
 				case "OEC":
 					return new OEC.OecUploader(projectKey);
+				case "GCBRoll":
+					return new GCBRollUploader(projectKey);
 				default:
-					throw new NotImplementedException("Uploader '" + "'.");
+					throw new NotImplementedException("Uploader '" + uploader + "'.");
 			}
 		}
 
