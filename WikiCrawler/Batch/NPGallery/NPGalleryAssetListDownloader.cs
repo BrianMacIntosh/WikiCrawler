@@ -22,7 +22,7 @@ namespace NPGallery
 			m_allAssets = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
 		}
 
-		protected override bool GetSaveFinishedKeys()
+		protected override bool GetPersistStatus()
 		{
 			return false;
 		}
@@ -42,7 +42,7 @@ namespace NPGallery
 
 		protected override IEnumerable<string> GetKeys()
 		{
-			for (int page = 1; page <= 6712; page++)
+			for (int page = 1; page <= 550; page++)
 			{
 				yield return page.ToString();
 			}

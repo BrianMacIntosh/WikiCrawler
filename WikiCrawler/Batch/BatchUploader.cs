@@ -71,11 +71,11 @@ public abstract class BatchUploader : BatchTask
 			if (totalKeys < 0)
 			{
 				// assume everything was downloaded
-				m_heartbeatData["nTotal"] = metadataFiles.Count + m_succeeded.Count;
+				m_heartbeatData["nTotal"] = metadataFiles.Count + m_succeeded.Count - m_permanentlyFailed.Count;
 			}
 			else
 			{
-				m_heartbeatData["nTotal"] = totalKeys;
+				m_heartbeatData["nTotal"] = totalKeys - m_permanentlyFailed.Count;
 			}
 			m_heartbeatData["nCompleted"] = m_succeeded.Count;
 			m_heartbeatData["nDownloaded"] = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
@@ -175,7 +175,7 @@ public abstract class BatchUploader : BatchTask
 		if (ShouldSkipForever(key, metadata))
 		{
 			Console.WriteLine("Permanently skipping");
-			m_succeeded.Add(key);
+			m_permanentlyFailed.Add(key);
 			DeleteCachedFiles(key, metadata);
 			return;
 		}

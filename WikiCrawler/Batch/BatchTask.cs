@@ -39,9 +39,9 @@ public abstract class BatchTask
 	public bool HeartbeatEnabled = true;
 
 	/// <summary>
-	/// Should this task remember which keys were finished and save them between runs?
+	/// Should this task persist its progress between runs?
 	/// </summary>
-	protected virtual bool GetSaveFinishedKeys() { return true; }
+	protected virtual bool GetPersistStatus() { return true; }
 
 	private Uri m_heartbeatEndpoint;
 	private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(60f);
@@ -49,7 +49,11 @@ public abstract class BatchTask
 
 	protected Dictionary<string, object> m_heartbeatData = new Dictionary<string, object>();
 
+	/// <summary>
+	/// Set of keys for files that
+	/// </summary>
 	protected HashSet<string> m_succeeded = new HashSet<string>();
+	protected HashSet<string> m_permanentlyFailed = new HashSet<string>();
 
 	protected List<string> m_failMessages = new List<string>();
 
@@ -80,7 +84,7 @@ public abstract class BatchTask
 		m_heartbeatData["terminate"] = false;
 
 		// load already-succeeded uploads
-		if (GetSaveFinishedKeys())
+		if (GetPersistStatus())
 		{
 			string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
 			if (File.Exists(succeededFile))
@@ -89,6 +93,16 @@ public abstract class BatchTask
 				foreach (string suc in succeeded)
 				{
 					m_succeeded.Add(suc);
+				}
+			}
+
+			string failedFile = Path.Combine(ProjectDataDirectory, "permafailed.json");
+			if (File.Exists(failedFile))
+			{
+				string[] failed = JsonConvert.DeserializeObject<string[]>(File.ReadAllText(failedFile, Encoding.UTF8));
+				foreach (string suc in failed)
+				{
+					m_permanentlyFailed.Add(suc);
 				}
 			}
 		}
@@ -144,12 +158,17 @@ public abstract class BatchTask
 
 	protected virtual void SaveOut()
 	{
-		if (GetSaveFinishedKeys())
+		if (GetPersistStatus())
 		{
 			string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
 			List<string> succeeded = m_succeeded.ToList();
 			succeeded.Sort();
-			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(m_succeeded, Formatting.Indented));
+			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded, Formatting.Indented));
+
+			string permafailedFile = Path.Combine(ProjectDataDirectory, "permafailed.json");
+			List<string> failed = m_permanentlyFailed.ToList();
+			failed.Sort();
+			File.WriteAllText(permafailedFile, JsonConvert.SerializeObject(failed, Formatting.Indented));
 		}
 
 		string failedFile = Path.Combine(ProjectDataDirectory, "failed.txt");

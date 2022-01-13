@@ -64,7 +64,8 @@ public abstract class BatchDownloader : BatchTask
 			int saveOutInterval = 10;
 			int saveOutTimer = saveOutInterval;
 
-			m_heartbeatData["nTotal"] = GetKeys().Count();
+			int totalKeyCount = GetKeys().Count();
+			m_heartbeatData["nTotal"] = totalKeyCount - m_permanentlyFailed.Count;
 			m_heartbeatData["nCompleted"] = m_succeeded.Count;
 			m_heartbeatData["nDownloaded"] = succeededMetadata.Count;
 			m_heartbeatData["nFailed"] = m_failMessages.Count;
@@ -75,7 +76,9 @@ public abstract class BatchDownloader : BatchTask
 			// load metadata
 			foreach (string key in GetKeys())
 			{
-				if (!succeededMetadata.Contains(key) && !m_succeeded.Contains(key))
+				if (!succeededMetadata.Contains(key)
+					&& !m_succeeded.Contains(key)
+					&& !m_permanentlyFailed.Contains(key))
 				{
 					Dictionary<string, string> metadata = Download(key);
 					if (metadata != null)
@@ -87,6 +90,7 @@ public abstract class BatchDownloader : BatchTask
 
 				lock (m_heartbeatData)
 				{
+					m_heartbeatData["nTotal"] = totalKeyCount - m_permanentlyFailed.Count;
 					m_heartbeatData["nCompleted"] = m_succeeded.Count;
 					m_heartbeatData["nDownloaded"] = succeededMetadata.Count;
 					m_heartbeatData["nFailed"] = m_failMessages.Count;
@@ -137,7 +141,8 @@ public abstract class BatchDownloader : BatchTask
 			Dictionary<string, string> metadata = ParseMetadata(content);
 			if (metadata == null)
 			{
-				m_succeeded.Add(key);
+				Console.WriteLine("Permanent skip.");
+				m_permanentlyFailed.Add(key);
 			}
 			else if (cache)
 			{

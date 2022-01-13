@@ -62,6 +62,13 @@ namespace NPGallery
 			int readHead = pageContent.IndexOf("<!-- Metadata (Middle) Section");
 
 			Dictionary<string, string> metadata = new Dictionary<string, string>();
+
+			if (readHead < 0)
+			{
+				// unavailable record
+				return null;
+			}
+
 			do
 			{
 				int keyStartIndex = pageContent.IndexOf(keyTagOpen, readHead);
