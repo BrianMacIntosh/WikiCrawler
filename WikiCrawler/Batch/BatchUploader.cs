@@ -31,7 +31,7 @@ public abstract class BatchUploader : BatchTask
 		return Path.Combine(PreviewDirectory, key + ".txt");
 	}
 
-	private static WebClient s_client = new WebClient();
+	private WebClient WebClient;
 
 	protected static string[] s_badTitleCharacters = new string[] { "/", "#" };
 
@@ -46,6 +46,8 @@ public abstract class BatchUploader : BatchTask
 		{
 			Directory.CreateDirectory(ImageCacheDirectory);
 		}
+
+		WebClient = new WebClient();
 
 		Api.AutoLogIn();
 
@@ -314,7 +316,8 @@ public abstract class BatchUploader : BatchTask
 				Console.WriteLine("Downloading image: " + key);
 				Uri uri = GetImageUri(key, metadata);
 				EasyWeb.WaitForDelay(uri);
-				s_client.DownloadFile(uri, imagepath);
+				WebClient.Headers.Add("user-agent", Api.UserAgent);
+				WebClient.DownloadFile(uri, imagepath);
 				try
 				{
 					ValidateDownload(imagepath);
