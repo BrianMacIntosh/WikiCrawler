@@ -249,6 +249,7 @@ namespace NPGallery
 			}
 
 			// determine the creation date
+			//TODO: take oldest
 			DateParseMetadata createDateMetadata = DateParseMetadata.Unknown;
 			string createDate = "";
 			if (metadata.TryGetValue("Create Date", out outValue))
@@ -832,26 +833,25 @@ namespace NPGallery
 				foreach (string mappedCat in mappedCats)
 				{
 					// see if an "in (location)" or "of (location)" subcat exists and use that instead
+					List<string> checkCats = new List<string>();
 					foreach (string unitCode in unitCodes)
 					{
 						if (s_unitCodeToCommonsLoc.TryGetValue(unitCode, out string[] parentLocs))
 						{
 							foreach (string parentLoc in parentLocs)
 							{
-								Article parentLocCat = CategoryTranslation.TryFetchCategory(Api, mappedCat + " in " + parentLoc);
-								if (parentLocCat != null)
-								{
-									categories.Add(parentLocCat.title);
-									return;
-								}
-
-								parentLocCat = CategoryTranslation.TryFetchCategory(Api, mappedCat + " of " + parentLoc);
-								if (parentLocCat != null)
-								{
-									categories.Add(parentLocCat.title);
-									return;
-								}
+								checkCats.Add(mappedCat + " in " + parentLoc);
+								checkCats.Add(mappedCat + " of " + parentLoc);
 							}
+						}
+					}
+
+					foreach (Article checkCatArt in CategoryTranslation.TryFetchCategories(Api, checkCats))
+					{
+						if (checkCatArt != null)
+						{
+							categories.Add(checkCatArt.title);
+							return;
 						}
 					}
 
