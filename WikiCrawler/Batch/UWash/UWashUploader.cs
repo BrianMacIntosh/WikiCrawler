@@ -31,8 +31,12 @@ namespace UWash
 			"Advertisement",
 			"Photographer",
 			"Cartographer",
+			"Engraver",
+			"Explorer",
 			"Creator",
+			"Artist",
 			"Author",
+			"Illustrator",
 			"Original Creator",
 			"Date of Photo",
 			"Date",
@@ -69,21 +73,27 @@ namespace UWash
 			"Photographer's Altitude",
 			"Order Number",
 			"Physical Description",
+			"Image Production Process",
 			"Advertisement Text",
 			"Company/Advertising Agency",
 			"Publisher",
 			"Printer",
+			"Studio Name/Printer",
 			"Publication Source",
+			"Original Source",
 			"Publisher Location",
 			"Place of Publication",
+			"Place of origin",
 			"Publishing Notes",
 			"Geographic Coverage",
+			"Historical period",
 			"Digital ID Number",
 			"UW Reference Number",
 			"Reference Number on Photograph",
 			"Print Location",
 			"Condition",
 			"Credit Line",
+			"Uniform Title",
 
 			"LCSH",
 			"LCTGM",
@@ -114,6 +124,9 @@ namespace UWash
 			"Photographer's Reference Number",
 			"Image Number",
 			"Ordering and Contact Information",
+			"Exhibit Checklist",
+			"Acquisition",
+			"References",
 		};
 
 		private UWashProjectConfig UWashConfig
@@ -135,6 +148,14 @@ namespace UWash
 			public string PublisherLocCategory;
 
 			public string SureLocationCategory;
+
+			public string Creator;
+			public string Artist;
+			public string Contributor;
+
+			public List<Creator> CreatorData = new List<Creator>();
+			public List<Creator> ArtistData = new List<Creator>();
+			public List<Creator> ContributorData = new List<Creator>();
 
 			public IntermediateData(Dictionary<string, string> metadata)
 			{
@@ -290,28 +311,60 @@ namespace UWash
 			metadata = PreprocessMetadata(metadata);
 			IntermediateData intermediate = new IntermediateData(metadata);
 
-			string lang = "en";
+			string lang;
+			//if (metadata.TryGetValue("Language", out lang))
+			//{
+			//	lang = CommonsUtility.GetLanguageTemplate(lang);
+			//}
+			//else
+			{
+				lang = "en";
+			}
 
 			string temp;
 
-			Creator creator;
-			string author = GetAuthor(metadata, lang, out creator);
+			GetAuthor(metadata, lang, ref intermediate);
 			
 			string dateTag = GetDate(metadata, out intermediate.DateParseMetadata);
 
+			int latestYear = intermediate.DateParseMetadata.LatestYear;
+
 			// must have been published before author's death
-			int latestYear;
-			if (creator != null && intermediate.DateParseMetadata.LatestYear == 9999)
+			if (intermediate.DateParseMetadata.LatestYear == 9999)
 			{
-				latestYear = creator.DeathYear;
+				int deathYearMax = intermediate.CreatorData.Max((Creator c) => c.DeathYear);
+				if (latestYear == 9999)
+				{
+					latestYear = deathYearMax;
+				}
+				else
+				{
+					latestYear = Math.Max(latestYear, deathYearMax);
+				}
 			}
-			else
+			if (intermediate.DateParseMetadata.LatestYear == 9999)
 			{
-				latestYear = intermediate.DateParseMetadata.LatestYear;
+				int deathYearMax = intermediate.ArtistData.Max((Creator c) => c.DeathYear);
+				if (latestYear == 9999)
+				{
+					latestYear = deathYearMax;
+				}
+				else
+				{
+					latestYear = Math.Max(latestYear, deathYearMax);
+				}
 			}
 
 			string pubCountry;
 			if (metadata.TryGetValue("Place of Publication", out pubCountry))
+			{
+				pubCountry = LicenseUtility.ParseCountry(pubCountry);
+			}
+			else if (metadata.TryGetValue("Place of origin", out pubCountry))
+			{
+				pubCountry = LicenseUtility.ParseCountry(pubCountry);
+			}
+			else if (metadata.TryGetValue("Publisher Location", out pubCountry))
 			{
 				pubCountry = LicenseUtility.ParseCountry(pubCountry);
 			}
@@ -328,7 +381,7 @@ namespace UWash
 			}
 			else
 			{
-				licenseTag = GetLicenseTag(author, creator, latestYear, pubCountry);
+				licenseTag = GetLicenseTag(intermediate.Creator, intermediate.CreatorData, latestYear, pubCountry);
 			}
 			if (string.IsNullOrEmpty(licenseTag))
 			{
@@ -344,9 +397,6 @@ namespace UWash
 					throw new LicenseException(9999, "artifact");
 				}
 			}
-
-			// collect all the categories that should be used
-			ProduceCategories(intermediate);
 
 			//check for new, unknown metadata
 			string unused = "";
@@ -370,10 +420,13 @@ namespace UWash
 				}
 			}
 
-			if (intermediate.DateParseMetadata.LatestYear < 1897 && author == "{{Creator:Asahel Curtis}}")
+			if (intermediate.DateParseMetadata.LatestYear < 1897 && intermediate.Creator == "{{Creator:Asahel Curtis}}")
 			{
 				//throw new UWashException("Curtis - check author");
 			}
+
+			// collect all the categories that should be used
+			ProduceCategories(intermediate);
 
 			//======== BUILD PAGE TEXT
 
@@ -396,16 +449,34 @@ namespace UWash
 			content.AppendLine("{{" + informationTemplate);
 			if (informationTemplate == "Photograph")
 			{
-				content.AppendLine("|photographer=" + author);
+				content.AppendLine("|photographer=" + intermediate.Creator + intermediate.Contributor);
 			}
 			else if (informationTemplate == "Artwork")
 			{
-				content.AppendLine("|artist=" + author);
+				if (m_projectKey == "childrens") //HACK:
+				{
+					content.AppendLine("|author=" + intermediate.Creator + intermediate.Contributor);
+				}
+				else
+				{
+					content.AppendLine("|artist=" + intermediate.Creator + intermediate.Contributor);
+				}
+			}
+			else if (informationTemplate == "Map")
+			{
+				content.AppendLine("|author=" + intermediate.Creator);
+				content.AppendLine("|contributor=" + intermediate.Contributor);
 			}
 			else
 			{
-				content.AppendLine("|author=" + author);
+				content.AppendLine("|author=" + intermediate.Creator + intermediate.Contributor);
 			}
+
+			if (!string.IsNullOrEmpty(intermediate.Artist))
+			{
+				content.AppendLine("|artist=" + intermediate.Artist);
+			}
+
 			if (informationTemplate != "Information")
 			{
 				string title = metadata["Title"];
@@ -413,7 +484,7 @@ namespace UWash
 				{
 					title += " — " + temp;
 				}
-				content.AppendLine("|title={{" + lang + "|" + title + "}}");
+				content.AppendLine("|title={{" + lang + "|1=" + title + "}}");
 			}
 			content.AppendLine("|description=");
 			StringBuilder descText = new StringBuilder();
@@ -489,7 +560,7 @@ namespace UWash
 
 			if (descText.Length > 0)
 			{
-				content.Append("{{en|");
+				content.Append("{{en|1=");
 				if (multipleDescs)
 				{
 					content.AppendLine();
@@ -504,15 +575,15 @@ namespace UWash
 			}
 			else if (metadata.TryGetValue("Location Depicted", out temp))
 			{
-				content.AppendLine("|depicted place={{" + lang + "|" + temp + "}}");
+				content.AppendLine("|depicted place={{" + lang + "|1=" + temp + "}}");
 			}
 			else if (metadata.TryGetValue("Location depicted", out temp))
 			{
-				content.AppendLine("|depicted place={{" + lang + "|" + temp + "}}");
+				content.AppendLine("|depicted place={{" + lang + "|1=" + temp + "}}");
 			}
 			else if (metadata.TryGetValue("Places", out temp))
 			{
-				content.AppendLine("|depicted place={{" + lang + "|" + temp + "}}");
+				content.AppendLine("|depicted place={{" + lang + "|1=" + temp + "}}");
 			}
 
 			string placeOfCreation;
@@ -520,13 +591,22 @@ namespace UWash
 			{
 				IEnumerable<string> locCats = CategoryTranslation.TranslateLocationCategory(placeOfCreation);
 				string placeOfCreationCat = locCats == null ? "" : locCats.FirstOrDefault();
+				string placeOfCreationContent;
 				if (!string.IsNullOrEmpty(placeOfCreationCat))
 				{
-					content.AppendLine("|place of creation=" + WikiUtils.GetCategoryName(placeOfCreationCat));
+					placeOfCreationContent = WikiUtils.GetCategoryName(placeOfCreationCat);
 				}
 				else
 				{
-					content.AppendLine("|place of creation={{" + lang + "|" + placeOfCreation + "}}");
+					placeOfCreationContent = "{ {" + lang + "|1=" + placeOfCreation + "}}";
+				}
+				if (informationTemplate == "Map")
+				{
+					content.AppendLine("|publication place=" + placeOfCreationContent);
+				}
+				else
+				{
+					content.AppendLine("|place of creation=" + placeOfCreationContent);
 				}
 			}
 
@@ -538,15 +618,20 @@ namespace UWash
 			}
 
 			content.AppendLine("|date=" + dateTag);
-			if (metadata.ContainsKey("Physical Description"))
+			if (metadata.TryGetValue("Physical Description", out temp))
 			{
+				if (metadata.ContainsKey("Image Production Process"))
+				{
+					throw new UWashException("Both 'Physical Description' and 'Image Production Process'");
+				}
+
 				string medium;
 				Dimensions dimensions;
-				ParsePhysicalDescription(metadata["Physical Description"], out medium, out dimensions);
+				ParsePhysicalDescription(temp, out medium, out dimensions);
 				medium = medium.Trim();
 				if (!string.IsNullOrEmpty(medium))
 				{
-					content.AppendLine("|medium={{en|" + medium + "}}");
+					content.AppendLine("|medium={{en|1=" + medium + "}}");
 				}
 				if (!dimensions.IsEmpty)
 				{
@@ -556,14 +641,47 @@ namespace UWash
 					content.AppendLine("|dimensions=" + dimensions.GetCommonsTag());
 				}
 			}
+			else if (metadata.TryGetValue("Image Production Process", out temp))
+			{
+				string[] techniques = temp.Split(';');
+				string noun;
+				string templateParams = string.Empty;
+				foreach (string technique in techniques)
+				{
+					if (TryMapTechnique(technique, out noun))
+					{
+						if (string.IsNullOrEmpty(templateParams))
+						{
+							templateParams = noun;
+						}
+						else
+						{
+							throw new UWashException("Multiple techniques");
+						}
+					}
+					else
+					{
+						throw new UWashException("Unmapped technique '" + technique + "'");
+					}
+				}
+				if (!string.IsNullOrEmpty(templateParams))
+				{
+					content.AppendLine("|medium={{technique|" + templateParams + "}}");
+				}
+			}
 
 			string otherFields = "";
 
-			if (m_config.informationTemplate == "Information")
+			if (informationTemplate == "Information")
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Institution|value={{Institution:University of Washington}}}}");
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Department|value=" + UWashConfig.department + "}}");
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Accession number|value={{UWASH-digital-accession|" + UWashConfig.digitalCollectionsKey + "|" + key + "}}}}");
+			}
+			else if (informationTemplate == "Map")
+			{
+				content.AppendLine("|institution={{Institution:University of Washington}}\n" + UWashConfig.department);
+				content.AppendLine("|accession number={{UWASH-digital-accession|" + UWashConfig.digitalCollectionsKey + "|" + key + "}}");
 			}
 			else
 			{
@@ -592,6 +710,10 @@ namespace UWash
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publisher|value=" + temp + "}}");
 			}
 			if (metadata.TryGetValue("Printer", out temp))
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Printer|value=" + temp + "}}");
+			}
+			if (metadata.TryGetValue("Studio Name/Printer", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Printer|value=" + temp + "}}");
 			}
@@ -627,6 +749,21 @@ namespace UWash
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publication Source|value=" + temp + "}}");
 			}
+			if (metadata.TryGetValue("Original Source", out temp))
+			{
+				if (informationTemplate == "Map")
+				{
+					content.AppendLine("|book_title=" + temp); //HACK: manually separate data after
+				}
+				else
+				{
+					otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Original Source|value=" + temp + "}}");
+				}
+			}
+			if (metadata.TryGetValue("Historical period", out temp))
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Historical Period|value=" + temp.Trim(';') + "}}");
+			}
 			if (metadata.TryGetValue("Judicial District", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Judicial District|value=" + temp.Trim(';') + "}}");
@@ -650,6 +787,10 @@ namespace UWash
 			if (metadata.TryGetValue("Condition", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Condition|value=" + temp + "}}");
+			}
+			if (metadata.TryGetValue("Uniform Title", out temp))
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Uniform Title|value=" + temp + "}}");
 			}
 			if (metadata.TryGetValue("Credit Line", out temp))
 			{
@@ -712,9 +853,19 @@ namespace UWash
 					content.AppendLine("[[" + category + "]]");
 				}
 			}
-			if (creator != null && !string.IsNullOrEmpty(creator.Category))
+			foreach (Creator creator in intermediate.CreatorData)
 			{
-				content.AppendLine("[[" + creator.Category + "]]");
+				if (!string.IsNullOrEmpty(creator.Category))
+				{
+					content.AppendLine("[[" + creator.Category + "]]");
+				}
+			}
+			foreach (Creator creator in intermediate.ArtistData)
+			{
+				if (!string.IsNullOrEmpty(creator.Category))
+				{
+					content.AppendLine("[[" + creator.Category + "]]");
+				}
 			}
 
 			foreach (string s in intermediate.Categories)
@@ -727,15 +878,40 @@ namespace UWash
 				throw new UWashException("unknown year");
 			}
 
-			//TODO: this will pass if one of the multiple authors was matched. Fix it.
-			if ((creator == null || string.IsNullOrEmpty(creator.Author))
-				&& !m_config.allowFailedCreators)
+			foreach (Creator creator in intermediate.CreatorData)
 			{
-				if (creator != null)
+				creator.UploadableUsage++;
+				if (string.IsNullOrEmpty(creator.Author))
 				{
-					creator.UploadableUsage++;
+					if (!m_config.allowFailedCreators)
+					{
+						throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
+					}
 				}
-				throw new UWashException("unrecognized creator '" + author + "'");
+			}
+			if (intermediate.CreatorData.Count == 0 && !m_config.allowFailedCreators)
+			{
+				throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
+			}
+
+			foreach (Creator creator in intermediate.ArtistData)
+			{
+				creator.UploadableUsage++;
+				if (string.IsNullOrEmpty(creator.Author))
+				{
+					if (!m_config.allowFailedCreators)
+					{
+						throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
+					}
+				}
+			}
+			if (intermediate.CreatorData.Count == 0 && !m_config.allowFailedCreators)
+			{
+				throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
+			}
+			if (!string.IsNullOrEmpty(intermediate.Artist) && intermediate.ArtistData.Count == 0 && !m_config.allowFailedCreators)
+			{
+				throw new UWashException("unrecognized creator '" + intermediate.Artist + "'");
 			}
 
 			return content.ToString();
@@ -1221,31 +1397,72 @@ namespace UWash
 		/// <summary>
 		/// 
 		/// </summary>
-		private string GetAuthor(Dictionary<string, string> data, string lang, out Creator creator)
+		private void GetAuthor(Dictionary<string, string> data, string lang, ref IntermediateData intermediate)
 		{
 			string notes;
 			if (data.TryGetValue("Notes", out notes)
 				&& notes.Contains("Original photographer unknown"))
 			{
-				creator = null;
-				return "{{unknown|author}}";
+				intermediate.Creator = "{{unknown|author}}";
+				return;
 			}
 
 			string author;
-			//TODO: support multiples
-			if (data.TryGetValue("Original Creator", out author)
-				|| data.TryGetValue("Creator", out author)
-				|| data.TryGetValue("Photographer", out author)
-				|| data.TryGetValue("Cartographer", out author)
-				|| data.TryGetValue("Author", out author)
-				|| data.TryGetValue("Company/Advertising Agency", out author)
-				|| data.TryGetValue("Publisher", out author))
+			if (data.TryGetValue("Author", out author))
 			{
-				return GetAuthor(author, lang, out creator);
+				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+
+				if (data.TryGetValue("Artist", out author)
+					|| data.TryGetValue("Illustrator", out author))
+				{
+					intermediate.Artist += GetAuthor(author, lang, ref intermediate.ArtistData);
+				}
 			}
-			else
+			if (data.TryGetValue("Original Creator", out author))
 			{
-				return GetAuthor(m_config.defaultAuthor, "en", out creator);
+				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+			}
+			if (data.TryGetValue("Creator", out author))
+			{
+				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+			}
+			if (data.TryGetValue("Artist", out author))
+			{
+				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+			}
+			if (data.TryGetValue("Photographer", out author))
+			{
+				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+			}
+			if (data.TryGetValue("Cartographer", out author))
+			{
+				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+			}
+			if (data.TryGetValue("Engraver", out author))
+			{
+				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+			}
+			if (data.TryGetValue("Company/Advertising Agency", out author))
+			{
+				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+			}
+			if (data.TryGetValue("Publisher", out author))
+			{
+				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+			}
+			if (data.TryGetValue("Illustrator", out author))
+			{
+				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+			}
+
+			if (string.IsNullOrEmpty(intermediate.Creator))
+			{
+				intermediate.Creator = GetAuthor(m_config.defaultAuthor, "en", ref intermediate.CreatorData);
+			}
+
+			if (data.TryGetValue("Explorer", out author))
+			{
+				intermediate.Contributor = GetAuthor(author, lang, ref intermediate.ContributorData);
 			}
 		}
 
@@ -1371,6 +1588,19 @@ namespace UWash
 				}
 			}
 			return final;
+		}
+
+		public bool TryMapTechnique(string input, out string noun)
+		{
+			switch (input.ToUpper())
+			{
+				case "PLANOGRAPHIC PRINTS--LITHOGRAPHS":
+					noun = "lithograph";
+					return true;
+				default:
+					noun = string.Empty;
+					return false;
+			}
 		}
 	}
 }

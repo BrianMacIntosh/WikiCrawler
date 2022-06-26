@@ -3,6 +3,19 @@ using System;
 
 public static class CommonsUtility
 {
+	public static string GetLanguageTemplate(string parse)
+	{
+		switch (parse.ToLower())
+		{
+			case "English":
+				return "en";
+			case "French":
+				return "fr";
+			default:
+				throw new UWashException("Unrecognized language '" + parse + "'.");
+		}
+	}
+
 	/// <summary>
 	/// Ensures that the category tree for the {{taken on}} template with the specified date is created.
 	/// </summary>

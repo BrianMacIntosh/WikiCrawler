@@ -212,37 +212,37 @@ namespace NPGallery
 
 			// determine the photographer
 			string authorString = "";
-			Creator creator = null;
+			List<Creator> creators = null;
 			if (metadata.TryGetValue("Photographer", out outValue))
 			{
-				authorString = GetAuthor(outValue, "", out creator);
+				authorString = GetAuthor(outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("Photographer, attributed", out outValue))
 			{
-				authorString = GetAuthor(outValue, "", out creator);
+				authorString = GetAuthor(outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("Creator, attributed", out outValue))
 			{
-				authorString = GetAuthor(outValue, "", out creator);
+				authorString = GetAuthor(outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("PhotoCredit", out outValue)
 				&& !outValue.Contains(", Code: "))
 			{
-				authorString = GetAuthor(outValue, "", out creator);
+				authorString = GetAuthor(outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("Creator", out outValue)
 				&& !outValue.Contains(", Code: "))
 			{
-				authorString = GetAuthor(outValue, "", out creator);
+				authorString = GetAuthor(outValue, "", ref creators);
 			}
 
 			if (metadata.TryGetValue("Author", out outValue))
 			{
 				infoTemplate = "Information";
-				authorString = GetAuthor(outValue, "", out creator);
+				authorString = GetAuthor(outValue, "", ref creators);
 			}
 
-			if (creator != null)
+			foreach (Creator creator in creators)
 			{
 				//HACK;
 				creator.UploadableUsage++;
@@ -317,7 +317,7 @@ namespace NPGallery
 				}
 			}
 
-			string licenseTag = GetLicenseTag(authorString, creator, dateMetadata.LatestYear, m_config.defaultPubCountry);
+			string licenseTag = GetLicenseTag(authorString, creators, dateMetadata.LatestYear, m_config.defaultPubCountry);
 
 			if (string.IsNullOrEmpty(licenseTag))
 			{
@@ -554,9 +554,12 @@ namespace NPGallery
 				}
 			}
 
-			if (creator != null && !string.IsNullOrEmpty(creator.Category))
+			foreach (Creator creator in creators)
 			{
-				categories.Add(creator.Category);
+				if (!string.IsNullOrEmpty(creator.Category))
+				{
+					categories.Add(creator.Category);
+				}
 			}
 
 			string otherFields = "";
@@ -707,6 +710,16 @@ namespace NPGallery
 			if (description.Contains("grave marker") && parkCodes.Contains("MACA"))
 			{
 				throw new UploadDeclinedException("Gravestone");
+			}
+			//HACK: skip children's art for now
+			if (parkCodes.Contains("MNRR") || parkCodes.Contains("NERI"))
+			{
+				throw new UploadDeclinedException("Art?");
+			}
+			//HACK: skip Gettysburg on account of the volume of letters
+			if (parkCodes.Contains("GETT"))
+			{
+				throw new UploadDeclinedException("Letter?");
 			}
 
 			// now that this looks like a success, redownload and start over
@@ -1007,7 +1020,7 @@ namespace NPGallery
 			}
 		}
 
-		protected override string GetAuthor(string name, string lang, out Creator creator)
+		protected override string GetAuthor(string name, string lang, ref List<Creator> creator)
 		{
 			string organization = "";
 			int italicStartIndex = name.IndexOf("<i>");
@@ -1018,7 +1031,7 @@ namespace NPGallery
 				name = name.Substring(0, italicStartIndex - 1).TrimEnd();
 			}
 
-			string niceAuthor = base.GetAuthor(name, lang, out creator);
+			string niceAuthor = base.GetAuthor(name, lang, ref creator);
 			if (!string.IsNullOrEmpty(organization))
 			{
 				niceAuthor += " (''" + organization + "'')";

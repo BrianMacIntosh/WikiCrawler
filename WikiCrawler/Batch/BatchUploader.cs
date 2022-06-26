@@ -480,18 +480,21 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Get a string that should be used for the file's 'author' field.
 	/// </summary>
-	protected virtual string GetAuthor(string name, string lang, out Creator creator)
+	protected virtual string GetAuthor(string name, string lang, ref List<Creator> creators)
 	{
-		//TODO: support multiple creators
-		creator = null;
-
 		string finalResult = "";
 		foreach (string author in ParseAuthor(name))
 		{
+			Creator creator;
 			if (CreatorUtility.TryGetCreator(author, out creator))
 			{
 				creator.Usage++;
-				if (!string.IsNullOrEmpty(creator.Author))
+				if (!creators.AddUnique(creator))
+				{
+					// duplicate
+					continue;
+				}
+				else if (!string.IsNullOrEmpty(creator.Author))
 				{
 					finalResult += creator.Author;
 					continue;
@@ -569,7 +572,7 @@ public abstract class BatchUploader : BatchTask
 		return name.TrimEnd(s_dobTrim);
 	}
 
-	protected string GetLicenseTag(string author, Creator creator, int latestYear, string pubCountry)
+	protected string GetLicenseTag(string author, List<Creator> creator, int latestYear, string pubCountry)
 	{
 		if (author == "{{unknown|author}}")
 		{
@@ -581,13 +584,14 @@ public abstract class BatchUploader : BatchTask
 		}
 		else if (creator != null)
 		{
-			if (!string.IsNullOrEmpty(creator.LicenseTemplate))
+			if (creator.Count == 1 && !string.IsNullOrEmpty(creator[0].LicenseTemplate))
 			{
-				return creator.LicenseTemplate;
+				return creator[0].LicenseTemplate;
 			}
 			else
 			{
-				return LicenseUtility.GetPdLicenseTag(latestYear, creator.DeathYear, pubCountry);
+				int deathYearMax = creator.Max((Creator c) => c.DeathYear);
+				return LicenseUtility.GetPdLicenseTag(latestYear, deathYearMax, pubCountry);
 			}
 		}
 		else

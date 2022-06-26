@@ -14,9 +14,9 @@ namespace Dsal
 
 		protected override string BuildPage(string key, Dictionary<string, string> metadata)
 		{
-			Creator creator;
-			string photographer = GetAuthor(metadata["Photographer"], "en", out creator);
-			if (creator == null)
+			List<Creator> creators = new List<Creator>();
+			string photographer = GetAuthor(metadata["Photographer"], "en", ref creators);
+			if (creators.Count == 0)
 			{
 				throw new UWashException("No creator");
 			}
@@ -62,12 +62,15 @@ namespace Dsal
 				}
 			}
 
-			if (creator != null && !string.IsNullOrEmpty(creator.Category))
+			foreach (Creator creator in creators)
 			{
-				categories.Add(creator.Category);
+				if (!string.IsNullOrEmpty(creator.Category))
+				{
+					categories.Add(creator.Category);
+				}
 			}
 
-			string licenseTag = GetLicenseTag(photographer, creator, dateMetadata.LatestYear, m_config.defaultPubCountry);
+			string licenseTag = GetLicenseTag(photographer, creators, dateMetadata.LatestYear, m_config.defaultPubCountry);
 
 			if (string.IsNullOrEmpty(licenseTag))
 			{

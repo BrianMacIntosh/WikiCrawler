@@ -89,6 +89,8 @@ public static class LicenseUtility
 		{
 			case "AUSTRIA":
 				return "AUT";
+			case "BELGIUM":
+				return "BEL";
 			case "CANADA":
 				return "CAN";
 			case "CHINA":
