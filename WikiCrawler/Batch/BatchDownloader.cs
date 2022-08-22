@@ -61,6 +61,9 @@ public abstract class BatchDownloader : BatchTask
 				succeededMetadata.Add(Path.GetFileNameWithoutExtension(cachedData));
 			}
 
+			// load the list of files that have already been uploaded
+			succeededMetadata.AddRange(m_succeeded);
+
 			int saveOutInterval = 10;
 			int saveOutTimer = saveOutInterval;
 
