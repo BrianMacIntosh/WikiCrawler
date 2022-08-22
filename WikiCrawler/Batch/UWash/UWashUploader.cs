@@ -598,7 +598,7 @@ namespace UWash
 				}
 				else
 				{
-					placeOfCreationContent = "{ {" + lang + "|1=" + placeOfCreation + "}}";
+					placeOfCreationContent = "{{" + lang + "|1=" + placeOfCreation + "}}";
 				}
 				if (informationTemplate == "Map")
 				{
