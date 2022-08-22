@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -10,7 +11,8 @@ public abstract class ContentDmDownloader : BatchDownloader
 
 	}
 
-	protected override Dictionary<string, string> ParseMetadata(string pageContent)
+	//OLD ContentDM
+	/*protected override Dictionary<string, string> ParseMetadata(string pageContent)
 	{
 		// pull out the metadata section
 		int metaStartIndex = pageContent.IndexOf("<script>");
@@ -43,6 +45,35 @@ public abstract class ContentDmDownloader : BatchDownloader
 		}
 		item = (Newtonsoft.Json.Linq.JObject)item["item"];
 		object[] fields = item["fields"].ToObject<object[]>();
+
+		Dictionary<string, string> data = new Dictionary<string, string>();
+
+		foreach (object field in fields)
+		{
+			Newtonsoft.Json.Linq.JObject fieldData = (Newtonsoft.Json.Linq.JObject)field;
+
+			//TODO: CleanHtml?
+			string value = fieldData["value"].ToObject<string>();
+			value = value.TrimStart('[').TrimEnd(']');
+
+			data[(string)fieldData["label"]] = value;
+		}
+
+		return data;
+	}*/
+
+	protected override Dictionary<string, string> ParseMetadata(string pageContent)
+	{
+		// parse JSON
+		Dictionary<string, object> deser = JsonConvert.DeserializeObject<Dictionary<string, object>>(pageContent);
+
+		if (!deser.ContainsKey("metadata"))
+		{
+			// that's weird. Try again.
+			throw new RedownloadException();
+		}
+
+		JArray fields = (JArray)deser["metadata"];
 
 		Dictionary<string, string> data = new Dictionary<string, string>();
 
