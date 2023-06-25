@@ -488,6 +488,10 @@ public abstract class BatchUploader : BatchTask
 			Creator creator;
 			if (CreatorUtility.TryGetCreator(author, out creator))
 			{
+				if (creators == null)
+				{
+					creators = new List<Creator>();
+				}
 				creator.Usage++;
 				if (!creators.AddUnique(creator))
 				{
@@ -516,9 +520,11 @@ public abstract class BatchUploader : BatchTask
 		return finalResult;
 	}
 
+	private static char[] s_authorSplitters = { '|', '\n' };
+
 	private static IEnumerable<string> ParseAuthor(string name)
 	{
-		string[] authors = name.Split(StringUtility.Pipe);
+		string[] authors = name.Split(s_authorSplitters);
 		for (int c = 0; c < authors.Length; c++)
 		{
 			authors[c] = CleanPersonName(authors[c]);
