@@ -651,7 +651,7 @@ namespace WikiCrawler
 			{
 				if (!s_extantCategories.ContainsKey(inCat))
 				{
-					requestCats.Add(inCat);
+					requestCats.AddUnique(inCat);
 				}
 			}
 
