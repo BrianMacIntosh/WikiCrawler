@@ -242,10 +242,13 @@ namespace NPGallery
 				authorString = GetAuthor(outValue, "", ref creators);
 			}
 
-			foreach (Creator creator in creators)
+			if (creators != null)
 			{
-				//HACK;
-				creator.UploadableUsage++;
+				foreach (Creator creator in creators)
+				{
+					//HACK;
+					creator.UploadableUsage++;
+				}
 			}
 
 			// determine the creation date
@@ -554,11 +557,14 @@ namespace NPGallery
 				}
 			}
 
-			foreach (Creator creator in creators)
+			if (creators != null)
 			{
-				if (!string.IsNullOrEmpty(creator.Category))
+				foreach (Creator creator in creators)
 				{
-					categories.Add(creator.Category);
+					if (!string.IsNullOrEmpty(creator.Category))
+					{
+						categories.Add(creator.Category);
+					}
 				}
 			}
 
