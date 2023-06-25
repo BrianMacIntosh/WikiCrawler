@@ -330,7 +330,7 @@ namespace UWash
 			int latestYear = intermediate.DateParseMetadata.LatestYear;
 
 			// must have been published before author's death
-			if (intermediate.DateParseMetadata.LatestYear == 9999)
+			if (intermediate.DateParseMetadata.LatestYear == 9999 && intermediate.CreatorData.Count > 0)
 			{
 				int deathYearMax = intermediate.CreatorData.Max((Creator c) => c.DeathYear);
 				if (latestYear == 9999)
@@ -342,7 +342,7 @@ namespace UWash
 					latestYear = Math.Max(latestYear, deathYearMax);
 				}
 			}
-			if (intermediate.DateParseMetadata.LatestYear == 9999)
+			if (intermediate.DateParseMetadata.LatestYear == 9999 && intermediate.ArtistData.Count > 0)
 			{
 				int deathYearMax = intermediate.ArtistData.Max((Creator c) => c.DeathYear);
 				if (latestYear == 9999)
