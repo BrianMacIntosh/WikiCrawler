@@ -9,7 +9,7 @@ namespace NPGallery
 	{
 		private List<NPGalleryAsset> m_allAssets = new List<NPGalleryAsset>();
 
-		private const string MetadataUriFormat = "https://npgallery.nps.gov/SearchResults/4dca244562884407b693b14cb3d0fe54?page={0}&showfilters=false&filterUnitssc=10&view=grid&sort=date-desc";
+		private const string MetadataUriFormat = "https://npgallery.nps.gov/SearchResults/f51d9701-865e-4950-b316-ff1567e7330f?page={0}&showfilters=false&filterUnitssc=10&view=grid&sort=date-desc";
 
 		public NPGalleryAssetListDownloader(string key)
 			: base(key)
@@ -42,7 +42,7 @@ namespace NPGallery
 
 		protected override IEnumerable<string> GetKeys()
 		{
-			for (int page = 1; page <= 550; page++)
+			for (int page = 1; page <= 9396; page++)
 			{
 				yield return page.ToString();
 			}
