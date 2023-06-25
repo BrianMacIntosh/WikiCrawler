@@ -302,7 +302,7 @@ namespace NPGallery
 			if (metadata.TryGetValue("Time Submitted", out outValue))
 			{
 				System.DateTime timeSubmitted = System.DateTime.Parse(outValue);
-				if (timeSubmitted.Year < dateMetadata.PreciseYear)
+				if (dateMetadata.IsPrecise && timeSubmitted.Year < dateMetadata.PreciseYear)
 				{
 					// The current create date is definitely wrong. Try embedded time.
 					System.DateTime embeddedDateTime;
@@ -886,6 +886,15 @@ namespace NPGallery
 		private bool AddDescriptionBlock(List<string> descriptionBlocks, string descriptionBlock, ref bool checkFop)
 		{
 			descriptionBlock = descriptionBlock.RemoveIndentation().RemoveExtraneousLines();
+
+			// do not add substrings of existing descriptions
+			if (descriptionBlocks.Any(block => block.Contains(descriptionBlock)))
+			{
+				return true;
+			}
+
+			// remove substrings of new description
+			descriptionBlocks.RemoveAll(block => descriptionBlock.Contains(block));
 
 			descriptionBlocks.AddUnique(descriptionBlock);
 
