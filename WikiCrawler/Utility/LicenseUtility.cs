@@ -99,6 +99,7 @@ public static class LicenseUtility
 				return "DNK";
 			case "ENGLAND":
 			case "GREAT BRITAIN":
+			case "UNITED KINGDOM":
 				return "GBR";
 			case "FRANCE":
 				return "FRA";
@@ -107,6 +108,7 @@ public static class LicenseUtility
 			case "ITALY":
 				return "ITA";
 			case "NETHERLANDS":
+			case "THE NETHERLANDS":
 				return "NLD";
 			case "RUSSIA":
 				return "RUS";
