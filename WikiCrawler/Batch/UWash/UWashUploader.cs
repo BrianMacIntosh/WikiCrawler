@@ -120,6 +120,7 @@ namespace UWash
 			"Source",
 			"Language",
 			"Negative Number",
+			"Negative number",
 			"Negative",
 			"Photographer's Reference Number",
 			"Image Number",
