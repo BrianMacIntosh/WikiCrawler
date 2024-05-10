@@ -717,6 +717,18 @@ namespace NPGallery
 			{
 				throw new UploadDeclinedException("Gravestone");
 			}
+			if (parkCodes.Contains("LONG"))
+			{
+				throw new UploadDeclinedException("LONG - letter?");
+			}
+			if (parkCodes.Contains("STEA"))
+			{
+				throw new UploadDeclinedException("STEA - documents?");
+			}
+			if (parkCodes.Contains("GETT"))
+			{
+				throw new UploadDeclinedException("GETT - letter?");
+			}
 			//HACK: skip children's art for now
 			if (parkCodes.Contains("MNRR") || parkCodes.Contains("NERI"))
 			{
