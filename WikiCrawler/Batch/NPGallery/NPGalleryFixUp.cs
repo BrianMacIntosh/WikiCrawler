@@ -1,10 +1,11 @@
 ﻿using MediaWiki;
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace NPGallery
 {
-	public class NPGalleryFixUp
+	public class NPGalleryFixUp : BatchTask
 	{
 		protected Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
 
@@ -12,6 +13,7 @@ namespace NPGallery
 		private NPGalleryUploader m_uploader;
 
 		public NPGalleryFixUp()
+			: base("npgallery")
 		{
 			m_downloader = new NPGalleryDownloader("npgallery");
 			m_downloader.HeartbeatEnabled = false;
@@ -23,6 +25,30 @@ namespace NPGallery
 		{
 			Api.AutoLogIn();
 
+			DoAddRelated();
+
+			SaveOut();
+		}
+
+		public void DoCullCache()
+		{
+			// remove anything from the data_cache that matches a succeeded or permafailed entry
+			foreach (string file in Directory.GetFiles(MetadataCacheDirectory))
+			{
+				string key = Path.GetFileNameWithoutExtension(file);
+				key = key.Replace("-", "").ToLower();
+				if (m_succeeded.Contains(key) || m_permanentlyFailed.Contains(key))
+				{
+					File.Delete(file);
+					Console.WriteLine("Delete " + file);
+				}
+			}
+
+			SaveOut();
+		}
+
+		private void DoAddRelated()
+		{
 			// fetch all files from the category
 			foreach (Article article in Api.Search("insource:\"{{Information field|name=NPS Unit Code|value=LIBI}}\"", srnamespace: Api.BuildNamespaceList(Namespace.File)))
 			{
