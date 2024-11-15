@@ -80,6 +80,7 @@ namespace NPGallery
 			"NPGallery Uploader",
 			"Source Information Description",
 			"Source Location",
+			"Access Constraints",
 			"Albums", // Obsolete
 		};
 
