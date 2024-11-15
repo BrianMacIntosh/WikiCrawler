@@ -10,7 +10,7 @@ using WikiCrawler;
 
 namespace UWash
 {
-	public class UWashUploader : BatchUploader
+	public class UWashUploader : BatchUploader<int>
 	{
 		private string ImageUrlFormat
 		{
@@ -179,7 +179,7 @@ namespace UWash
 			EasyWeb.SetDelayForDomain(new Uri("https://commons.wikimedia.org/"), 0.5f);
 		}
 
-		public override Uri GetImageUri(string key, Dictionary<string, string> metadata)
+		public override Uri GetImageUri(int key, Dictionary<string, string> metadata)
 		{
 			return new Uri(string.Format(ImageUrlFormat, key));
 		}
@@ -187,7 +187,7 @@ namespace UWash
 		/// <summary>
 		/// Returns the title of the uploaded page for the specified metadata.
 		/// </summary>
-		public override string GetTitle(string key, Dictionary<string, string> metadata)
+		public override string GetTitle(int key, Dictionary<string, string> metadata)
 		{
 			string title;
 			if (!metadata.TryGetValue("Title", out title)
@@ -214,7 +214,7 @@ namespace UWash
 
 			if (!string.IsNullOrEmpty(m_config.filenameSuffix))
 			{
-				title = title + " (" + m_config.filenameSuffix + " " + key + ")";
+				title = string.Format("{0} ({1} {2})", title, m_config.filenameSuffix, key);
 			}
 
 			return title;
@@ -223,7 +223,7 @@ namespace UWash
 		/// <summary>
 		/// Run any additional logic after a successful upload (such as uploading a crop).
 		/// </summary>
-		protected override void PostUpload(string key, Dictionary<string, string> metadata, Article article)
+		protected override void PostUpload(int key, Dictionary<string, string> metadata, Article article)
 		{
 			base.PostUpload(key, metadata, article);
 
@@ -307,7 +307,7 @@ namespace UWash
 		/// <summary>
 		/// Builds the wiki page for the object with the specified metadata.
 		/// </summary>
-		protected override string BuildPage(string key, Dictionary<string, string> metadata)
+		protected override string BuildPage(int key, Dictionary<string, string> metadata)
 		{
 			metadata = PreprocessMetadata(metadata);
 			IntermediateData intermediate = new IntermediateData(metadata);
@@ -1173,9 +1173,9 @@ namespace UWash
 			}
 		}
 
-		protected override bool TryAddDuplicate(string targetPage, string key, Dictionary<string, string> metadata)
+		protected override bool TryAddDuplicate(string targetPage, int key, Dictionary<string, string> metadata)
 		{
-			Console.WriteLine("Checking to record duplicate " + key + " with existing page '" + targetPage + "'");
+			Console.WriteLine("Checking to record duplicate {0} with existing page '{1}'", key, targetPage);
 
 			// Fetch the target duplicate
 			Article targetArticle = Api.GetPage(targetPage);

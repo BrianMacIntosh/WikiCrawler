@@ -9,7 +9,7 @@ using MediaWiki;
 
 namespace OEC
 {
-	public class OecUploader : BatchUploader
+	public class OecUploader : BatchUploader<string>
 	{
 		private Dictionary<string, string> CountryCodeToName = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
 

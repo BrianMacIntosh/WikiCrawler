@@ -1,9 +1,8 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
-public abstract class ContentDmDownloader : BatchDownloader
+public abstract class ContentDmDownloader : BatchDownloader<int>
 {
 	public ContentDmDownloader(string key)
 		: base(key)

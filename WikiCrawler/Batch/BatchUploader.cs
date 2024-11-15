@@ -10,7 +10,20 @@ using System.Text;
 using WikiCrawler;
 using MediaWiki;
 
-public abstract class BatchUploader : BatchTask
+public interface IBatchUploader : IBatchTask
+{
+	/// <summary>
+	/// Uploads all configured files.
+	/// </summary>
+	void UploadAll();
+
+	/// <summary>
+	/// Checks the downloaded image file. Throws an exception if it's invalid and needs to be redownloaded.
+	/// </summary>
+	void ValidateDownload(string imagePath);
+}
+
+public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUploader
 {
 	protected enum SuccessType
 	{
@@ -26,7 +39,7 @@ public abstract class BatchUploader : BatchTask
 		get { return Path.Combine(ProjectDataDirectory, "preview"); }
 	}
 
-	public string GetPreviewFileFilename(string key)
+	public string GetPreviewFileFilename(KeyType key)
 	{
 		return Path.Combine(PreviewDirectory, key + ".txt");
 	}
@@ -106,7 +119,7 @@ public abstract class BatchUploader : BatchTask
 
 				foreach (string metadataFile in metadataFiles)
 				{
-					string key = Path.GetFileNameWithoutExtension(metadataFile);
+					KeyType key = StringToKey(Path.GetFileNameWithoutExtension(metadataFile));
 
 					try
 					{
@@ -126,7 +139,7 @@ public abstract class BatchUploader : BatchTask
 						if (!(e is LicenseException)
 							&& !(e is UploadDeclinedException))
 						{
-							string failMessage = key.PadLeft(5) + "\t" + e.Message;
+							string failMessage = key.ToString().PadLeft(5) + "\t" + e.Message;
 							m_failMessages.Add(failMessage);
 						}
 					}
@@ -161,7 +174,7 @@ public abstract class BatchUploader : BatchTask
 		Console.WriteLine("Received STOP signal.");
 	}
 
-	public void Upload(string key)
+	public void Upload(KeyType key)
 	{
 		Console.WriteLine("== BUILDING " + key);
 
@@ -306,7 +319,7 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// If the image for the specified item isn't cached, caches it.
 	/// </summary>
-	public virtual void CacheImage(string key, Dictionary<string, string> metadata)
+	public virtual void CacheImage(KeyType key, Dictionary<string, string> metadata)
 	{
 		if (m_config.allowImageDownload)
 		{
@@ -331,7 +344,7 @@ public abstract class BatchUploader : BatchTask
 		}
 	}
 
-	private void DeleteCachedFiles(string key, Dictionary<string, string> metadata)
+	private void DeleteCachedFiles(KeyType key, Dictionary<string, string> metadata)
 	{
 		string path = GetImageCacheFilename(key, metadata);
 		if (File.Exists(path))
@@ -367,7 +380,7 @@ public abstract class BatchUploader : BatchTask
 	/// Loads the key-value metadata for the asset with the specified key.
 	/// </summary>
 	/// <param name="always">If set, will look in the trash and TODO: redownload if necessary.</param>
-	protected virtual Dictionary<string, string> LoadMetadata(string key, bool always = false)
+	protected virtual Dictionary<string, string> LoadMetadata(KeyType key, bool always = false)
 	{
 		string cacheFile = GetMetadataCacheFilename(key);
 		if (File.Exists(cacheFile))
@@ -387,24 +400,24 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Returns the URL for the item with the specified data.
 	/// </summary>
-	public abstract Uri GetImageUri(string key, Dictionary<string, string> metadata);
+	public abstract Uri GetImageUri(KeyType key, Dictionary<string, string> metadata);
 
 	/// <summary>
 	/// Returns the title of the uploaded page for the specified metadata.
 	/// </summary>
-	public abstract string GetTitle(string key, Dictionary<string, string> metadata);
+	public abstract string GetTitle(KeyType key, Dictionary<string, string> metadata);
 
 	/// <summary>
 	/// Builds the wiki page for the object with the specified metadata.
 	/// </summary>
-	protected abstract string BuildPage(string key, Dictionary<string, string> metadata);
+	protected abstract string BuildPage(KeyType key, Dictionary<string, string> metadata);
 
 	/// <summary>
 	/// Attempts to merge this new page's information with an existing duplicate.
 	/// </summary>
 	/// <param name="targetPage">The existing page to merge into.</param>
 	/// <returns>True on success.</returns>
-	protected virtual bool TryAddDuplicate(string targetPage, string key, Dictionary<string, string> metadata)
+	protected virtual bool TryAddDuplicate(string targetPage, KeyType key, Dictionary<string, string> metadata)
 	{
 		return false;
 	}
@@ -412,7 +425,7 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Returns true if the specified item should be marked as complete and not uploaded.
 	/// </summary>
-	public virtual bool ShouldSkipForever(string key, Dictionary<string, string> metadata)
+	public virtual bool ShouldSkipForever(KeyType key, Dictionary<string, string> metadata)
 	{
 		return false;
 	}
@@ -428,7 +441,7 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Run any additional logic immediately before the article is uploaded (such as creating dependency pages).
 	/// </summary>
-	protected virtual void PreUpload(string key, Article article)
+	protected virtual void PreUpload(KeyType key, Article article)
 	{
 		// create categories for {{taken on}} if present
 		int takenOnIndex = article.revisions[0].text.IndexOf("{{taken on|", StringComparison.CurrentCultureIgnoreCase);
@@ -444,7 +457,7 @@ public abstract class BatchUploader : BatchTask
 	/// <summary>
 	/// Run any additional logic after a successful upload (such as uploading a crop).
 	/// </summary>
-	protected virtual void PostUpload(string key, Dictionary<string, string> metadata, Article article)
+	protected virtual void PostUpload(KeyType key, Dictionary<string, string> metadata, Article article)
 	{
 
 	}

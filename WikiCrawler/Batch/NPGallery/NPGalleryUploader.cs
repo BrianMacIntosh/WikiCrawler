@@ -8,11 +8,12 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web;
+using System.Web.Script;
 using WikiCrawler;
 
 namespace NPGallery
 {
-	public class NPGalleryUploader : BatchUploader
+	public class NPGalleryUploader : BatchUploader<Guid>
 	{
 		private HashSet<string> m_usedKeys = new HashSet<string>()
 		{
@@ -129,7 +130,15 @@ namespace NPGallery
 				}
 				using (FileStream stream = File.OpenRead(Path.Combine(ProjectDataDirectory, "not-authorized.png")))
 				{
-					m_notAuthorizedHash = md5.ComputeHash(stream);
+					m_notAuthorizedHashes.Add(md5.ComputeHash(stream));
+				}
+				using (FileStream stream = File.OpenRead(Path.Combine(ProjectDataDirectory, "not-authorized.tif")))
+				{
+					m_notAuthorizedHashes.Add(md5.ComputeHash(stream));
+				}
+				using (FileStream stream = File.OpenRead(Path.Combine(ProjectDataDirectory, "not-authorized.jpg")))
+				{
+					m_notAuthorizedHashes.Add(md5.ComputeHash(stream));
 				}
 			}
 
@@ -137,6 +146,11 @@ namespace NPGallery
 			string unitCodeLocsPath = Path.Combine(Configuration.DataDirectory, "npsunit-parents.json");
 			string unitCodeLocsText = File.ReadAllText(unitCodeLocsPath, Encoding.UTF8);
 			s_unitCodeToCommonsLoc = JsonConvert.DeserializeObject<Dictionary<string, string[]>>(unitCodeLocsText);
+		}
+
+		protected override Guid StringToKey(string str)
+		{
+			return NPGallery.StringToKey(str);
 		}
 
 		/// <summary>
@@ -149,7 +163,7 @@ namespace NPGallery
 		private byte[] m_fileSystemErrorHash;
 		private byte[] m_databaseErrorHash;
 		private byte[] m_corruptedRecordErrorHash;
-		private byte[] m_notAuthorizedHash;
+		private List<byte[]> m_notAuthorizedHashes = new List<byte[]>();
 
 		public override int TotalKeyCount
 		{
@@ -159,7 +173,7 @@ namespace NPGallery
 
 		private const string ImageUriFormat = "https://npgallery.nps.gov/GetAsset/{0}/";
 
-		protected override string BuildPage(string key, Dictionary<string, string> metadata)
+		protected override string BuildPage(Guid key, Dictionary<string, string> metadata)
 		{
 			// trim all metadata
 			foreach (KeyValuePair<string, string> kv in metadata.ToArray())
@@ -627,12 +641,12 @@ namespace NPGallery
 			}
 
 			string otherVersions = "";
-			
+
+			List<string> relatedAlbums = new List<string>();
 			if (metadata.TryGetValue("~Related", out outValue) && !string.IsNullOrEmpty(outValue))
 			{
 				// album titles might work as categories
 				string[] related = outValue.Split('|');
-				List<string> relatedAlbums = new List<string>();
 				for (int i = 0; i < related.Length; i += 3)
 				{
 					//TODO: do something with related assets?
@@ -655,15 +669,16 @@ namespace NPGallery
 				else if (related.Length == 3)
 				{
 					int i = 0;
-					string relatedId = related[i];
+					string relatedKeyStr = related[i];
+					Guid relatedKey = StringToKey(relatedKeyStr);
 					string relatedType = related[i + 1];
 					string relatedTitle = related[i + 2];
-					Dictionary<string, string> relatedMetadata = LoadMetadata(relatedId, true);
+					Dictionary<string, string> relatedMetadata = LoadMetadata(relatedKey, true);
 					if (relatedMetadata == null)
 					{
-						relatedMetadata = m_downloader.Download(relatedId, false);
+						relatedMetadata = m_downloader.Download(relatedKey, false);
 					}
-					string uploadTitle = GetTitle(relatedId, relatedMetadata).Replace(s_badTitleCharacters, "");
+					string uploadTitle = GetTitle(relatedKey, relatedMetadata).Replace(s_badTitleCharacters, "");
 					string imagePath = GetImageCacheFilename(key, metadata);
 					uploadTitle = uploadTitle + Path.GetExtension(imagePath);
 					otherVersions = StringUtility.Join("\n", otherVersions, uploadTitle);
@@ -713,6 +728,10 @@ namespace NPGallery
 				authorString = "{{en|1=" + authorString + "}}";
 			}
 
+			if (parkCodes.Contains("JICA") && relatedAlbums.Any((album) => album.Contains("Postcard")))
+			{
+				throw new UploadDeclinedException("Jimmy Carter Postcard");
+			}
 			if (description.Contains("grave marker") && parkCodes.Contains("MACA"))
 			{
 				throw new UploadDeclinedException("Gravestone");
@@ -962,7 +981,7 @@ namespace NPGallery
 			NPSDirectoryQuery.SaveOut();
 		}
 
-		protected override bool TryAddDuplicate(string targetPage, string key, Dictionary<string, string> metadata)
+		protected override bool TryAddDuplicate(string targetPage, Guid key, Dictionary<string, string> metadata)
 		{
 			Console.WriteLine("Checking to record duplicate " + key + " with existing page '" + targetPage + "'");
 
@@ -974,6 +993,21 @@ namespace NPGallery
 			if (!text.Contains("|source=" + m_config.sourceTemplate))
 			{
 				return false;
+			}
+
+			// Check that the dupe link doesn't already exist
+			int accessionIndex = text.IndexOf("{{NPGallery-accession|");
+			while (accessionIndex >= 0)
+			{
+				int keyStart = accessionIndex + "{{NPGallery-accession|".Length;
+				int keyEnd = text.IndexOf("}}", keyStart);
+				string existingKey = text.Substring(keyStart, keyEnd - keyStart);
+				Guid existingGuid = NPGallery.StringToKey(existingKey);
+				if (existingGuid == key)
+				{
+					return false;
+				}
+				accessionIndex = text.IndexOf("{{NPGallery-accession|", keyEnd);
 			}
 
 			// Insert a link to the duplicate file
@@ -990,10 +1024,6 @@ namespace NPGallery
 			}
 
 			string accession = "{{NPGallery-accession|" + key + "}}";
-			if (text.Contains(accession))
-			{
-				return false;
-			}
 			text = text.Substring(0, insertionPoint) + "\n" + accession + text.Substring(insertionPoint);
 
 			// submit the edit
@@ -1004,7 +1034,7 @@ namespace NPGallery
 		/// <summary>
 		/// Returns true if the specified item should be marked as complete and not uploaded.
 		/// </summary>
-		public override bool ShouldSkipForever(string key, Dictionary<string, string> metadata)
+		public override bool ShouldSkipForever(Guid key, Dictionary<string, string> metadata)
 		{
 			using (MD5 md5 = MD5.Create())
 			{
@@ -1016,9 +1046,12 @@ namespace NPGallery
 					{
 						return true;
 					}
-					if (hash.SequenceEqual(m_notAuthorizedHash))
+					foreach (byte[] targetHash in m_notAuthorizedHashes)
 					{
-						return true;
+						if (hash.SequenceEqual(targetHash))
+						{
+							return true;
+						}
 					}
 				}
 			}
@@ -1066,23 +1099,23 @@ namespace NPGallery
 			return niceAuthor;
 		}
 
-		public override Uri GetImageUri(string key, Dictionary<string, string> metadata)
+		public override Uri GetImageUri(Guid key, Dictionary<string, string> metadata)
 		{
 			string url = string.Format(ImageUriFormat, key) + "original" + GetImageExtension(key, metadata);
 			return new Uri(url);
 		}
 
-		public override string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
+		public override string GetImageCacheFilename(Guid key, Dictionary<string, string> metadata)
 		{
 			return Path.ChangeExtension(base.GetImageCacheFilename(key, metadata), GetImageExtension(key, metadata));
 		}
 
-		public override string GetImageCroppedFilename(string key, Dictionary<string, string> metadata)
+		public override string GetImageCroppedFilename(Guid key, Dictionary<string, string> metadata)
 		{
 			return Path.ChangeExtension(base.GetImageCroppedFilename(key, metadata), GetImageExtension(key, metadata));
 		}
 
-		private string GetImageExtension(string key, Dictionary<string, string> metadata)
+		private string GetImageExtension(Guid key, Dictionary<string, string> metadata)
 		{
 			string originalFileName;
 			if (metadata.TryGetValue("Original File Name", out originalFileName))
@@ -1095,7 +1128,7 @@ namespace NPGallery
 			}
 		}
 
-		public override string GetTitle(string key, Dictionary<string, string> metadata)
+		public override string GetTitle(Guid key, Dictionary<string, string> metadata)
 		{
 			string title = "", outValue;
 			if (metadata.TryGetValue("Title", out outValue))

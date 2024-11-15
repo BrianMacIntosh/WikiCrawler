@@ -21,7 +21,7 @@ namespace WikiCrawler
 			}
 		}
 
-		public static BatchDownloader CreateDownloader(string downloader, string projectKey)
+		public static IBatchDownloader CreateDownloader(string downloader, string projectKey)
 		{
 			switch (downloader)
 			{
@@ -50,11 +50,11 @@ namespace WikiCrawler
 			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
 				File.ReadAllText(Path.Combine(projectDir, "config.json")));
 
-			BatchDownloader downloader = CreateDownloader(config.downloader, projectKey);
+			IBatchDownloader downloader = CreateDownloader(config.downloader, projectKey);
 			downloader.DownloadAll();
 		}
 
-		public static BatchUploader CreateUploader(string uploader, string projectKey)
+		public static IBatchUploader CreateUploader(string uploader, string projectKey)
 		{
 			switch (uploader)
 			{
@@ -89,7 +89,7 @@ namespace WikiCrawler
 			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
 				File.ReadAllText(Path.Combine(projectDir, "config.json")));
 
-			BatchUploader uploader = CreateUploader(config.uploader, projectKey);
+			IBatchUploader uploader = CreateUploader(config.uploader, projectKey);
 			uploader.UploadAll();
 		}
 
@@ -163,15 +163,15 @@ namespace WikiCrawler
 			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
 				File.ReadAllText(Path.Combine(projectDir, "config.json")));
 
-			BatchUploader uploader = CreateUploader(config.uploader, projectKey);
-			foreach (string file in Directory.GetFiles(uploader.ImageCacheDirectory))
+			IBatchUploader uploader = CreateUploader(config.uploader, projectKey);
+			foreach (string file in Directory.GetFiles(uploader.GetImageCacheDirectory()))
 			{
 				Console.WriteLine(Path.GetFileName(file));
 				try
 				{
 					uploader.ValidateDownload(file);
 				}
-				catch (Exception e)
+				catch (Exception)
 				{
 					File.Delete(file);
 				}

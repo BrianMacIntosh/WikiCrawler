@@ -4,7 +4,7 @@ using System.IO;
 
 namespace NPGallery
 {
-	public class NPGalleryAssetListDownloader : BatchDownloader
+	public class NPGalleryAssetListDownloader : BatchDownloader<int>
 	{
 		private List<NPGalleryAsset> m_allAssets = new List<NPGalleryAsset>();
 
@@ -34,16 +34,16 @@ namespace NPGallery
 			File.WriteAllText(Path.Combine(ProjectDataDirectory, "assetlist.json"), serialized);
 		}
 
-		protected override Uri GetItemUri(string key)
+		protected override Uri GetItemUri(int key)
 		{
 			return new Uri(string.Format(MetadataUriFormat, key));
 		}
 
-		protected override IEnumerable<string> GetKeys()
+		protected override IEnumerable<int> GetKeys()
 		{
 			for (int page = 1; page <= 9396; page++)
 			{
-				yield return page.ToString();
+				yield return page;
 			}
 		}
 		

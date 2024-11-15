@@ -34,18 +34,18 @@ namespace UWash
 		/// <summary>
 		/// Enumerates the list of all available item keys.
 		/// </summary>
-		protected override IEnumerable<string> GetKeys()
+		protected override IEnumerable<int> GetKeys()
 		{
 			for (int index = UWashConfig.minIndex; index <= UWashConfig.maxIndex; index++)
 			{
-				yield return index.ToString();
+				yield return index;
 			}
 		}
 
 		/// <summary>
 		/// Returns the URL for the item with the specified key.
 		/// </summary>
-		protected override Uri GetItemUri(string key)
+		protected override Uri GetItemUri(int key)
 		{
 			return new Uri(string.Format(MetadataUrlFormat, key));
 		}

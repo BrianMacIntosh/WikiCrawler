@@ -7,7 +7,15 @@ using System.Net;
 using System.Text;
 using WikiCrawler;
 
-public abstract class BatchDownloader : BatchTask
+public interface IBatchDownloader : IBatchTask
+{
+	/// <summary>
+	/// Downloads all metadata and images.
+	/// </summary>
+	void DownloadAll();
+}
+
+public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatchDownloader
 {
 	/// <summary>
 	/// 
@@ -26,12 +34,12 @@ public abstract class BatchDownloader : BatchTask
 	/// <summary>
 	/// Enumerates the list of all available item keys.
 	/// </summary>
-	protected abstract IEnumerable<string> GetKeys();
+	protected abstract IEnumerable<KeyType> GetKeys();
 
 	/// <summary>
 	/// Returns the URL for the item with the specified key.
 	/// </summary>
-	protected abstract Uri GetItemUri(string key);
+	protected abstract Uri GetItemUri(KeyType key);
 
 	/// <summary>
 	/// Parses metadata from a downloaded page.
@@ -55,10 +63,10 @@ public abstract class BatchDownloader : BatchTask
 		try
 		{
 			// load the list of metadata that has already been downloaded
-			HashSet<string> succeededMetadata = new HashSet<string>();
+			HashSet<KeyType> succeededMetadata = new HashSet<KeyType>();
 			foreach (string cachedData in Directory.GetFiles(MetadataCacheDirectory))
 			{
-				succeededMetadata.Add(Path.GetFileNameWithoutExtension(cachedData));
+				succeededMetadata.Add(StringToKey(Path.GetFileNameWithoutExtension(cachedData)));
 			}
 
 			// load the list of files that have already been uploaded
@@ -77,7 +85,7 @@ public abstract class BatchDownloader : BatchTask
 			StartHeartbeat();
 
 			// load metadata
-			foreach (string key in GetKeys())
+			foreach (KeyType key in GetKeys())
 			{
 				if (!succeededMetadata.Contains(key)
 					&& !m_succeeded.Contains(key)
@@ -129,7 +137,7 @@ public abstract class BatchDownloader : BatchTask
 	/// Downloads the data for the specified key.
 	/// </summary>
 	/// <returns>The parsed data.</returns>
-	public Dictionary<string, string> Download(string key, bool cache = true)
+	public Dictionary<string, string> Download(KeyType key, bool cache = true)
 	{
 		if (!m_config.allowDataDownload)
 		{
@@ -164,7 +172,7 @@ public abstract class BatchDownloader : BatchTask
 		catch (Exception e)
 		{
 			Console.WriteLine(e.ToString());
-			m_failMessages.Add(key.PadLeft(5) + "\t" + e.Message);
+			m_failMessages.Add(key.ToString().PadLeft(5) + "\t" + e.Message);
 			return null;
 		}
 	}

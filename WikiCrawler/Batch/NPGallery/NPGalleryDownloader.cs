@@ -4,10 +4,8 @@ using System.IO;
 
 namespace NPGallery
 {
-	public class NPGalleryDownloader : BatchDownloader
+	public class NPGalleryDownloader : BatchDownloader<Guid>
 	{
-		private HashSet<string> m_crawledAlbums = new HashSet<string>();
-
 		private List<NPGalleryAsset> m_allAssets = new List<NPGalleryAsset>();
 
 		public const int Version = 3;
@@ -33,21 +31,26 @@ namespace NPGallery
 			}
 		}
 
+		protected override Guid StringToKey(string str)
+		{
+			return NPGallery.StringToKey(str);
+		}
+
 		private const string MetadataUriFormat = "https://npgallery.nps.gov/AssetDetail/{0}";
 
-		protected override Uri GetItemUri(string key)
+		protected override Uri GetItemUri(Guid key)
 		{
 			return new Uri(string.Format(MetadataUriFormat, key));
 		}
 
-		protected override IEnumerable<string> GetKeys()
+		protected override IEnumerable<Guid> GetKeys()
 		{
 			foreach (NPGalleryAsset asset in m_allAssets)
 			{
 				if (asset.AssetType == "Standard"
 					|| asset.AssetType == "Standard File")
 				{
-					yield return asset.AssetID;
+					yield return new Guid(asset.AssetID);
 				}
 			}
 		}

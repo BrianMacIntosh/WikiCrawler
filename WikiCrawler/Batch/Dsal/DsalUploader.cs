@@ -5,7 +5,7 @@ using WikiCrawler;
 
 namespace Dsal
 {
-	public class DsalUploader : BatchUploader
+	public class DsalUploader : BatchUploader<string>
 	{
 		public DsalUploader(string key)
 			: base(key)

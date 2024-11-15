@@ -5,7 +5,7 @@ using System.IO;
 
 namespace NPGallery
 {
-	public class NPGalleryFixUp : BatchTask
+	public class NPGalleryFixUp : BatchTaskKeyed<Guid>
 	{
 		protected Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
 
@@ -15,10 +15,15 @@ namespace NPGallery
 		public NPGalleryFixUp()
 			: base("npgallery")
 		{
-			m_downloader = new NPGalleryDownloader("npgallery");
-			m_downloader.HeartbeatEnabled = false;
+			//m_downloader = new NPGalleryDownloader("npgallery");
+			//m_downloader.HeartbeatEnabled = false;
 
-			m_uploader = new NPGalleryUploader("npgallery");
+			//m_uploader = new NPGalleryUploader("npgallery");
+		}
+
+		protected override Guid StringToKey(string str)
+		{
+			return NPGallery.StringToKey(str);
 		}
 
 		public void Do()
@@ -30,21 +35,59 @@ namespace NPGallery
 			SaveOut();
 		}
 
+		private void DoRetroactivePermanentSkip()
+		{
+			foreach (string imageFile in Directory.GetFiles(ImageCacheDirectory))
+			{
+
+			}
+		}
+
 		public void DoCullCache()
 		{
 			// remove anything from the data_cache that matches a succeeded or permafailed entry
 			foreach (string file in Directory.GetFiles(MetadataCacheDirectory))
 			{
-				string key = Path.GetFileNameWithoutExtension(file);
-				key = key.Replace("-", "").ToLower();
+				Guid key = StringToKey(Path.GetFileNameWithoutExtension(file));
 				if (m_succeeded.Contains(key) || m_permanentlyFailed.Contains(key))
 				{
 					File.Delete(file);
 					Console.WriteLine("Delete " + file);
 				}
 			}
+		}
 
-			SaveOut();
+		public void GuidifyFileNames()
+		{
+			foreach (string file in Directory.GetFiles(MetadataCacheDirectory))
+			{
+				if (!File.Exists(file)) continue;
+
+				Guid key = StringToKey(Path.GetFileNameWithoutExtension(file));
+				string bestFileName = Path.Combine(Path.GetDirectoryName(file), key.ToString() + Path.GetExtension(file));
+				if (!string.Equals(Path.GetFullPath(file), Path.GetFullPath(bestFileName), StringComparison.InvariantCultureIgnoreCase))
+				{
+					if (File.Exists(bestFileName))
+					{
+						// keep newest
+						if (File.GetCreationTime(bestFileName) > File.GetCreationTime(file))
+						{
+							File.Move(file, GetMetadataTrashFilename(key));
+							Console.WriteLine("Delete {0}", file);
+						}
+						else
+						{
+							File.Move(bestFileName, GetMetadataTrashFilename(key));
+							Console.WriteLine("Delete {0}", bestFileName);
+						}
+					}
+					else
+					{
+						File.Move(file, bestFileName);
+						Console.WriteLine("{0} -> {1}", file, bestFileName);
+					}
+				}
+			}
 		}
 
 		private void DoAddRelated()
@@ -69,7 +112,8 @@ namespace NPGallery
 					{
 						int closeParenIndex = article.title.IndexOf(')', lastParenIndex);
 						string thisId = article.title.Substring(lastParenIndex + 1, closeParenIndex - lastParenIndex - 1);
-						Dictionary<string, string> thisMetadata = m_downloader.Download(thisId, false);
+						Guid thisKey = StringToKey(thisId);
+						Dictionary<string, string> thisMetadata = m_downloader.Download(thisKey, false);
 
 						string relatedFlat;
 						if (thisMetadata.TryGetValue("~Related", out relatedFlat))

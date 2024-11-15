@@ -2,13 +2,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading;
 using WikiCrawler;
 
-public abstract class BatchTask
+public interface IBatchTask
+{
+	string GetImageCacheDirectory();
+}
+
+public abstract class BatchTask : IBatchTask
 {
 	public readonly string ProjectDataDirectory;
 
@@ -16,25 +19,7 @@ public abstract class BatchTask
 	public readonly string MetadataCacheDirectory;
 	public readonly string MetadataTrashDirectory;
 
-	public virtual string GetImageCacheFilename(string key, Dictionary<string, string> metadata)
-	{
-		return Path.Combine(ImageCacheDirectory, key + ".jpg");
-	}
-
-	public virtual string GetImageCroppedFilename(string key, Dictionary<string, string> metadata)
-	{
-		return Path.Combine(ImageCacheDirectory, key + "_cropped.jpg");
-	}
-
-	public virtual string GetMetadataCacheFilename(string key)
-	{
-		return Path.Combine(MetadataCacheDirectory, key + ".json");
-	}
-
-	public virtual string GetMetadataTrashFilename(string key)
-	{
-		return Path.Combine(MetadataTrashDirectory, key + ".json");
-	}
+	public string GetImageCacheDirectory() { return ImageCacheDirectory; }
 
 	public bool HeartbeatEnabled = true;
 
@@ -48,12 +33,6 @@ public abstract class BatchTask
 	private Thread m_heartbeatThread;
 
 	protected Dictionary<string, object> m_heartbeatData = new Dictionary<string, object>();
-
-	/// <summary>
-	/// Set of keys for files that
-	/// </summary>
-	protected HashSet<string> m_succeeded = new HashSet<string>();
-	protected HashSet<string> m_permanentlyFailed = new HashSet<string>();
 
 	protected List<string> m_failMessages = new List<string>();
 
@@ -82,32 +61,8 @@ public abstract class BatchTask
 		m_heartbeatData["nFailedLicense"] = 0;
 		m_heartbeatData["nDeclined"] = 0;
 		m_heartbeatData["terminate"] = false;
-
-		// load already-succeeded uploads
-		if (GetPersistStatus())
-		{
-			string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
-			if (File.Exists(succeededFile))
-			{
-				string[] succeeded = JsonConvert.DeserializeObject<string[]>(File.ReadAllText(succeededFile, Encoding.UTF8));
-				foreach (string suc in succeeded)
-				{
-					m_succeeded.Add(suc);
-				}
-			}
-
-			string failedFile = Path.Combine(ProjectDataDirectory, "permafailed.json");
-			if (File.Exists(failedFile))
-			{
-				string[] failed = JsonConvert.DeserializeObject<string[]>(File.ReadAllText(failedFile, Encoding.UTF8));
-				foreach (string suc in failed)
-				{
-					m_permanentlyFailed.Add(suc);
-				}
-			}
-		}
 	}
-	
+
 	protected void StartHeartbeat()
 	{
 		if (HeartbeatEnabled)
@@ -158,19 +113,6 @@ public abstract class BatchTask
 
 	protected virtual void SaveOut()
 	{
-		if (GetPersistStatus())
-		{
-			string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
-			List<string> succeeded = m_succeeded.ToList();
-			succeeded.Sort();
-			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded, Formatting.Indented));
-
-			string permafailedFile = Path.Combine(ProjectDataDirectory, "permafailed.json");
-			List<string> failed = m_permanentlyFailed.ToList();
-			failed.Sort();
-			File.WriteAllText(permafailedFile, JsonConvert.SerializeObject(failed, Formatting.Indented));
-		}
-
 		string failedFile = Path.Combine(ProjectDataDirectory, "failed.txt");
 		File.WriteAllLines(failedFile, m_failMessages);
 	}
