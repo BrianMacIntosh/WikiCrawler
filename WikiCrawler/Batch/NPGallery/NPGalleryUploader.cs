@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Script;
 using WikiCrawler;
@@ -421,9 +422,29 @@ namespace NPGallery
 					|| outValue == "Public domain:Harvard University"
 					|| outValue == "Public domain:Full Granting Rights"
 					|| outValue == "All Rights Reserved"
-					|| outValue.StartsWith("Public domain:The Liberator"))
+					|| outValue.StartsWith("Public domain:This digital asset is in the public domain."))
 				{
+					int creditIndex = outValue.IndexOf("When publishing this asset for any use, including online, image must credit:");
+					if (creditIndex < 0)
+					{
+						creditIndex = outValue.IndexOf("When using this asset for any purpose, including online, credit:");
+					}
 
+					if (creditIndex >= 0)
+					{
+						int quoteOpenIndex = outValue.IndexOf("'", creditIndex);
+						int quoteCloseIndex = outValue.IndexOf("'", quoteOpenIndex + 1);
+						if (quoteOpenIndex < 0 || quoteCloseIndex < 0)
+						{
+							throw new Exception("'Constraints Information' contained something unrecognized");
+						}
+						metadata["Copyright"] = "The NPS requests that you attribute any use of this image with " + outValue.Substring(quoteOpenIndex, quoteCloseIndex - quoteOpenIndex + 1);
+						useCopyrightStatement = true;
+					}
+					else
+					{
+						throw new Exception("'Constraints Information' contained something unrecognized");
+					}
 				}
 				else if (outValue == "Public domain:however please use copyright statement.")
 				{
