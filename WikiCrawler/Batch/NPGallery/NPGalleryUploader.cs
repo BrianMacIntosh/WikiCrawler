@@ -1172,7 +1172,7 @@ namespace NPGallery
 
 			title = HttpUtility.HtmlDecode(title);
 			title = title.Replace("''", "\"");
-			title = title.TrimStart("File-");
+			title = title.TrimStart("File-").TrimStart("File:");
 
 			if (title.Length > 129)
 			{
@@ -1186,6 +1186,7 @@ namespace NPGallery
 				title = title.Remove(lastWordEnd + 1);
 			}
 
+			// add unique ID
 			title += " (" + key + ")";
 
 			return title;
