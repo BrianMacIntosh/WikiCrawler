@@ -151,6 +151,8 @@ public static class DateUtility
 	/// </summary>
 	public static string ParseDate(string date, out DateParseMetadata parseMetadata, bool possibleEmptyDates = false)
 	{
+		date = date.TrimStart("probably ");
+
 		DateTime parseResult;
 		if (DateTime.TryParse(date, out parseResult))
 		{
@@ -256,6 +258,14 @@ public static class DateUtility
 		}
 	}
 
+	private static void SantityCheckYear(int year)
+	{
+		if (year < 1200 || year > DateTime.Now.Year)
+		{
+			throw new ArgumentException("Year '" + year + "' out of sane range.");
+		}
+	}
+
 	/// <summary>
 	/// Parses a simple natural expression like "March 3 1992" into YYYY-MM-DD.
 	/// </summary>
@@ -266,20 +276,37 @@ public static class DateUtility
 		if (DateTime.TryParseExact(date, "M/d/yyyy", CultureInfo.InvariantCulture.DateTimeFormat, DateTimeStyles.AllowWhiteSpaces, out apiParse))
 		{
 			parseMetadata = new DateParseMetadata(apiParse.Year);
-			return apiParse.Year.ToString() + "-" + apiParse.Month.ToString() + "-" + apiParse.Day.ToString();
+			return apiParse.Year.ToString() + "-" + apiParse.Month.ToString("00") + "-" + apiParse.Day.ToString("00");
 		}
 
 		// yyyyMMdd
 		if (date.Length == 8)
 		{
-			string year = date.Substring(0, 4);
-			string month = date.Substring(4, 2);
-			string day = date.Substring(6, 2);
-			int iyear, imonth, iday;
-			if (int.TryParse(year, out iyear) && int.TryParse(month, out imonth) && int.TryParse(day, out iday))
+			string syear = date.Substring(0, 4);
+			string smonth = date.Substring(4, 2);
+			string sday = date.Substring(6, 2);
+			int year, month, day;
+			if (int.TryParse(syear, out year) && int.TryParse(smonth, out month) && int.TryParse(sday, out day))
 			{
-				parseMetadata = new DateParseMetadata(iyear);
-				return iyear.ToString() + "-" + imonth.ToString("00") + "-" + iday.ToString("00");
+				SantityCheckYear(year);
+				new DateTime(year, month, day); // parse date as a sanity check
+				parseMetadata = new DateParseMetadata(year);
+				return year.ToString() + "-" + month.ToString("00") + "-" + day.ToString("00");
+			}
+		}
+
+		// yyyyMM
+		if (date.Length == 7)
+		{
+			string syear = date.Substring(0, 4);
+			string smonth = date.Substring(4, 2);
+			int year, month;
+			if (int.TryParse(syear, out year) && int.TryParse(smonth, out month))
+			{
+				SantityCheckYear(year);
+				new DateTime(year, month, 1); // parse date as a sanity check
+				parseMetadata = new DateParseMetadata(year);
+				return year.ToString() + "-" + month.ToString("00");
 			}
 		}
 
@@ -292,6 +319,8 @@ public static class DateUtility
 				&& int.TryParse(dateSplit[1], out day)
 				&& int.TryParse(dateSplit[2], out year))
 			{
+				SantityCheckYear(year);
+				new DateTime(year, month, day); // parse date as a sanity check
 				parseMetadata = new DateParseMetadata(year);
 				return year.ToString() + "-" + month.ToString("00") + "-" + day.ToString("00");
 			}
@@ -302,6 +331,8 @@ public static class DateUtility
 			if (TryParseMonth(dateSplit[0], out month)
 				&& int.TryParse(dateSplit[1], out year))
 			{
+				SantityCheckYear(year);
+				new DateTime(year, month, 1); // parse date as a sanity check
 				parseMetadata = new DateParseMetadata(year);
 				return year.ToString() + "-" + month.ToString("00");
 			}
@@ -311,6 +342,7 @@ public static class DateUtility
 			int year;
 			if (int.TryParse(dateSplit[0], out year))
 			{
+				SantityCheckYear(year);
 				parseMetadata = new DateParseMetadata(year);
 				return year.ToString();
 			}
