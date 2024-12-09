@@ -26,6 +26,13 @@ public static class CommonsUtility
 			Console.WriteLine("Checking for Taken On categories...");
 			string[] dateSplit = date.Split('-');
 
+			int year = int.Parse(dateSplit[0]);
+			if (year < 1000)
+			{
+				// suspicious
+				return;
+			}
+
 			// cat name day/month should be padded
 			dateSplit[1] = int.Parse(dateSplit[1]).ToString("00");
 			dateSplit[2] = int.Parse(dateSplit[2]).ToString("00");
