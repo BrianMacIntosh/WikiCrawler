@@ -258,9 +258,14 @@ public static class DateUtility
 		}
 	}
 
+	private static bool IsValidYear(int year)
+	{
+		return year > 1800 && year <= DateTime.Now.Year;
+	}
+
 	private static void SantityCheckYear(int year)
 	{
-		if (year < 1200 || year > DateTime.Now.Year)
+		if (!IsValidYear(year))
 		{
 			throw new ArgumentException("Year '" + year + "' out of sane range.");
 		}
@@ -288,10 +293,27 @@ public static class DateUtility
 			int year, month, day;
 			if (int.TryParse(syear, out year) && int.TryParse(smonth, out month) && int.TryParse(sday, out day))
 			{
-				SantityCheckYear(year);
-				new DateTime(year, month, day); // parse date as a sanity check
-				parseMetadata = new DateParseMetadata(year);
-				return year.ToString() + "-" + month.ToString("00") + "-" + day.ToString("00");
+				if (IsValidYear(year))
+				{
+					SantityCheckYear(year);
+					new DateTime(year, month, day); // parse date as a sanity check
+					parseMetadata = new DateParseMetadata(year);
+					return year.ToString() + "-" + month.ToString("00") + "-" + day.ToString("00");
+				}
+				else
+				{
+					// MMddyyyy?
+					syear = date.Substring(4, 4);
+					smonth = date.Substring(0, 2);
+					sday = date.Substring(2, 2);
+					if (int.TryParse(syear, out year) && int.TryParse(smonth, out month) && int.TryParse(sday, out day))
+					{
+						SantityCheckYear(year);
+						new DateTime(year, month, day); // parse date as a sanity check
+						parseMetadata = new DateParseMetadata(year);
+						return year.ToString() + "-" + month.ToString("00") + "-" + day.ToString("00");
+					}
+				}
 			}
 		}
 
