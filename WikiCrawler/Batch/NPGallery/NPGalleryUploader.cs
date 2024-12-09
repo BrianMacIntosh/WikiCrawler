@@ -257,6 +257,10 @@ namespace NPGallery
 				infoTemplate = "Information";
 				authorString = GetAuthor(outValue, "", ref creators);
 			}
+			if (metadata.TryGetValue("Camera Information", out string cameraInfo) && cameraInfo == "Better Light Better Light, Model Super8k")
+			{
+				infoTemplate = "Information";
+			}
 
 			if (creators != null)
 			{
@@ -448,7 +452,7 @@ namespace NPGallery
 					}
 					else
 					{
-						throw new Exception("'Constraints Information' contained something unrecognized");
+						// straight PD
 					}
 				}
 				else if (outValue == "Public domain:however please use copyright statement.")
@@ -597,6 +601,15 @@ namespace NPGallery
 					CollectCategories(categories, subject, parkCodes);
 				}
 			}
+			if (metadata.TryGetValue("Title", out outValue))
+			{
+				// first two words might be a genus/species
+				int secondSpace = outValue.IndexOf(' ', outValue.IndexOf(' ') + 1);
+				if (secondSpace >= 12)
+				{
+					CollectCategories(categories, outValue.Substring(0, secondSpace), parkCodes);
+				}
+			}	
 
 			if (creators != null)
 			{
@@ -730,10 +743,21 @@ namespace NPGallery
 				}
 				if (metadata.TryGetValue("Exposure", out outValue))
 				{
-					string[] split = outValue.Split(" sec at ", StringSplitOptions.None);
-					if (split.Length != 2) throw new Exception("Could not parse 'Exposure'");
-					photoInfo += "|Shutter=" + split[0];
-					photoInfo += "|Aperture=" + split[1];
+					if (new Regex("[0-9/]+ sec").Match(outValue).Success)
+					{
+						photoInfo += "|Shutter=" + outValue;
+					}
+					else if (outValue.Contains(" sec at "))
+					{
+						string[] split = outValue.Split(" sec at ", StringSplitOptions.None);
+						if (split.Length != 2) throw new Exception("Could not parse 'Exposure'");
+						photoInfo += "|Shutter=" + split[0];
+						photoInfo += "|Aperture=" + split[1];
+					}
+					else
+					{
+						throw new Exception("Could not parse 'Exposure'");
+					}
 				}
 				if (metadata.TryGetValue("Focal Length", out outValue))
 				{
@@ -1175,6 +1199,19 @@ namespace NPGallery
 				throw new Exception("No title");
 			}
 
+			if (title.StartsWith("IMG_"))
+			{
+				if (metadata.TryGetValue("~Related", out string related) && related.Contains("74th National Pearl Harbor Remembrance Day"))
+				{
+					title = "74th National Pearl Harbor Remembrance Day";
+				}
+				else if (metadata.TryGetValue("AltText", out string alt))
+				{
+					title = alt;
+				}
+			}
+
+			title = StringUtility.CleanHtml(title);
 			title = HttpUtility.HtmlDecode(title);
 			title = title.Replace("''", "\"");
 			title = title.TrimStart("File-").TrimStart("File:");
