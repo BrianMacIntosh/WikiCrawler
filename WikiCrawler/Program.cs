@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NPGallery;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -27,6 +28,9 @@ namespace WikiCrawler
 
 				switch (task)
 				{
+					case "beasts":
+						new BeastsDownloader().Execute();
+						break;
 					case "watermarkdl":
 						new WatermarkRemoval("Category:Images from Slovenian Ethnographic Museum website").Download();
 						break;
@@ -37,10 +41,13 @@ namespace WikiCrawler
 						new WatermarkRemoval("Category:Images from Slovenian Ethnographic Museum website").RemoveAndUpload();
 						break;
 					case "npassets":
-						{
-							NPGallery.NPGalleryAssetListDownloader albumDl = new NPGallery.NPGalleryAssetListDownloader("npgallery");
-							albumDl.DownloadAll();
-						}
+						new NPGalleryAssetListDownloader("npgallery").DownloadAll();
+						break;
+					case "npfixup":
+						new NPGalleryFixUp().DoCullCache();
+						break;
+					case "npguidify":
+						new NPGalleryFixUp().GuidifyFileNames();
 						break;
 					case "batchrebuild":
 						BatchController.RebuildSuccesses();
