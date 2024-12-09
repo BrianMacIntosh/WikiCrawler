@@ -431,22 +431,25 @@ namespace WikiCrawler
 
 		public static string TranslateCategory(MediaWiki.Api api, string input)
 		{
-			string catname = input.Trim(s_trim);
+			input = input.Trim(s_trim);
 
 			// fix case
-			if (catname.All(ch => !char.IsUpper(ch)))
+			if (input.IsAllLower())
 			{
-				catname = catname.ToTitleCase();
+				input = input.ToTitleCase();
 			}
 
 			// Check if this category exists literally
-			catname = TryMapCategoryFinal(api, input, true);
-			if (!string.IsNullOrEmpty(catname)) return catname;
-
-			// If the category is all lowercase, try title-casing it
-			if (input.IsAllLower())
 			{
-				catname = TryMapCategoryFinal(api, input.ToTitleCase(), true);
+				string catname = TryMapCategoryFinal(api, input, true);
+				if (!string.IsNullOrEmpty(catname)) return catname;
+			}
+
+			// Try only first letter capital, for scientific names
+			string firstCap = input.ToLower().ToUpperFirst();
+			if (firstCap != input)
+			{
+				string catname = TryMapCategoryFinal(api, firstCap, true);
 				if (!string.IsNullOrEmpty(catname)) return catname;
 			}
 
@@ -484,14 +487,14 @@ namespace WikiCrawler
 				//Exact match on first word
 				catChecks.Add(split[0]);
 
-				catname = TryMapCategoryFinal(api, catChecks, false);
+				string catname = TryMapCategoryFinal(api, catChecks, false);
 				if (!string.IsNullOrEmpty(catname)) return catname;
 			}
 			else
 			{
 				string[] pluralizations = new string[] { input + "s", input + "es" };
 
-				catname = TryMapCategoryFinal(api, pluralizations, false);
+				string catname = TryMapCategoryFinal(api, pluralizations, false);
 				if (!string.IsNullOrEmpty(catname)) return catname;
 			}
 
