@@ -418,9 +418,14 @@ namespace NPGallery
 					|| outValue == "Restrictions apply on use and/or reproduction (Copyrighted material):Full Granting Rights"
 					|| outValue == "Public domain:Abandoned mineral features may pose safety hazards, be archeological sites, or be endangered species habitat."
 					|| outValue == "Restrictions apply on use and/or reproduction:Copyright Undetermined."
+					|| outValue == "Restrictions apply on use and/or reproduction:Copyright Undetermined. For more information about this digital asset, contact Hawaii Volcanoes National Park, Museum Program, at havo_archive_museum@nps.gov"
+					|| outValue == "Restrictions apply on use and/or reproduction:NO COPYRIGHT. For more information about this digital asset, contact Hawaii Volcanoes National Park, Museum Program, at havo_archive_museum@nps.gov"
 					|| outValue == "Public domain"
 					|| outValue == "Public domain:Harvard University"
 					|| outValue == "Public domain:Full Granting Rights"
+					|| outValue == "Public domain:Partial Granting Rights"
+					|| outValue == "Public domain:Minimum Granting Rights"
+					|| outValue == "Public domain:This photo was taken by staff at Big Bend National Park and is part of the public domain."
 					|| outValue == "All Rights Reserved"
 					|| outValue.StartsWith("Public domain:This digital asset is in the public domain."))
 				{
