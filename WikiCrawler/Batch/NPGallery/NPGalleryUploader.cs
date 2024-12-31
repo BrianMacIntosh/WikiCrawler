@@ -420,6 +420,7 @@ namespace NPGallery
 					|| outValue == "Restrictions apply on use and/or reproduction:Copyright Unknown"
 					|| outValue == "Restrictions apply on use and/or reproduction:Copyrighted material"
 					|| outValue == "Restrictions apply on use and/or reproduction (Copyrighted material):Full Granting Rights"
+					|| outValue == "Restrictions apply on use and/or reproduction:Full Granting Rights:Contact the park for use rights and restrictions."
 					|| outValue == "Public domain:Abandoned mineral features may pose safety hazards, be archeological sites, or be endangered species habitat."
 					|| outValue == "Restrictions apply on use and/or reproduction:Copyright Undetermined."
 					|| outValue == "Restrictions apply on use and/or reproduction:Copyright Undetermined. For more information about this digital asset, contact Hawaii Volcanoes National Park, Museum Program, at havo_archive_museum@nps.gov"
@@ -431,7 +432,6 @@ namespace NPGallery
 					|| outValue == "Public domain:Minimum Granting Rights"
 					|| outValue == "Public domain:No known restrictions on publication."
 					|| outValue == "Public domain:This photo was taken by staff at Big Bend National Park and is part of the public domain."
-					|| outValue == "All Rights Reserved"
 					|| outValue.StartsWith("Public domain:This digital asset is in the public domain."))
 				{
 					int creditIndex = outValue.IndexOf("When publishing this asset for any use, including online, image must credit:");
@@ -459,6 +459,11 @@ namespace NPGallery
 				else if (outValue == "Public domain:however please use copyright statement.")
 				{
 					useCopyrightStatement = true;
+				}
+				else if (outValue == "All Rights Reserved"
+					|| outValue == "All Rights Reserved:Minimum Granting Rights")
+				{
+					throw new UploadDeclinedException("All Rights Reserved");
 				}
 				else if (!outValue.Contains(", Code: "))
 				{
