@@ -50,7 +50,7 @@ namespace NPGallery
 				if (asset.AssetType == "Standard"
 					|| asset.AssetType == "Standard File")
 				{
-					yield return new Guid(asset.AssetID);
+					yield return NPGallery.StringToKey(asset.AssetID);
 				}
 			}
 		}
