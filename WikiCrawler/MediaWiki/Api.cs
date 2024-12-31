@@ -300,9 +300,9 @@ namespace MediaWiki
 			bool createonly = false,
 			bool nocreate = false)
         {
-            MD5 hashFn = MD5.Create();
-            byte[] hash = hashFn.ComputeHash(Encoding.UTF8.GetBytes(newpage.revisions[0].text.ToCharArray()));
-            string md5 = Convert.ToBase64String(hash);
+            //MD5 hashFn = MD5.Create();
+            //byte[] hash = hashFn.ComputeHash(Encoding.UTF8.GetBytes(newpage.revisions[0].text.ToCharArray()));
+            //string md5 = Convert.ToBase64String(hash);
 
 			if (string.IsNullOrEmpty(newpage.edittoken))
 				newpage.edittoken = GetCsrfToken();
@@ -358,7 +358,7 @@ namespace MediaWiki
             if (deser.ContainsKey("error"))
             {
                 Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
-				throw new WikimediaException(error["code"] + ": " + error["info"]);
+				throw new WikimediaCodeException(error);
 			}
 
 			newpage.Dirty = false;
@@ -398,7 +398,7 @@ namespace MediaWiki
 			if (deser.ContainsKey("error"))
 			{
 				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
-				throw new WikimediaException(error["code"] + ": " + error["info"]);
+				throw new WikimediaCodeException(error);
 			}
 
 			return true;
@@ -557,7 +557,7 @@ namespace MediaWiki
 			if (deser.ContainsKey("error"))
 			{
 				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
-				throw new WikimediaException(error["code"] + ": " + error["info"]);
+				throw new WikimediaCodeException(error);
 			}
 			return true;
 		}
@@ -777,7 +777,7 @@ namespace MediaWiki
 			if (deser.ContainsKey("error"))
 			{
 				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
-				throw new WikimediaException(error["code"] + ": " + error["info"]);
+				throw new WikimediaCodeException(error);
 			}
 			return true;
 		}
@@ -940,7 +940,7 @@ namespace MediaWiki
 					}
 				}
 				
-				throw new WikimediaException(error["code"] + ": " + error["info"]);
+				throw new WikimediaCodeException(error);
 			}
             return true;
         }
