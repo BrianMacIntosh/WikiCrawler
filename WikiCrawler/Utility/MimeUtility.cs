@@ -15,6 +15,7 @@ public static class MimeUtility
 			case "image/bmp": return ".bmp";
 			case "image/tiff": return ".tif";
 			case "image/webp": return ".webp";
+			case "image/heic": return ".heic";
 			case "application/pdf": return ".pdf";
 			case "video/mp4": return ".mp4";
 			case "video/mpeg": return ".mpg";
@@ -40,6 +41,7 @@ public static class MimeUtility
 			case ".tif": return "image/tiff";
 			case ".tiff": return "image/tiff";
 			case ".webp": return "image/webp";
+			case ".heic": return "image/heic";
 			case ".pdf": return "application/pdf";
 			case ".mp4": return "video/mp4";
 			case ".mpg": return "video/mpeg";
