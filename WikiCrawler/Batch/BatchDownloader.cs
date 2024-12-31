@@ -75,7 +75,8 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 			int saveOutInterval = 10;
 			int saveOutTimer = saveOutInterval;
 
-			int totalKeyCount = GetKeys().Count();
+			IEnumerable<KeyType> allKeys = GetKeys();
+			int totalKeyCount = allKeys.Count();
 			m_heartbeatData["nTotal"] = totalKeyCount - m_permanentlyFailed.Count;
 			m_heartbeatData["nCompleted"] = m_succeeded.Count;
 			m_heartbeatData["nDownloaded"] = succeededMetadata.Count;
@@ -85,19 +86,19 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 			StartHeartbeat();
 
 			// load metadata
-			foreach (KeyType key in GetKeys())
-			{
-				if (!succeededMetadata.Contains(key)
+			IEnumerable<KeyType> downloadKeys = allKeys.Where(
+				key => !succeededMetadata.Contains(key)
 					&& !m_succeeded.Contains(key)
-					&& !m_permanentlyFailed.Contains(key))
+					&& !m_permanentlyFailed.Contains(key));
+			int downloadCount = downloadKeys.Count();
+			foreach (KeyType key in downloadKeys)
+			{
+				Dictionary<string, string> metadata = Download(key);
+				if (metadata != null)
 				{
-					Dictionary<string, string> metadata = Download(key);
-					if (metadata != null)
-					{
-						succeededMetadata.Add(key);
-					}
-					saveOutTimer--;
+					succeededMetadata.Add(key);
 				}
+				saveOutTimer--;
 
 				lock (m_heartbeatData)
 				{
