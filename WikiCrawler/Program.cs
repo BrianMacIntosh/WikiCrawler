@@ -10,7 +10,7 @@ namespace WikiCrawler
 {
 	class Program
     {
-        static void Main(string[] args)
+		static void Main(string[] _)
         {
 			ServicePointManager.Expect100Continue = true;
 			ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls
@@ -28,9 +28,6 @@ namespace WikiCrawler
 
 				switch (task)
 				{
-					case "beasts":
-						new BeastsDownloader().Execute();
-						break;
 					case "watermarkdl":
 						new WatermarkRemoval("Category:Images from Slovenian Ethnographic Museum website").Download();
 						break;
@@ -67,7 +64,7 @@ namespace WikiCrawler
 					default:
 						{
 							// look for the class that contains the task
-							Type taskType = taskType = typeof(Program).Assembly.GetType("Tasks." + task);
+							Type taskType = typeof(Program).Assembly.GetType("Tasks." + task, false, true);
 							if (taskType == null)
 							{
 								Console.WriteLine("Could not find a class for that task.");
@@ -107,7 +104,19 @@ namespace WikiCrawler
 								runMe = taskMethods[key.Key - ConsoleKey.D1];
 							}
 
-							runMe.Invoke(null, null);
+							// query for parameters
+							ParameterInfo[] paramInfos = runMe.GetParameters();
+							object[] parameters = new object[paramInfos.Length];
+							for (int pi = 0; pi < paramInfos.Length; ++pi)
+							{
+								Console.Write(paramInfos[pi].Name);
+								Console.Write('>');
+								string strParam = Console.ReadLine();
+								//TODO: type checking and conversion
+								parameters[pi] = strParam;
+							}
+
+							runMe.Invoke(null, parameters);
 						}
 						break;
 				}
