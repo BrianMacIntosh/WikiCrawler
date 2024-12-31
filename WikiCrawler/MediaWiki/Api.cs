@@ -941,7 +941,8 @@ namespace MediaWiki
 						// attempt to automatically fix extension/mime mismatch
 						string mime = (string)details[2];
 						string actualExt = MimeUtility.GetExtensionFromMime(mime);
-						newpage.title = Path.ChangeExtension(newpage.title, actualExt);
+						int extIndex = newpage.title.LastIndexOf('.');
+						newpage.title = newpage.title.Substring(0, extIndex) + actualExt;
 						return UploadFromLocal(newpage, path, summary, bot);
 					}
 				}
