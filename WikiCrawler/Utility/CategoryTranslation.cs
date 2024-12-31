@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using MediaWiki;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -664,8 +665,13 @@ namespace WikiCrawler
 			{
 				if (arts[i] != null && !arts[i].missing)
 				{
-					arts[i] = ProcessCategoryRedirects(api, arts[i]);
-					s_extantCategories.Add(requestCats[i], arts[i]);
+					Article fullyRedirectedArticle = ProcessCategoryRedirects(api, arts[i]);
+
+					// category might have already been processed as part of a redirect chain
+					if (!s_extantCategories.ContainsKey(requestCats[i]))
+					{
+						s_extantCategories.Add(requestCats[i], fullyRedirectedArticle);
+					}
 				}
 				else
 				{
@@ -735,6 +741,7 @@ namespace WikiCrawler
 					string cat = arttext.Substring(catstart, arttext.IndexOf("}}", catstart) - catstart);
 					cat = cat.Split('|')[0];
 					if (cat.Contains("=")) cat = cat.Split('=')[1];
+					//TODO: watch out for redirect loops
 					MediaWiki.Article redir = TryFetchCategory(api, cat);
 					return redir;
 				}
