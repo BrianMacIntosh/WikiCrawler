@@ -318,7 +318,7 @@ public static class DateUtility
 		}
 
 		// yyyyMM
-		if (date.Length == 7)
+		if (date.Length == 6)
 		{
 			string syear = date.Substring(0, 4);
 			string smonth = date.Substring(4, 2);
