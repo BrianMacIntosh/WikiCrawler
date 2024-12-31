@@ -855,6 +855,12 @@ namespace MediaWiki
 						string responseJson = read.ReadToEnd();
 
 						Dictionary<string, object> response = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(responseJson);
+						if (response.TryGetValue("error", out object errorObj))
+						{
+							Dictionary<string, object> error = (Dictionary<string, object>)errorObj;
+							throw new WikimediaCodeException(error);
+						}
+
 						Dictionary<string, object> upload = (Dictionary<string, object>)response["upload"];
 						string responseResult = (string)upload["result"];
 						if (responseResult == "Success")
