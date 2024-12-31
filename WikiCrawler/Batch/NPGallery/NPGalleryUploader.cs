@@ -429,6 +429,7 @@ namespace NPGallery
 					|| outValue == "Public domain:Full Granting Rights"
 					|| outValue == "Public domain:Partial Granting Rights"
 					|| outValue == "Public domain:Minimum Granting Rights"
+					|| outValue == "Public domain:No known restrictions on publication."
 					|| outValue == "Public domain:This photo was taken by staff at Big Bend National Park and is part of the public domain."
 					|| outValue == "All Rights Reserved"
 					|| outValue.StartsWith("Public domain:This digital asset is in the public domain."))
