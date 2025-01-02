@@ -1493,11 +1493,18 @@ namespace UWash
 					{
 						string possibleDate = title.Substring(commaIndex + 1).Trim();
 						DateParseMetadata titleParseMetadata;
-						string titleDate = DateUtility.ParseDate(possibleDate, out titleParseMetadata);
-						if (titleParseMetadata.LatestYear == parseMetadata.LatestYear)
+						try
 						{
-							date = titleDate;
-							break;
+							string titleDate = DateUtility.ParseDate(possibleDate, out titleParseMetadata);
+							if (titleParseMetadata.LatestYear == parseMetadata.LatestYear)
+							{
+								date = titleDate;
+								break;
+							}
+						}
+						catch (ArgumentException)
+						{
+							// if that didn't turn out to be a valid date, don't worry about it
 						}
 						commaIndex = title.IndexOf(',', commaIndex + 1);
 					}
