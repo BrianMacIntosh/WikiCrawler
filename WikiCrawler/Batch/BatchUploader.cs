@@ -127,17 +127,17 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 					}
 					catch (Exception e)
 					{
+						Console.WriteLine(e.Message);
+
 						if (e is LicenseException)
 						{
 							licenseFailures++;
 						}
-						if (e is UploadDeclinedException)
+						else if (e is UploadDeclinedException)
 						{
 							uploadDeclined++;
 						}
-						Console.WriteLine(e.Message);
-						if (!(e is LicenseException)
-							&& !(e is UploadDeclinedException))
+						else
 						{
 							string failMessage = key.ToString().PadLeft(5) + "\t" + e.Message;
 							m_failMessages.Add(failMessage);
@@ -435,7 +435,10 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	/// </summary>
 	public virtual void ValidateDownload(string imagePath)
 	{
-
+		if (new FileInfo(imagePath).Length == 0)
+		{
+			throw new Exception("Downloaded empty file");
+		}
 	}
 
 	/// <summary>
