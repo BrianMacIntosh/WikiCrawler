@@ -242,14 +242,23 @@ public static class DateUtility
 		else
 		{
 			string[] dashsplit = date.Split(s_dateSplit);
-			if (dashsplit.Length == 2 && dashsplit[0].Length == 4
-				&& dashsplit[1].Length == 4)
+			if (dashsplit.Length == 2)
 			{
-				DateParseMetadata parseA, parseB;
-				string a = ParseDate(dashsplit[0], out parseA);
-				string b = ParseDate(dashsplit[1], out parseB);
-				parseMetadata = DateParseMetadata.Combine(parseA, parseB);
-				return "{{other date|between|" + a + "|" + b + "}}";
+				string beginDate = dashsplit[0].Trim();
+				string endDate = dashsplit[1].Trim();
+				if (beginDate.Length >= 4 && endDate.Length >= 4)
+				{
+					//TODO: if a is Jan 1 and b is Dec 30/31, drop days and months
+					DateParseMetadata parseA, parseB;
+					string a = ParseDate(beginDate, out parseA);
+					string b = ParseDate(endDate, out parseB);
+					parseMetadata = DateParseMetadata.Combine(parseA, parseB);
+					return "{{other date|between|" + a + "|" + b + "}}";
+				}
+				else
+				{
+					return ParseSingleDate(date, out parseMetadata);
+				}
 			}
 			else
 			{
