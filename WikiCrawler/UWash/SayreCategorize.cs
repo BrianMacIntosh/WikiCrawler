@@ -72,6 +72,11 @@ namespace UWash
 			{
 				maybeNames.Add(title);
 			}
+			string[] wordSplit = title.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+			if (wordSplit.Length >= 2)
+			{
+				maybeNames.Add(wordSplit[wordSplit.Length - 2].Trim('.', ' ') + " " + wordSplit[wordSplit.Length - 1].Trim('.', ' '));
+			}
 
 			foreach (string name in maybeNames)
 			{
