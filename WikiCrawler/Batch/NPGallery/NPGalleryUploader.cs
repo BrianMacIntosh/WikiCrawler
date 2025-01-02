@@ -91,8 +91,6 @@ namespace NPGallery
 			"Permission must be secured from the individual copyright owners to reproduce any copyrighted materials contained within this website.",
 			"Permission must be secured from the individual copyright owners to reproduce any copyrighted materials contained within this website. Digital assets without any copyright restrictions are public domain.",
 			"This digital asset is provided for 'fair use' purposes. The National Park Service is not necessarily the holder of the original copyright and is not legally liable for infringement when materials are wrongfully used.",
-
-			//TODO: make a license to use with this
 			"To the best of our knowledge we believe this image to by copyright free and in the public domain.",
 
 			"National Park Service",
@@ -696,7 +694,7 @@ namespace NPGallery
 				for (int i = 0; i < related.Length; i += 3)
 				{
 					//TODO: do something with related assets?
-
+					//TODO: handle unescaped pipes in entries
 					string relatedId = related[i];
 					string relatedType = related[i + 1];
 					string relatedTitle = related[i + 2];
@@ -788,6 +786,10 @@ namespace NPGallery
 			if (parkCodes.Contains("JICA") && relatedAlbums.Any((album) => album.Contains("Postcard")))
 			{
 				throw new UploadDeclinedException("Jimmy Carter Postcard");
+			}
+			if (parkCodes.Contains("WEFA") && relatedAlbums.Contains("Youth art in the Parks COLT and WEFA"))
+			{
+				throw new UploadDeclinedException("Weir Farm Youth Art");
 			}
 			if (description.Contains("grave marker") && parkCodes.Contains("MACA"))
 			{
@@ -1214,6 +1216,10 @@ namespace NPGallery
 				else if (metadata.TryGetValue("AltText", out string alt))
 				{
 					title = alt;
+				}
+				else if (metadata.TryGetValue("Locations", out string locations))
+				{
+					title = locations;
 				}
 			}
 
