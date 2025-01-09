@@ -158,6 +158,11 @@ namespace UWash
 			public List<Creator> ArtistData = new List<Creator>();
 			public List<Creator> ContributorData = new List<Creator>();
 
+			public int PublicDomainYear
+			{
+				get { return DateParseMetadata.LatestYear + 95; }
+			}
+
 			public IntermediateData(Dictionary<string, string> metadata)
 			{
 				Metadata = metadata;
@@ -1158,6 +1163,12 @@ namespace UWash
 			SayreCategorize.ProduceSayreCategories(Api, CategoryTranslation.CategoryTree, data.Metadata, data.Categories);
 
 			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
+
+			// Public Domain Day
+			if (data.PublicDomainYear == System.DateTime.Now.Year && System.DateTime.Now.Month == 1)
+			{
+				categories.Add(string.Format(m_config.publicDomainDayCategory, "Category:Media uploaded for Public Domain Day {0}", System.DateTime.Now.Year));
+			}
 		}
 
 		private string CollectCategories(string accumulator, string newCats)

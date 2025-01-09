@@ -31,6 +31,11 @@ public class ProjectConfig
 	/// </summary>
 	public string checkCategory;
 
+	/// <summary>
+	/// (Optional) Override Public Domain Day category for media.
+	/// </summary>
+	public string publicDomainDayCategory;
+
 	public string[] additionalCategories;
 	public string filenameSuffix;
 
