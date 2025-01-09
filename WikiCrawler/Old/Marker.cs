@@ -13,11 +13,14 @@ class Marker
         this.caseInsense = caseInsense;
     }
 
-    //Returns true if the entire marker was matched
-    public bool MatchAgainst(string str, int position)
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <returns>True if the entire marker was matched.</returns>
+	public bool MatchAgainst(string str, int position)
     {
         int currentIndex = 0;
-        for (int i = position; i < str.Length - Length; ++i)
+        for (int i = position; i < str.Length; ++i)
         {
             char currentChar = str[i];
             if (currentChar == matches[currentIndex]
