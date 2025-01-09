@@ -1,13 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MediaWiki
 {
 	public class Object
 	{
-		public int pageid;
+		public long pageid;
 		public Namespace ns;
 		public string title;
-		public int lastrevid;
+		public long lastrevid;
 		public bool missing = false;
 
 		public Dictionary<string, object> raw;
@@ -34,11 +35,11 @@ namespace MediaWiki
 			}
 			if (json.ContainsKey("pageid"))
 			{
-				pageid = (int)json["pageid"];
+				pageid = Convert.ToInt64(json["pageid"]);
 			}
 			if (json.ContainsKey("lastrevid"))
 			{
-				lastrevid = (int)json["lastrevid"];
+				lastrevid = Convert.ToInt64(json["lastrevid"]);
 			}
 		}
 
