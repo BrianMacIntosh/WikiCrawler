@@ -3,12 +3,40 @@ using System.Collections.Generic;
 
 namespace MediaWiki
 {
+	public struct InterwikiLink
+	{
+		public string prefix;
+		public string value;
+
+		public InterwikiLink(Dictionary<string, object> json)
+		{
+			if (json.ContainsKey("prefix"))
+			{
+				prefix = (string)json["prefix"];
+			}
+			else
+			{
+				prefix = string.Empty;
+			}
+
+			if (json.ContainsKey("*"))
+			{
+				value = (string)json["*"];
+			}
+			else
+			{
+				value = string.Empty;
+			}
+		}
+	}
+
 	public class Object
 	{
 		public long pageid;
 		public Namespace ns;
 		public string title;
 		public long lastrevid;
+		public InterwikiLink[] iwlinks;
 		public bool missing = false;
 
 		public Dictionary<string, object> raw;
@@ -41,6 +69,22 @@ namespace MediaWiki
 			{
 				lastrevid = Convert.ToInt64(json["lastrevid"]);
 			}
+			if (json.ContainsKey("iwlinks"))
+			{
+				iwlinks = ReadInterwikiLinkArray(json, "iwlinks");
+			}
+		}
+
+		private static InterwikiLink[] ReadInterwikiLinkArray(Dictionary<string, object> json, string key)
+		{
+			object[] iwlinksJson = (object[])(json[key]);
+			InterwikiLink[] iwlinks = new InterwikiLink[iwlinksJson.Length];
+			for (int c = 0; c < iwlinks.Length; c++)
+			{
+				Dictionary<string, object> revJson = (Dictionary<string, object>)iwlinksJson[c];
+				iwlinks[c] = new InterwikiLink(revJson);
+			}
+			return iwlinks;
 		}
 
 		/// <summary>

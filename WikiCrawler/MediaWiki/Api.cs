@@ -63,7 +63,7 @@ namespace MediaWiki
 
 		public bool LogIn(string lgname = null, string lgpass = null)
 		{
-			Console.WriteLine("Logging in to '" + Domain + "':");
+			Console.WriteLine("Logging in to '" + Domain + "'...");
 			if (string.IsNullOrEmpty(lgname))
 			{
 				Console.Write("u>");
@@ -194,7 +194,8 @@ namespace MediaWiki
 			int rvlimit = Limit.Unspecified,
 			string clshow = "",
 			int cllimit = Limit.Max,
-			string cldir = "")
+			string cldir = "",
+			string iwprefix = "")
         {
 			if (titles.Count == 0) return new Article[0];
 			
@@ -233,6 +234,10 @@ namespace MediaWiki
 			if (!string.IsNullOrEmpty(cldir))
 			{
 				baseQuery += "&cldir=" + UrlEncode(cldir);
+			}
+			if (!string.IsNullOrEmpty(iwprefix))
+			{
+				baseQuery += "&iwprefix=" + UrlEncode(iwprefix);
 			}
 
 			HttpWebRequest request = CreateApiRequest();
