@@ -79,19 +79,13 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 		[BatchTask]
 		public static void Do()
 		{
-			Console.WriteLine("Logging in...");
-			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
-			commonsApi.AutoLogIn();
-			Api wikidataApi = new Api(new Uri("https://www.wikidata.org"));
-			commonsApi.AutoLogIn();
-
 			foreach (string art in s_DoMe)
 			{
-				Article articleContent = commonsApi.GetPage(art.Trim());
-				Do(commonsApi, wikidataApi, articleContent);
+				Article articleContent = GlobalAPIs.Commons.GetPage(art.Trim());
+				Do(articleContent);
 				if (articleContent.Dirty)
 				{
-					commonsApi.EditPage(articleContent, articleContent.GetEditSummary());
+					GlobalAPIs.Commons.EditPage(articleContent, articleContent.GetEditSummary());
 				}
 			}
 			return;
@@ -102,13 +96,13 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 			{
 				Console.WriteLine("CATEGORY '" + cat + "'...");
 
-				foreach (Article article in commonsApi.GetCategoryEntries(cat, cmtype: CMType.page))
+				foreach (Article article in GlobalAPIs.Commons.GetCategoryEntries(cat, cmtype: CMType.page))
 				{
-					Article articleContent = commonsApi.GetPage(article);
-					Do(commonsApi, wikidataApi, articleContent);
+					Article articleContent = GlobalAPIs.Commons.GetPage(article);
+					Do(articleContent);
 					if (articleContent.Dirty)
 					{
-						commonsApi.EditPage(articleContent, articleContent.GetEditSummary());
+						GlobalAPIs.Commons.EditPage(articleContent, articleContent.GetEditSummary());
 						successLimit--;
 						if (successLimit <= 0) break;
 					}
@@ -116,18 +110,18 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 			}
 		}
 
-		private static char[] s_CreatorTrim = new char[] { ' ', '{', '}' };
-
-		private static Dictionary<string, string> s_CreatorToDeathYear = new Dictionary<string, string>();
+		private static Dictionary<PageTitle, int> s_CreatorToDeathYear = new Dictionary<PageTitle, int>();
 
 		/// <summary>
 		/// Gets the year of death from the specified creator template.
 		/// </summary>
 		/// <param name="errcat">Error category that should be added to the creator.</param>
-		private static string GetCreatorDeathYear(Api commonsApi, Api wikidataApi,
-			string creator)
+		public static int GetCreatorDeathYear(PageTitle creator)
 		{
-			creator = creator.Trim(s_CreatorTrim);
+			if (!creator.IsNamespace("Creator"))
+			{
+				return 9999;
+			}
 
 			if (s_CreatorToDeathYear.ContainsKey(creator))
 			{
@@ -138,61 +132,78 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 				//TODO: check against Wikidata and publicly report errors
 
 				// check creator
-				Article article = commonsApi.GetPage(creator);
-				if (!MediaWiki.Article.IsNullOrEmpty(article))
+				Article article = GlobalAPIs.Commons.GetPage(creator.ToString());
+				if (!Article.IsNullOrEmpty(article))
 				{
+					string articleText = article.revisions[0].text;
+
+					int creatorStart = articleText.IndexOf("{{Creator");
+					if (creatorStart < 0)
+					{
+						s_CreatorToDeathYear[creator] = 9999;
+						return 9999;
+					}
+
+					int creatorEnd = WikiUtils.GetTemplateEnd(articleText, creatorStart);
+					string creatorInsides = articleText.Substring(creatorStart + 2, creatorEnd - creatorStart - 1);
+
 					// get wikidata deathdate
-					string wdDeathYear = "";
-					string wdId = MediaWiki.WikiUtils.GetTemplateParameter("Wikidata", article.revisions[0].text);
+					string wdId = WikiUtils.GetTemplateParameter("Wikidata", creatorInsides);
 					if (!string.IsNullOrEmpty(wdId))
 					{
-						Entity wikidata = wikidataApi.GetEntity(wdId);
-						if (!wikidata.missing)
+						Entity wikidata = GlobalAPIs.Wikidata.GetEntity(wdId);
+						if (!wikidata.missing && wikidata.HasClaim(Wikidata.Prop_DateOfDeath))
 						{
-							wdDeathYear = wikidata.GetClaimValueAsDate(MediaWiki.Wikidata.Prop_DateOfDeath).GetYear().ToString();
+                            MediaWiki.DateTime deathTime = wikidata.GetClaimValueAsDate(Wikidata.Prop_DateOfDeath);
+							if (deathTime.Precision >= MediaWiki.DateTime.YearPrecision)
+							{
+								int deathYear = deathTime.GetYear();
+								s_CreatorToDeathYear[creator] = deathYear;
+								return deathYear;
+							}
 						}
 					}
 
-					string deathyear = MediaWiki.WikiUtils.GetTemplateParameter("Deathyear", article.revisions[0].text);
+					// try deathdate from Commons creator
+					string deathyear = WikiUtils.GetTemplateParameter("Deathyear", creatorInsides);
 					if (string.IsNullOrEmpty(deathyear))
 					{
-						deathyear = MediaWiki.WikiUtils.GetTemplateParameter("Deathdate", article.revisions[0].text);
+						deathyear = WikiUtils.GetTemplateParameter("Deathdate", creatorInsides);
 					}
 					if (!string.IsNullOrEmpty(deathyear))
 					{
 						string[] datesplit = deathyear.Split('-');
-						string year = datesplit[0];
-						if (year.Length == 4
-							&& char.IsDigit(year[0])
-							&& char.IsDigit(year[1])
-							&& char.IsDigit(year[2])
-							&& char.IsDigit(year[3]))
+						string yearStr = datesplit[0];
+						if (yearStr.Length == 4 && int.TryParse(yearStr, out int yearInt))
 						{
-							s_CreatorToDeathYear[creator] = year;
-							return year;
+							s_CreatorToDeathYear[creator] = yearInt;
+							return yearInt;
 						}
 						else
 						{
-							/*Console.WriteLine("Creator '" + creator + "' date '" + deathyear + "' malformed.");
-							string cat = "Category:Creator templates with non-machine-readable birth/death dates";
+							Console.WriteLine("Creator '" + creator + "' date '" + deathyear + "' malformed.");
+							/*string cat = "Category:Creator templates with non-machine-readable birth/death dates";
 							if (!Wikimedia.WikiUtils.HasCategory(cat, article.revisions[0].text))
 							{
 								article.revisions[0].text += "<noinclude>[[" + cat + "]]</noinclude>";
 								commonsApi.SetPage(article, "(BOT) couldn't read deathdate", true, true);
 							}*/
-							return wdDeathYear;
+							s_CreatorToDeathYear[creator] = 9999;
+							return 9999;
 						}
 					}
 					else
 					{
 						Console.WriteLine("Creator '" + creator + "' has no deathdate.");
-						return "";
+						s_CreatorToDeathYear[creator] = 9999;
+						return 9999;
 					}
 				}
 				else
 				{
 					Console.WriteLine("Failed to get creator article.");
-					return "";
+					s_CreatorToDeathYear[creator] = 9999;
+					return 9999;
 				}
 			}
 		}
@@ -201,10 +212,9 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 		/// Attempts to update appropriate PD-old templates in the article.
 		/// </summary>
 		/// <param name="article">Article, already downloaded.</param>
-		public static void Do(Api commonsApi, Api wikidataApi,
-			Article article)
+		public static void Do(Article article)
 		{
-			if (MediaWiki.Article.IsNullOrEmpty(article))
+			if (Article.IsNullOrEmpty(article))
 			{
 				Console.WriteLine("PdOldAuto: FATAL: Article missing.");
 				return;
@@ -213,16 +223,9 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 			Console.WriteLine("PdOldAuto: checking '" + article.title + "'.");
 
 			string text = article.revisions[0].text;
+			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
-			// search for creator
-			string author = MediaWiki.WikiUtils.GetTemplateParameter("artist", text);
-			if (string.IsNullOrEmpty(author))
-			{
-				author = MediaWiki.WikiUtils.GetTemplateParameter("author", text);
-			}
-			author = author.Trim();
-
-			if (string.IsNullOrEmpty(author))
+			if (string.IsNullOrEmpty(worksheet.Author))
 			{
 				Console.WriteLine("PdOldAuto: FATAL: No author.");
 				return;
@@ -230,13 +233,15 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 
 			List<Tuple<string, string>> replacements = new List<Tuple<string, string>>();
 
-			string deathyear = "";
-			if (author.StartsWith("{{Creator:"))
+			int deathyear = 9999;
+			if (worksheet.Author.StartsWith("{{Creator:"))
 			{
-				deathyear = GetCreatorDeathYear(commonsApi, wikidataApi, author);
+				int creatorEnd = WikiUtils.GetTemplateEnd(worksheet.Author, 0);
+				string creatorInner = worksheet.Author.SubstringRange(2, creatorEnd);
+				deathyear = GetCreatorDeathYear(PageTitle.Parse(creatorInner));
 			}
 
-			if (string.IsNullOrEmpty(deathyear))
+			if (deathyear == 9999)
 			{
 				Console.WriteLine("PdOldAuto: FATAL: No deathyear found.");
 			}
@@ -250,33 +255,33 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 				// search for non-auto templates to replace
 				foreach (string template in s_TemplatesOld)
 				{
-					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto", deathyear))
+					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto", deathyear.ToString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto"));
 					}
-					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto", deathyear))
+					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto", deathyear.ToString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto"));
 					}
 				}
 				foreach (string template in s_Templates1923)
 				{
-					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto-1923", deathyear))
+					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto-1923", deathyear.ToString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto-1923"));
 					}
-					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto-1923", deathyear))
+					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto-1923", deathyear.ToString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto-1923"));
 					}
 				}
 				foreach (string template in s_Templates1996)
 				{
-					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto-1996", deathyear))
+					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto-1996", deathyear.ToString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto-1996"));
 					}
-					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto-1996", deathyear))
+					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto-1996", deathyear.ToString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto-1996"));
 					}

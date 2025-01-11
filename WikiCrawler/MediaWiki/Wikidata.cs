@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace MediaWiki
 {
@@ -9,6 +7,7 @@ namespace MediaWiki
 	{
 		public const string Prop_DateOfBirth = "P569";
 		public const string Prop_DateOfDeath = "P570";
+		public const string Prop_CommonsCreator = "P1472";
 
 		/// <summary>
 		/// Gets the Wikidata property id for the specified parameter of Commons "Authority control".

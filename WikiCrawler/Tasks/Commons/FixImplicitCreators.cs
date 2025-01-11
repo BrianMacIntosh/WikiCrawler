@@ -2,16 +2,28 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
+using System.Linq;
+using WikiCrawler;
 
 namespace Tasks
 {
+	/// <summary>
+	/// Replaces author strings with verified Creator templates.
+	/// </summary>
 	public static class FixImplicitCreators
 	{
-		private const int s_TestLimit = int.MaxValue;
+		private const int MaxSuccesses = int.MaxValue;
 		private const int s_SearchDepth = 1;
 
-		private static Dictionary<string, string> s_CategoriesToCreators = new Dictionary<string, string>();
+		/// <summary>
+		/// Directory where task-specific data is stored.
+		/// </summary>
+		public static string ProjectDataDirectory
+		{
+			get { return Path.Combine(Configuration.DataDirectory, "fiximplicitcreators"); }
+		}
+
+		private static Dictionary<PageTitle, PageTitle> s_CategoriesToCreators = new Dictionary<PageTitle, PageTitle>();
 
 		//Category:Artwork template with implicit creator
 		//Category:Author matching Creator template, Creator template not used
@@ -20,64 +32,63 @@ namespace Tasks
 		[BatchTask]
 		public static void Do()
 		{
-			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
-
-			Console.WriteLine("Logging in...");
-			commonsApi.AutoLogIn();
-
-			int successLimit = s_TestLimit;
+			int successLimit = MaxSuccesses;
 
 			string lastPage = "";
 
-			if (File.Exists("implicitcreators/stored.txt"))
+			IEnumerable<Article> pages;
+			pages = GlobalAPIs.Commons.GetCategoryEntries("Category:Author matching Creator template, Creator template not used", cmstartsortkeyprefix: lastPage);
+			foreach (Article article in pages)
 			{
-				using (StreamReader reader = new StreamReader(new FileStream("implicitcreators/stored.txt", FileMode.Open), Encoding.Default))
+				if (successLimit <= 0)
 				{
-					lastPage = reader.ReadLine();
-					while (!reader.EndOfStream)
-					{
-						string[] line = reader.ReadLine().Split('|');
-						s_CategoriesToCreators[line[0]] = line[1];
-					}
+					break;
 				}
-			}
 
-			try
-			{
-				IEnumerable<Article> pages;
-				pages = commonsApi.GetCategoryEntries("Category:Author matching Creator template, Creator template not used", cmstartsortkeyprefix: lastPage);
-				foreach (Article article in pages)
+				Console.WriteLine("Checking '" + article.title + "'...");
+
+				Article articleContent = GlobalAPIs.Commons.GetPage(article);
+				Do(articleContent);
+
+				if (articleContent.Dirty)
 				{
-					Console.WriteLine("Checking '" + article.title + "'...");
-
-					Article articleContent = commonsApi.GetPage(article);
-					Do(commonsApi, articleContent);
-
-					if (articleContent.Dirty)
-					{
-						CommonsCreatorFromWikidata.FixInformationTemplates(articleContent);
-						commonsApi.EditPage(articleContent, articleContent.GetEditSummary());
-						lastPage = WikiUtils.GetSortkey(article);
-						successLimit--;
-						if (successLimit <= 0) break;
-					}
-					else
-					{
-						lastPage = WikiUtils.GetSortkey(article);
-					}
+					CommonsCreatorFromWikidata.FixInformationTemplates(articleContent);
+					GlobalAPIs.Commons.EditPage(articleContent, articleContent.GetEditSummary());
+					successLimit--;
 				}
+
+				lastPage = WikiUtils.GetSortkey(article);
 			}
-			finally
-			{
-				using (StreamWriter writer = new StreamWriter(new FileStream("implicitcreators/stored.txt", FileMode.Create), Encoding.Default))
-				{
-					writer.WriteLine(lastPage);
-					foreach (KeyValuePair<string, string> kv in s_CategoriesToCreators)
-					{
-						writer.WriteLine(kv.Key + "|" + kv.Value);
-					}
-				}
-			}
+		}
+
+		private static bool IsConvertibleUnknownAuthor(string author)
+		{
+			author = author.Trim(' ', ';', '.', ',');
+			return string.Equals(author, "unknown", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "desconocido", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "non identifié", StringComparison.InvariantCultureIgnoreCase);
+		}
+
+		private static bool IsConvertibleAnonymousAuthor(string author)
+		{
+			author = author.Trim(' ', ';', '.', ',');
+			return string.Equals(author, "anonymous", StringComparison.InvariantCultureIgnoreCase);
+		}
+
+		private static bool IsUnknownAuthor(string author)
+		{
+			return IsConvertibleUnknownAuthor(author)
+				|| string.Equals(author, "{{unknown|author}}", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "{{unknown author}}", StringComparison.InvariantCultureIgnoreCase);
+		}
+
+		private static bool IsAnonymousAuthor(string author)
+		{
+			return IsConvertibleAnonymousAuthor(author)
+				|| string.Equals(author, "{{anonymous}}", StringComparison.InvariantCulture)
+				|| string.Equals(author, "{{Anonymous}}", StringComparison.InvariantCulture)
+				|| string.Equals(author, "{{creator:Anonymous}}", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "{{Creator:Anonymous}}", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		/// <summary>
@@ -85,139 +96,205 @@ namespace Tasks
 		/// </summary>
 		/// <param name="article">Article, already downloaded.</param>
 		/// <param name="creator">A creator that we have already determined should be used.</param>
-		public static void Do(Api commonsApi, Article article, string creator = null)
+		/// <returns>True if a replacement was made.</returns>
+		public static bool Do(Article article, PageTitle? assumedCreator = null)
 		{
-			string text = article.revisions[0].text;
+			Console.WriteLine("FixImplictCreators: checking '{0}'...", article.title);
 
-			Console.WriteLine("FixImplictCreators: checking '" + article.title + "'.");
+			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
-			if (creator != null && creator.StartsWith("Creator:"))
+			if (string.IsNullOrEmpty(worksheet.Author))
 			{
-				creator = creator.Substring("Creator:".Length);
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("  Failed to find author string.");
+				Console.ResetColor();
+				return false;
 			}
 
-			// find author
-			int authorLoc;
-			string author = MediaWiki.WikiUtils.GetTemplateParameter("artist", text, out authorLoc);
-			if (string.IsNullOrEmpty(author))
+			Console.WriteLine("  Author string is '{0}'.", worksheet.Author);
+
+			string newAuthor = "";
+
+			// check for "anonymous" and "unknown"
+			if (IsConvertibleUnknownAuthor(worksheet.Author))
 			{
-				author = MediaWiki.WikiUtils.GetTemplateParameter("artist_display_name", text, out authorLoc);
+				newAuthor = "{{unknown|author}}";
 			}
-			if (string.IsNullOrEmpty(author))
+			else if (IsConvertibleAnonymousAuthor(worksheet.Author))
 			{
-				author = MediaWiki.WikiUtils.GetTemplateParameter("author", text, out authorLoc);
+				newAuthor = "{{anonymous}}";
 			}
-			if (string.IsNullOrEmpty(author))
+			else if (IsUnknownAuthor(worksheet.Author) || IsAnonymousAuthor(worksheet.Author))
 			{
-				author = MediaWiki.WikiUtils.GetTemplateParameter("photographer", text, out authorLoc);
+				// already a template - do nothing
 			}
-
-			if (!string.IsNullOrEmpty(author))
+			else if (CreatorUtility.CreatorTemplateRegex.IsMatch(worksheet.Author))
 			{
-				string replaceTemplate = "";
-
-				// check for "anonymous" and "unknown"
-				if (string.Compare("unknown", author, true) == 0)
-				{
-					replaceTemplate = "{{unknown|author}}";
-				}
-				else if (string.Compare("anonymous", author, true) == 0)
-				{
-					replaceTemplate = "{{anonymous}}";
-				}
-				else if (!string.IsNullOrEmpty(creator))
-				{
-					//TODO: more parsing (dob-dod, etc)
-					if (author == creator)
-					{
-						replaceTemplate = "{{Creator:" + creator + "}}";
-					}
-				}
-				else
-				{
-					foreach (string category in MediaWiki.WikiUtils.GetCategories(text))
-					{
-						//SPECIAL CASE: ONLY DO THINGS THAT ARE CAUGHT BY THE NEW LOGIC
-						if (!category.Contains(" by "))
-						{
-							continue;
-						}
-
-						creator = GetCreatorForCategory(commonsApi, category, 1);
-						if (!string.IsNullOrEmpty(creator))
-						{
-							if (string.Compare(creator, author, true) == 0)
-							{
-								replaceTemplate = "{{Creator:" + creator + "}}";
-								break;
-							}
-						}
-					}
-				}
-
-				// found it, place creator and update
-				if (!string.IsNullOrEmpty(replaceTemplate))
-				{
-					Console.WriteLine("FixImplicitCreators: matched and inserted '" + replaceTemplate + "'.");
-					text = text.Substring(0, authorLoc)
-						+ replaceTemplate
-						+ text.Substring(authorLoc + author.Length);
-				}
-
-				if (article.revisions[0].text != text)
-				{
-					article.revisions[0].text = text;
-					article.Changes.Add("replace implicit creator");
-					article.Dirty = true;
-				}
+				// already a creator - do nothing
 			}
-		}
-
-		private static string[] templateEnd = new string[] { "}}" };
-
-		private static string GetCreatorForCategory(Api commonsApi, string category, int currentDepth)
-		{
-			//force capitalize first letter
-			//TODO: also force first letter of cat name
-			category = char.ToUpper(category[0]) + category.Substring(1);
-
-			if (s_CategoriesToCreators.ContainsKey(category))
+			else if (assumedCreator.HasValue && !assumedCreator.Value.IsEmpty)
 			{
-				return s_CategoriesToCreators[category];
+				// use the passed-in creator
+				if (string.Equals(assumedCreator.Value.Name, worksheet.Author, StringComparison.InvariantCultureIgnoreCase))
+				{
+					newAuthor = "{{" + assumedCreator.Value.ToString() + "}}";
+				}
 			}
 			else
 			{
-				Article categoryArticle = commonsApi.GetPage(category);
-				if (!MediaWiki.Article.IsNullOrEmpty(categoryArticle))
+				// go looking for matching creator templates in parent cats
+				PageTitle creator = GetCreatorForCategories(WikiUtils.GetCategories(worksheet.Text), 1);
+				if (!creator.IsEmpty)
 				{
-					// creator?
-					int creatorLoc = categoryArticle.revisions[0].text.IndexOf("{{Creator:", StringComparison.OrdinalIgnoreCase);
-					if (creatorLoc >= 0)
+					//TODO: better determination of if these two strings match
+					if (worksheet.Author.IndexOf(creator.Name, StringComparison.InvariantCultureIgnoreCase) >= 0)
 					{
-						string creatorsub = categoryArticle.revisions[0].text.Substring(creatorLoc + "{{Creator:".Length);
-						creatorsub = creatorsub.Split(templateEnd, StringSplitOptions.None)[0];
-						s_CategoriesToCreators[category] = creatorsub;
-						return creatorsub;
-					}
+						newAuthor = "{{" + creator + "}}";
 
-					// check parent cats
-					if (currentDepth < s_SearchDepth || 
-						(currentDepth < s_SearchDepth + 1 && categoryArticle.GetTitle().Contains(" by ")))
-					{
-						foreach (string parentCat in MediaWiki.WikiUtils.GetCategories(categoryArticle.revisions[0].text))
+						// assign the creator template to the cache
+						Creator cached = CreatorUtility.GetCreator(newAuthor, out bool bIsNew);
+						if (bIsNew || !string.IsNullOrEmpty(cached.Author))
 						{
-							string parentCreator = GetCreatorForCategory(commonsApi, parentCat, currentDepth + 1);
-							if (!string.IsNullOrEmpty(parentCreator))
-							{
-								s_CategoriesToCreators[category] = parentCreator;
-								return parentCreator;
-							}
+							cached.Author = newAuthor;
 						}
+
+						// look up death year as well
+						if (bIsNew || cached.DeathYear == 9999)
+						{
+							cached.DeathYear = PdOldAuto.GetCreatorDeathYear(creator);
+						}
+
+						// redirect the author string
+						CreatorUtility.AddRedirect(worksheet.Author, newAuthor);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Red;
+						Console.WriteLine("  Non-matching creator template '{0}'.", creator);
+						Console.ResetColor();
 					}
 				}
 			}
 
-			return "";
+			// found it, place creator and update
+			// do not make case-only changes
+			if (!string.IsNullOrEmpty(newAuthor) && !string.Equals(newAuthor, worksheet.Author, StringComparison.InvariantCultureIgnoreCase))
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("  FixImplicitCreators inserting creator '{0}'.", newAuthor);
+				Console.ResetColor();
+
+				string textBefore = worksheet.Text.Substring(0, worksheet.AuthorIndex);
+				string textAfter = worksheet.Text.Substring(worksheet.AuthorIndex + worksheet.Author.Length);
+				worksheet.Text = textBefore + newAuthor + textAfter;
+
+				article.Changes.Add("replace implicit creator");
+				article.Dirty = true;
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		/// <summary>
+		/// Searches a list of categories and its parents for a creator template.
+		/// </summary>
+		private static PageTitle GetCreatorForCategories(IEnumerable<PageTitle> categories, int currentDepth)
+		{
+			// check cache
+			foreach (PageTitle category in categories)
+			{
+				if (s_CategoriesToCreators.TryGetValue(category, out PageTitle creator))
+				{
+					return creator;
+				}
+			}
+
+			// go searching
+			foreach (Article category in GlobalAPIs.Commons.GetPages(categories.Select((cat) => cat.ToString()).ToList(), prop: "info|revisions|iwlinks", iwprefix: "d"))
+			{
+				Console.WriteLine("  Category '{0}'.", category.title);
+
+				PageTitle parentCreator = GetCreatorForCategory(category, currentDepth);
+				if (!parentCreator.IsEmpty)
+				{
+					return parentCreator;
+				}
+			}
+
+			return PageTitle.Empty;
+		}
+
+		/// <summary>
+		/// Searches the specified category for a creator template.
+		/// </summary>
+		private static PageTitle GetCreatorForCategory(Article category, int currentDepth)
+		{
+			if (!Article.IsNullOrEmpty(category))
+			{
+				string categoryText = category.revisions[0].text;
+
+				// embedded creator
+				string creatorTemplate = WikiUtils.ExtractTemplate(categoryText, "Creator");
+				if (!string.IsNullOrEmpty(creatorTemplate))
+				{
+					PageTitle creator = PageTitle.Parse(creatorTemplate);
+					s_CategoriesToCreators[PageTitle.Parse(category.title)] = creator;
+					return creator;
+				}
+
+				// look up in wikidata
+				if (category.iwlinks != null)
+				{
+					foreach (InterwikiLink iwlink in category.iwlinks)
+					{
+						if (iwlink.prefix == "d")
+						{
+							string entityId = iwlink.value;
+							Console.WriteLine("  Interwiki Wikidata '{0}'.", entityId);
+							Entity entity = GlobalAPIs.Wikidata.GetEntity(entityId);
+							if (entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] wikidataCreator))
+							{
+								//TODO: check multiple values
+								return new PageTitle("Creator", wikidataCreator[0]);
+							}
+						}
+					}
+				}
+
+				// "Wikidata Infobox" override ID
+				string infoboxTemplate = WikiUtils.ExtractTemplate(categoryText, "Wikidata Infobox"); //TODO: redirect template names
+				if (!string.IsNullOrEmpty(infoboxTemplate))
+				{
+					string qid = WikiUtils.GetTemplateParameter("qid", infoboxTemplate);
+					if (!string.IsNullOrEmpty(qid))
+					{
+						Console.WriteLine("  Explicit Wikidata '{0}'.", qid);
+						Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
+						if (entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] wikidataCreator))
+						{
+							//TODO: check multiple values
+							return new PageTitle("Creator", wikidataCreator[0]);
+						}
+					}
+				}
+
+				// check parent cats
+				if (currentDepth < s_SearchDepth ||
+					(currentDepth < s_SearchDepth + 1 && category.GetTitle().Contains(" by ")))
+				{
+					PageTitle parentCreator = GetCreatorForCategories(WikiUtils.GetCategories(categoryText), currentDepth + 1);
+					if (!parentCreator.IsEmpty)
+					{
+						s_CategoriesToCreators[PageTitle.Parse(category.title)] = parentCreator;
+						return parentCreator;
+					}
+				}
+			}
+
+			return PageTitle.Empty;
 		}
 	}
 }

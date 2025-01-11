@@ -104,10 +104,10 @@ namespace Tasks
 								string creator = text.Substring(creatorIndex + 2, creatorEnd - (creatorIndex + 2));
 
 								Article creatorArt = commonsApi.GetPage(creator);
-								if (!MediaWiki.Article.IsNullOrEmpty(creatorArt))
+								if (!Article.IsNullOrEmpty(creatorArt))
 								{
 									Console.WriteLine("Checking Creator for wikidata id");
-									wikidataId = MediaWiki.WikiUtils.GetTemplateParameter("wikidata", creatorArt.revisions[0].text);
+									wikidataId = WikiUtils.GetTemplateParameter("wikidata", creatorArt.revisions[0].text);
 								}
 							}
 						}
@@ -116,7 +116,7 @@ namespace Tasks
 						if (string.IsNullOrEmpty(wikidataId))
 						{
 							string onWikidataTemplate;
-							MediaWiki.WikiUtils.RemoveTemplate("On Wikidata", text, out onWikidataTemplate);
+							WikiUtils.RemoveTemplate("On Wikidata", text, out onWikidataTemplate);
 							if (!string.IsNullOrEmpty(onWikidataTemplate))
 							{
 								string[] split = onWikidataTemplate.Split('|');
@@ -133,16 +133,16 @@ namespace Tasks
 							// look for DOB and DOD categories
 							string yearOfBirth = "";
 							string yearOfDeath = "";
-							foreach (string cat in MediaWiki.WikiUtils.GetCategories(text))
+							foreach (PageTitle cat in WikiUtils.GetCategories(text))
 							{
 								//HACK: only works with 4-digit years
-								if (cat.EndsWith(" births"))
+								if (cat.Name.EndsWith(" births"))
 								{
-									yearOfBirth = cat.Substring("Category:".Length, 4);
+									yearOfBirth = cat.Name.Substring(0, 4);
 								}
-								else if (cat.EndsWith(" deaths"))
+								else if (cat.Name.EndsWith(" deaths"))
 								{
-									yearOfDeath = cat.Substring("Category:".Length, 4);
+									yearOfDeath = cat.Name.Substring(0, 4);
 								}
 							}
 
@@ -179,7 +179,7 @@ namespace Tasks
 							Console.WriteLine("Couldn't determine Wikidata ID.");
 						}
 
-						normalCatLastPage = MediaWiki.WikiUtils.GetSortkey(article);
+						normalCatLastPage = WikiUtils.GetSortkey(article);
 					}
 				}
 			}
@@ -247,7 +247,7 @@ namespace Tasks
 		{
 			string text = article.revisions[0].text;
 
-			text = MediaWiki.WikiUtils.RemoveDuplicateCategories(text);
+			text = WikiUtils.RemoveDuplicateCategories(text);
 
 			Entity entity = Wikidata.GetEntity(wikidataId);
 			if (entity != null && !entity.missing)
@@ -265,7 +265,7 @@ namespace Tasks
 				// pull out existing authority control
 				string existingAuthority;
 				Dictionary<string, string> existingAuthDict = new Dictionary<string, string>();
-				MediaWiki.WikiUtils.RemoveTemplate("Authority control", text, out existingAuthority);
+				WikiUtils.RemoveTemplate("Authority control", text, out existingAuthority);
 				if (!string.IsNullOrEmpty(existingAuthority))
 				{
 					string authTrim = existingAuthority.Trim().Trim('{', '}');
@@ -327,7 +327,7 @@ namespace Tasks
 				{
 					// remove 'creator possible'
 					string eat;
-					text = MediaWiki.WikiUtils.RemoveTemplate("Creator possible", text, out eat);
+					text = WikiUtils.RemoveTemplate("Creator possible", text, out eat);
 
 					// add creator template
 					string creatorTemplate = "{{" + creatorArticle.title + "}}";
@@ -339,7 +339,7 @@ namespace Tasks
 
 					// remove authority from cat and propagate to the creator
 					//TODO:
-					/*text =*/ MediaWiki.WikiUtils.RemoveTemplate("Authority control", text, out existingAuthority);
+					/*text =*/ WikiUtils.RemoveTemplate("Authority control", text, out existingAuthority);
 
 					// propagate existing creator to wikidata
 					if (!entity.HasClaim("P1472"))
@@ -350,14 +350,14 @@ namespace Tasks
 
 					// remove On Wikidata template (redundant with creator)
 					string oldWikidata;
-					string textNoOnWikidata = MediaWiki.WikiUtils.RemoveTemplate("On Wikidata", text, out oldWikidata);
+					string textNoOnWikidata = WikiUtils.RemoveTemplate("On Wikidata", text, out oldWikidata);
 					if (oldWikidata == wikidataId)
 					{
 						text = textNoOnWikidata;
 					}
 					else if (!string.IsNullOrEmpty(oldWikidata))
 					{
-						text = MediaWiki.WikiUtils.AddCategory("Category:Categories with On Wikidata template that doesn't match Creator wikidata parameter", text);
+						text = WikiUtils.AddCategory("Category:Categories with On Wikidata template that doesn't match Creator wikidata parameter", text);
 					}
 
 					// fix implicit creators in the category
@@ -366,10 +366,10 @@ namespace Tasks
 						Console.WriteLine("...checking child files");
 						foreach (Article subArticle in commonsApi.GetCategoryPagesRecursive(article.title, 4))
 						{
-							if (subArticle.ns == MediaWiki.Namespace.File)
+							if (subArticle.ns == Namespace.File)
 							{
 								Article gotSubArticle = commonsApi.GetPage(subArticle);
-								FixImplicitCreators.Do(commonsApi, gotSubArticle, creatorArticle.title);
+								FixImplicitCreators.Do(gotSubArticle, PageTitle.Parse(creatorArticle.title));
 								//PdOldAuto.Do(commonsApi, gotSubArticle);
 
 								if (gotSubArticle.Dirty)
@@ -387,7 +387,7 @@ namespace Tasks
 				}
 
 				// add appropriate categories if they don't exist
-				text = MediaWiki.WikiUtils.AddCategory("Category:People by name", text);
+				text = WikiUtils.AddCategory("Category:People by name", text);
 
 				// gender cats
 				if (entity.HasClaim("P21"))
@@ -420,15 +420,15 @@ namespace Tasks
 					string decade = dateData.GetString(MediaWiki.DateTime.DecadePrecision) + "s";
 					string century = StringUtility.FormatOrdinal(dateData.GetCentury()) + "-century";
 
-					bool hasYear = MediaWiki.WikiUtils.HasCategory(year + suffix, text);
-					bool hasDecade = MediaWiki.WikiUtils.HasCategory(decade + suffix, text);
+					bool hasYear = WikiUtils.HasCategory(year + suffix, text);
+					bool hasDecade = WikiUtils.HasCategory(decade + suffix, text);
 
 					if (dateData.Precision <= MediaWiki.DateTime.CenturyPrecision)
 					{
 						// never downgrade
 						if (!hasYear && !hasDecade)
 						{
-							text = MediaWiki.WikiUtils.AddCategory(century + suffix, text);
+							text = WikiUtils.AddCategory(century + suffix, text);
 						}
 					}
 					else if (dateData.Precision <= MediaWiki.DateTime.DecadePrecision)
@@ -436,12 +436,12 @@ namespace Tasks
 						// never downgrade
 						if (!hasYear)
 						{
-							text = MediaWiki.WikiUtils.AddCategory(decade + suffix, text);
+							text = WikiUtils.AddCategory(decade + suffix, text);
 						}
 					}
 					else
 					{
-						text = MediaWiki.WikiUtils.AddCategory(year + suffix, text);
+						text = WikiUtils.AddCategory(year + suffix, text);
 					}
 				}
 
@@ -449,11 +449,11 @@ namespace Tasks
 				MatchCollection deathMatch = Regex.Matches(text, "\\[\\[[Cc]ategory:.+ deaths[\\]\\|]");
 				if (deathMatch.Count > 0)
 				{
-					text = MediaWiki.WikiUtils.RemoveCategory("Category:Year of death missing", text);
+					text = WikiUtils.RemoveCategory("Category:Year of death missing", text);
 				}
 				else
 				{
-					text = MediaWiki.WikiUtils.AddCategory("Category:Year of death missing", text);
+					text = WikiUtils.AddCategory("Category:Year of death missing", text);
 				}
 
 				// birth cat
@@ -467,15 +467,15 @@ namespace Tasks
 					string decade = dateData.GetString(MediaWiki.DateTime.DecadePrecision) + "s";
 					string century = StringUtility.FormatOrdinal(dateData.GetCentury()) + "-century";
 
-					bool hasYear = MediaWiki.WikiUtils.HasCategory(year + suffix, text);
-					bool hasDecade = MediaWiki.WikiUtils.HasCategory(decade + suffix, text);
+					bool hasYear = WikiUtils.HasCategory(year + suffix, text);
+					bool hasDecade = WikiUtils.HasCategory(decade + suffix, text);
 
 					if (dateData.Precision <= MediaWiki.DateTime.CenturyPrecision)
 					{
 						// never downgrade
 						if (!hasYear && !hasDecade)
 						{
-							text = MediaWiki.WikiUtils.AddCategory(century + suffix, text);
+							text = WikiUtils.AddCategory(century + suffix, text);
 						}
 					}
 					else if (dateData.Precision <= MediaWiki.DateTime.DecadePrecision)
@@ -483,12 +483,12 @@ namespace Tasks
 						// never downgrade
 						if (!hasYear)
 						{
-							text = MediaWiki.WikiUtils.AddCategory(decade + suffix, text);
+							text = WikiUtils.AddCategory(decade + suffix, text);
 						}
 					}
 					else
 					{
-						text = MediaWiki.WikiUtils.AddCategory(year + suffix, text);
+						text = WikiUtils.AddCategory(year + suffix, text);
 					}
 				}
 
@@ -496,20 +496,20 @@ namespace Tasks
 				MatchCollection birthMatch = Regex.Matches(text, "\\[\\[[Cc]ategory:.+ births[\\]\\|]");
 				if (birthMatch.Count > 0)
 				{
-					text = MediaWiki.WikiUtils.RemoveCategory("Category:Year of birth missing", text);
+					text = WikiUtils.RemoveCategory("Category:Year of birth missing", text);
 				}
 				else
 				{
-					text = MediaWiki.WikiUtils.AddCategory("Category:Year of birth missing", text);
+					text = WikiUtils.AddCategory("Category:Year of birth missing", text);
 				}
 
 				if (birthMatch.Count > 1 || deathMatch.Count > 1)
 				{
-					text = MediaWiki.WikiUtils.AddCategory("Category:Categories with conflicting birth or death categories", text);
+					text = WikiUtils.AddCategory("Category:Categories with conflicting birth or death categories", text);
 				}
 				else
 				{
-					text = MediaWiki.WikiUtils.RemoveCategory("Category:Categories with conflicting birth or death categories", text);
+					text = WikiUtils.RemoveCategory("Category:Categories with conflicting birth or death categories", text);
 				}
 
 				// add occupation cats
@@ -781,7 +781,7 @@ namespace Tasks
 		/// <param name="article">The already-downloaded article.</param>
 		public static void FixInformationTemplates(Article article, HashSet<string> removeEmptyParams = null)
 		{
-			if (MediaWiki.Article.IsNullOrEmpty(article))
+			if (Article.IsNullOrEmpty(article))
 			{
 				Console.WriteLine("FixInformationTemplates: FATAL: article missing");
 				return;
@@ -953,7 +953,7 @@ namespace Tasks
 
 			if (hasError)
 			{
-				text = MediaWiki.WikiUtils.AddCategory("Category:Pages with mismatched parentheses", text);
+				text = WikiUtils.AddCategory("Category:Pages with mismatched parentheses", text);
 			}
 			else if (artTemplateHasFilledAuthor && removeEmptyParams == null)
 			{

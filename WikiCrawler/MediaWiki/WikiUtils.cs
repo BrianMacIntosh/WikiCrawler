@@ -10,23 +10,30 @@ namespace MediaWiki
 	/// </summary>
 	static class WikiUtils
 	{
+		/// <summary>
+		/// Removes the specified category from the text if it exists.
+		/// </summary>
+		public static string RemoveCategory(string name, string text)
+		{
+			return RemoveCategory(PageTitle.Parse(name), text);
+		}
+
         /// <summary>
         /// Removes the specified category from the text if it exists.
         /// </summary>
-        public static string RemoveCategory(string name, string text)
+        public static string RemoveCategory(PageTitle name, string text)
 		{
-			if (name.Length <= 0) throw new ArgumentException("Category name cannot be empty.", "name");
+			if (name.IsEmpty) throw new ArgumentException("Category name cannot be empty.", "name");
 
-			name = name.TrimStart("Category:").TrimStart("category:");
-			name = Regex.Escape(name);
+			string regexName = Regex.Escape(name.Name);
 
 			// if the first character is a letter, it can be upper or lowercase
-			if (char.IsLetter(name[0]))
+			if (char.IsLetter(regexName[0]))
 			{
-				name = "[" + char.ToUpper(name[0]).ToString() + char.ToLower(name[0]).ToString() + "]" + name.Substring(1);
+				regexName = "[" + char.ToUpper(regexName[0]).ToString() + char.ToLower(regexName[0]).ToString() + "]" + regexName.Substring(1);
 			}
 
-			Regex regex = new Regex(@"\[\[[Cc]ategory:" + name + "\\]\\][\r\n]?");
+			Regex regex = new Regex(@"\[\[Category:" + regexName + "\\]\\][\r\n]?");
 
 			//TODO: whitespace on ends is legal
 			text = regex.Replace(text, "");
@@ -35,9 +42,8 @@ namespace MediaWiki
 
 		public static string RemoveDuplicateCategories(string text)
 		{
-			//TODO: handle invariant-case first character
-			HashSet<string> alreadySeen = new HashSet<string>();
-			foreach (string s in GetCategories(text))
+			HashSet<PageTitle> alreadySeen = new HashSet<PageTitle>();
+			foreach (PageTitle s in GetCategories(text))
 			{
 				if (alreadySeen.Contains(s))
 				{
@@ -58,15 +64,19 @@ namespace MediaWiki
 		/// </summary>
 		public static bool HasCategory(string name, string text)
 		{
-			if (name.Length <= 0) throw new ArgumentException("Category name cannot be empty.", "name");
+			return HasCategory(PageTitle.Parse(name), text);
+		}
 
-			name = name.TrimStart("Category:").TrimStart("category:");
+		/// <summary>
+		/// Returns true if the specified category exists in the text.
+		/// </summary>
+		public static bool HasCategory(PageTitle name, string text)
+		{
+			if (name.IsEmpty) throw new ArgumentException("Category name cannot be empty.", "name");
 
-			foreach (string cat in GetCategories(text))
+			foreach (PageTitle cat in GetCategories(text))
 			{
-				string catName = cat.TrimStart("Category:").TrimStart("category:");
-				if (char.ToLower(catName[0]) == char.ToLower(name[0])
-					&& catName.Substring(1) == name.Substring(1))
+				if (name == cat)
 				{
 					return true;
 				}
@@ -80,10 +90,14 @@ namespace MediaWiki
 		/// </summary>
 		public static string AddCategory(string name, string text)
 		{
-			if (!name.StartsWith("Category:") && !name.StartsWith("category:"))
-			{
-				name = "Category:" + name;
-			}
+			return AddCategory(PageTitle.Parse(name), text);
+		}
+
+		/// <summary>
+		/// Add the specified category to the text.
+		/// </summary>
+		public static string AddCategory(PageTitle name, string text)
+		{
 			if (!HasCategory(name, text))
 			{
 				int c = text.Length - 1;
@@ -159,7 +173,7 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns an array of all the directly-referenced parent categories of this article.
 		/// </summary>
-		public static IEnumerable<string> GetCategories(Article article)
+		public static IEnumerable<PageTitle> GetCategories(Article article)
 		{
 			return GetCategories(article.revisions[0].text);
 		}
@@ -167,15 +181,16 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns an array of all the directly-referenced parent categories of this article.
 		/// </summary>
-		public static IEnumerable<string> GetCategories(string text)
+		public static IEnumerable<PageTitle> GetCategories(string text)
 		{
+			//TODO: CHECK ME
 			//TODO: whitespace after [[ is legal
 			string[] catOpen = new string[] { "[[Category:", "[[category:" };
 			string[] catClose = new string[] { "]]" };
 			string[] sp1 = text.Split(catOpen, StringSplitOptions.None);
 			for (int c = 1; c < sp1.Length; c++)
 			{
-				yield return "Category:" + sp1[c].Split(catClose, StringSplitOptions.None)[0].Split('|')[0].Trim();
+				yield return new PageTitle("Category", sp1[c].Split(catClose, StringSplitOptions.None)[0].Split('|')[0].Trim());
 			}
 		}
 
@@ -213,46 +228,220 @@ namespace MediaWiki
 		private static Marker s_templateEndMarker = new Marker("}}");
 
 		/// <summary>
-		/// Returns the index of the }} at the end of this template.
+		/// Returns the indices of the start and end of the inner content of the first instance of the specified template.
+		/// </summary>
+		public static void GetTemplateLocation(string text, string templateName, out int startIndex, out int endIndex)
+		{
+			startIndex = GetTemplateStart(text, templateName);
+			if (startIndex >= 0)
+			{
+				endIndex = GetTemplateEnd(text, startIndex);
+				startIndex += s_templateStartMarker.Length;
+			}
+			else
+			{
+				endIndex = -1;
+			}
+		}
+
+		/// <summary>
+		/// Returns the inner contents of the first instance of the specified template.
+		/// </summary>
+		public static string ExtractTemplate(string text, string templateName)
+		{
+			GetTemplateLocation(text, templateName, out int startIndex, out int endIndex);
+			if (startIndex >= 0)
+			{
+				return text.SubstringRange(startIndex, endIndex);
+			}
+			else
+			{
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// Returns the index of the {{ at the start of the first instance of the specified template.
+		/// </summary>
+		public static int GetTemplateStart(string text, string templateName)
+		{
+			//TODO: proper case-sensitivity
+			//TODO: does not check that template name ends on a boundary
+			return text.IndexOf("{{" + templateName, StringComparison.InvariantCultureIgnoreCase);
+		}
+
+		/// <summary>
+		/// Returns the index of the {{ at the start of the primary info template;
+		/// </summary>
+		public static int GetPrimaryInfoTemplateStart(string text)
+		{
+			int infoStart = text.IndexOf("{{Information");
+			if (infoStart < 0)
+			{
+				infoStart = text.IndexOf("{{information");
+			}
+
+			int artStart = text.IndexOf("{{Artwork");
+			if (artStart < 0)
+			{
+				artStart = text.IndexOf("{{artwork");
+			}
+
+			if (infoStart >= 0 && (artStart < 0 || infoStart < artStart))
+			{
+				return infoStart;
+			}
+			else if (artStart >= 0)
+			{
+				return artStart;
+			}
+			else
+			{
+				return -1;
+			}
+		}
+
+		/// <summary>
+		/// Returns the index of the last character before the }} at the end of this template.
 		/// </summary>
 		/// <param name="templateStart">The index of the {{ at the start of the template.</param>
 		public static int GetTemplateEnd(string text, int templateStart)
 		{
+			if (templateStart < 0)
+			{
+				return -1;
+			}
+
 			int templatesOpen = 0;
-			for (int index = templateStart; index < text.Length; ++index)
+			for (int index = templateStart; index < text.Length;)
 			{
 				if (s_templateStartMarker.MatchAgainst(text, index))
 				{
 					templatesOpen++;
+					index += s_templateStartMarker.Length;
 				}
 				else if (s_templateEndMarker.MatchAgainst(text, index))
 				{
 					templatesOpen--;
 					if (templatesOpen == 0)
 					{
-						return index;
+						return index - 1;
 					}
 					else if (templatesOpen < 0)
 					{
 						throw new Exception();
 					}
+					index += s_templateEndMarker.Length;
+				}
+				else
+				{
+					index++;
 				}
 			}
 			return -1;
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="text">Only the text of the template (with no enclosing {{}}).</param>
+		/// <returns></returns>
+		public static string GetTemplateParameter(int param, string text)
+		{
+			int eat;
+			return GetTemplateParameter(param, text, out eat);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="text">Only the text of the template (with no enclosing {{}}).</param>
+		/// <returns></returns>
+		public static string GetTemplateParameter(int param, string text, out int paramValueLocation)
+		{
+			// check for explicit numbered param
+			string explicitParam = GetTemplateParameter(param.ToString(), text, out paramValueLocation);
+			if (paramValueLocation >= 0)
+			{
+				return explicitParam;
+			}
+
+			// find appropriate anonymous param
+			int paramNumber = 0;
+			int paramStartIndex = -1;
+			int nestedTemplates = 0;
+			paramValueLocation = -1;
+			for (int c = 0; c < text.Length; c++)
+			{
+				if (paramStartIndex >= 0)
+				{
+					// checking for named parameters
+					if (nestedTemplates <= 0 && text[c] == '=')
+					{
+						// presence of a named parameter excludes anonymous parameters (TODO: DOES IT?)
+						return "";
+					}
+				}
+
+				// template nesting
+				if (s_templateStartMarker.MatchAgainst(text, c))
+				{
+					nestedTemplates++;
+					c++;
+					continue;
+				}
+				else if (s_templateEndMarker.MatchAgainst(text, c))
+				{
+					nestedTemplates--;
+					c++;
+					continue;
+				}
+
+				// pipe resets any time
+				if (nestedTemplates <= 0 && text[c] == '|')
+				{
+					if (paramNumber == param)
+					{
+						paramValueLocation = paramStartIndex;
+						return text.SubstringRange(paramStartIndex, c - 1);
+					}
+					paramNumber++;
+					paramStartIndex = c + 1;
+					continue;
+				}
+			}
+
+			if (paramNumber == param)
+			{
+				paramValueLocation = paramStartIndex;
+				return text.SubstringRange(paramStartIndex, text.Length - 1);
+			}
+
+			return "";
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="text">Only the text of the template (with no enclosing {{}}).</param>
+		/// <returns></returns>
 		public static string GetTemplateParameter(string param, string text)
 		{
 			int eat;
 			return GetTemplateParameter(param, text, out eat);
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="text">Only the text of the template (with no enclosing {{}}).</param>
+		/// <returns></returns>
 		public static string GetTemplateParameter(string param, string text, out int paramValueLocation)
 		{
 			int state = 0;
 			int nestedTemplates = 0;
 			Marker paramName = new Marker(param, true);
-			paramValueLocation = 0;
+			paramValueLocation = -1;
 			for (int c = 0; c < text.Length; c++)
 			{
 				if (state == 1)
@@ -285,13 +474,13 @@ namespace MediaWiki
 				}
 
 				// template nesting
-				if (text[c] == '{' && text[c + 1] == '{')
+				if (s_templateStartMarker.MatchAgainst(text, c))
 				{
 					nestedTemplates++;
 					c++;
 					continue;
 				}
-				else if (text[c] == '}' && text[c + 1] == '}')
+				else if (s_templateEndMarker.MatchAgainst(text, c))
 				{
 					nestedTemplates--;
 					c++;

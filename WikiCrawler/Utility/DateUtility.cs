@@ -267,7 +267,7 @@ public static class DateUtility
 		}
 	}
 
-	private static bool IsValidYear(int year)
+	public static bool IsValidYear(int year)
 	{
 		return year > 1500 && year <= DateTime.Now.Year;
 	}

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>WikiCrawler</RootNamespace>
     <AssemblyName>WikiCrawler</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
@@ -65,11 +65,16 @@
     <Compile Include="Backend\ImageUtils.cs" />
     <Compile Include="Batch\BatchDownloader.cs" />
     <Compile Include="Batch\BatchTask.cs" />
+    <Compile Include="Batch\BatchTaskKeyed.cs" />
     <Compile Include="Batch\BatchUploader.cs" />
+    <Compile Include="Batch\Beasts\BeastsDownloader.cs" />
     <Compile Include="Batch\ContentDmDownloader.cs" />
     <Compile Include="Batch\Dsal\DsalParseMetadata.cs" />
     <Compile Include="Batch\Dsal\DsalUploader.cs" />
+    <Compile Include="Batch\GC-BRoll\GCBRollUploader.cs" />
+    <Compile Include="Batch\NPGallery\BackOfConnector.cs" />
     <Compile Include="Batch\NPGallery\CollectParkLocationsTask.cs" />
+    <Compile Include="Batch\NPGallery\NPGallery.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryAssetListDownloader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryData.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryDownloader.cs" />
@@ -78,8 +83,20 @@
     <Compile Include="Batch\NPGallery\NPSDirectoryQuery.cs" />
     <Compile Include="Batch\OEC\OecUploader.cs" />
     <Compile Include="Batch\ProjectConfig.cs" />
+    <Compile Include="Batch\UWash\MohaiCreditFix.cs" />
     <Compile Include="MediaWiki\Formats\ImageInfo.cs" />
     <Compile Include="MediaWiki\Formats\Revision.cs" />
+    <Compile Include="MediaWiki\GlobalAPIs.cs" />
+    <Compile Include="MediaWiki\PageTitle.cs" />
+    <Compile Include="Tasks\CategoryFindReplace.cs" />
+    <Compile Include="Tasks\Commons\CityDisambigCheck.cs" />
+    <Compile Include="Tasks\Commons\CompoundReplacementTask.cs" />
+    <Compile Include="Tasks\Commons\ExifToDateField.cs" />
+    <Compile Include="Tasks\Commons\NullEditCategory.cs" />
+    <Compile Include="Tasks\Commons\PDArtFixup.cs" />
+    <Compile Include="Utility\Commons\CommonsCreatorWorksheet.cs" />
+    <Compile Include="Utility\Commons\CommonsFileWorksheet.cs" />
+    <Compile Include="Utility\Commons\CommonsWorksheet.cs" />
     <Compile Include="UWash\SayreCategorize.cs" />
     <Compile Include="Tasks\BatchTaskAttribute.cs" />
     <Compile Include="Utility\Exceptions\LicenseException.cs" />

@@ -18,6 +18,11 @@ namespace MediaWiki
 
 		public Dictionary<string, string> sitelinks;
 
+		public static bool IsNullOrMissing(Entity entity)
+		{
+			return entity == null || entity.missing;
+		}
+
 		public Entity()
 		{
 
@@ -157,6 +162,24 @@ namespace MediaWiki
 		public string GetClaimValueAsString(string property)
 		{
 			return claims[property][0].mainSnak.GetValueAsString();
+		}
+
+		public bool TryGetClaimValueAsString(string property, out string[] value)
+		{
+			if (claims.TryGetValue(property, out Claim[] cvalue))
+			{
+				value = new string[cvalue.Length];
+				for (int i = 0; i < cvalue.Length; i++)
+				{
+					value[i] = cvalue[i].mainSnak.GetValueAsString();
+				}
+				return true;
+			}
+			else
+			{
+				value = null;
+				return false;
+			}
 		}
 
 		public string[] GetClaimValuesAsString(string property)
