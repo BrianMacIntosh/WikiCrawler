@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using MediaWiki;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -115,5 +116,10 @@ public abstract class BatchTask : IBatchTask
 	{
 		string failedFile = Path.Combine(ProjectDataDirectory, "failed.txt");
 		File.WriteAllLines(failedFile, m_failMessages);
+
+		if (CreatorUtilityMeta.IsInitialized)
+		{
+			CreatorUtility.SaveOut();
+		}
 	}
 }

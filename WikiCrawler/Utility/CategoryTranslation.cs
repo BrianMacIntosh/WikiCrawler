@@ -15,13 +15,13 @@ namespace WikiCrawler
 	{
 		//private static MySqlConnection taxonConnection;
 
-		private static MediaWiki.Api s_commonsApi = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
-		private static MediaWiki.Api s_wikidataApi = new MediaWiki.Api(new Uri("http://wikidata.org/"));
+		private static Api s_commonsApi = new Api(new Uri("https://commons.wikimedia.org/"));
+		private static Api s_wikidataApi = new Api(new Uri("http://wikidata.org/"));
 
 		/// <summary>
 		/// Cached tree structure of Commons categories.
 		/// </summary>
-		public static readonly MediaWiki.CategoryTree CategoryTree = new MediaWiki.CategoryTree(s_commonsApi);
+		public static readonly CategoryTree CategoryTree = new CategoryTree(s_commonsApi);
 
 		private class CategoryMappingData
 		{
@@ -63,7 +63,7 @@ namespace WikiCrawler
 		/// </summary>
 		private static Dictionary<string, CategoryMappingData> s_categoryMap = new Dictionary<string, CategoryMappingData>(StringComparer.InvariantCultureIgnoreCase);
 
-		private static Dictionary<string, MediaWiki.Article> s_extantCategories = new Dictionary<string, MediaWiki.Article>();
+		private static Dictionary<string, Article> s_extantCategories = new Dictionary<string, Article>();
 
 		private static char[] s_trim = new char[] { ' ', '\n', '\r', '\t', '-' };
 
@@ -242,7 +242,7 @@ namespace WikiCrawler
 			string[] entities = s_wikidataApi.SearchEntities(pieces.Last());
 			for (int d = 0; d < Math.Min(5, entities.Length); d++)
 			{
-				MediaWiki.Entity place = s_wikidataApi.GetEntity(entities[d]);
+				Entity place = s_wikidataApi.GetEntity(entities[d]);
 
 				//get country for place
 				if (place.HasClaim("P17"))
@@ -250,12 +250,12 @@ namespace WikiCrawler
 					//TODO: instead, verify ALL pieces are present
 					throw new Exception();
 
-					IEnumerable<MediaWiki.Entity> parents = place.GetClaimValuesAsEntity("P17", s_wikidataApi);
+					IEnumerable<Entity> parents = place.GetClaimValuesAsEntity("P17", s_wikidataApi);
 					if (place.HasClaim("P131"))
 					{
 						parents = parents.Concat(place.GetClaimValuesAsEntity("P131", s_wikidataApi));
 					}
-					foreach (MediaWiki.Entity parent in parents)
+					foreach (Entity parent in parents)
 					{
 						//look for the parent in the earlier pieces
 						for (int c = 0; c < pieces.Length - 1; c++)
@@ -301,7 +301,10 @@ namespace WikiCrawler
 
 		public static IEnumerable<string> TranslatePersonCategory(string input, bool allowFailedCreators)
 		{
-			if (string.IsNullOrEmpty(input)) return null;
+			if (string.IsNullOrEmpty(input))
+			{
+				return null;
+			}
 
 			IEnumerable<string> existingMapping = GetMappedCategories(input);
 			if (existingMapping != null)
@@ -324,55 +327,46 @@ namespace WikiCrawler
 				return MapCategory(input, category);
 			}
 
-			Console.WriteLine("Attempting to map person '" + input + "'.");
-
-			//make sure creator is created
-			Creator creator;
+			Console.WriteLine("Attempting to map person '{0}'.", input);
 
 			//If they have a creator template, use that
-			if (CreatorUtility.TryGetCreator(input, out creator))
+			Creator creator = CreatorUtility.GetCreator(input);
+			if (!string.IsNullOrEmpty(creator.Author))
 			{
-				if (!string.IsNullOrEmpty(creator.Author))
+				string creatorPage = creator.Author;
+				creatorPage = creatorPage.Trim('{').Trim('}');
+				string homeCategory;
+				if (CreatorUtility.TryGetHomeCategory(creatorPage, out homeCategory))
 				{
-					string creatorPage = creator.Author;
-					creatorPage = creatorPage.Trim('{').Trim('}');
-					string homeCategory;
-					if (CreatorUtility.TryGetHomeCategory(creatorPage, out homeCategory))
-					{
-						return MapCategory(input, homeCategory);
-					}
-					else
-					{
-						//try to find creator template's homecat param
-						MediaWiki.Article creatorArticle = s_commonsApi.GetPage(creatorPage);
-						if (creatorArticle != null && !creatorArticle.missing)
-						{
-							foreach (string s in creatorArticle.revisions[0].text.Split('|'))
-							{
-								if (s.TrimStart().StartsWith("homecat", StringComparison.InvariantCultureIgnoreCase))
-								{
-									string homecat = s.Split(StringUtility.Equal, 2)[1].Trim();
-									if (!string.IsNullOrEmpty(homecat))
-									{
-										if (!homecat.StartsWith("Category:")) homecat = "Category:" + homecat;
-										CreatorUtility.SetHomeCategory(creatorPage, homecat);
-										return MapCategory(input, homecat);
-									}
-								}
-							}
-						}
-
-						//failed to find homecat, use name
-						string creatorName = creatorPage;
-						if (creatorName.StartsWith("Creator:")) creatorName = creatorName.Substring(8);
-						string cat = "Category:" + creatorName;
-						CreatorUtility.SetHomeCategory(creatorPage, cat);
-						return MapCategory(input, cat);
-					}
+					return MapCategory(input, homeCategory);
 				}
 				else
 				{
-					return MapCategory(input);
+					//try to find creator template's homecat param
+					Article creatorArticle = s_commonsApi.GetPage(creatorPage);
+					if (creatorArticle != null && !creatorArticle.missing)
+					{
+						foreach (string s in creatorArticle.revisions[0].text.Split('|'))
+						{
+							if (s.TrimStart().StartsWith("homecat", StringComparison.InvariantCultureIgnoreCase))
+							{
+								string homecat = s.Split(StringUtility.Equal, 2)[1].Trim();
+								if (!string.IsNullOrEmpty(homecat))
+								{
+									if (!homecat.StartsWith("Category:")) homecat = "Category:" + homecat;
+									CreatorUtility.SetHomeCategory(creatorPage, homecat);
+									return MapCategory(input, homecat);
+								}
+							}
+						}
+					}
+
+					//failed to find homecat, use name
+					string creatorName = creatorPage;
+					if (creatorName.StartsWith("Creator:")) creatorName = creatorName.Substring(8);
+					string cat = "Category:" + creatorName;
+					CreatorUtility.SetHomeCategory(creatorPage, cat);
+					return MapCategory(input, cat);
 				}
 			}
 
@@ -430,7 +424,7 @@ namespace WikiCrawler
 
 		private static string[] seperatorReplacements = new string[] { " in ", " of " };
 
-		public static string TranslateCategory(MediaWiki.Api api, string input)
+		public static string TranslateCategory(Api api, string input)
 		{
 			input = input.Trim(s_trim);
 
@@ -503,7 +497,7 @@ namespace WikiCrawler
 			return "";
 		}
 
-		private static string TryMapCategoryFinal(MediaWiki.Api api, IList<string> cats, bool couldBeAnimal)
+		private static string TryMapCategoryFinal(Api api, IList<string> cats, bool couldBeAnimal)
 		{
 			//remove dupe spaces
 			for (int i = 0; i < cats.Count; i++)
@@ -511,8 +505,8 @@ namespace WikiCrawler
 				cats[i] = string.Join(" ", cats[i].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
 			}
 
-			MediaWiki.Article[] resultArts = TryFetchCategories(api, cats);
-			foreach (MediaWiki.Article resultArt in resultArts)
+			Article[] resultArts = TryFetchCategories(api, cats);
+			foreach (Article resultArt in resultArts)
 			{
 				if (resultArt != null && !resultArt.missing)
 				{
@@ -523,12 +517,12 @@ namespace WikiCrawler
 			return "";
 		}
 
-		private static string TryMapCategoryFinal(MediaWiki.Api api, string cat, bool couldBeAnimal)
+		private static string TryMapCategoryFinal(Api api, string cat, bool couldBeAnimal)
 		{
 			//remove dupe spaces
 			cat = string.Join(" ", cat.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
 
-			MediaWiki.Article resultArt = TryFetchCategory(api, cat);
+			Article resultArt = TryFetchCategory(api, cat);
 			if (resultArt != null && !resultArt.missing)
 			{
 				return resultArt.title;
@@ -629,9 +623,9 @@ namespace WikiCrawler
 			return "";
 		}
 
-		public static string TryFetchCategoryName(MediaWiki.Api api, string cat)
+		public static string TryFetchCategoryName(Api api, string cat)
 		{
-			MediaWiki.Article article = TryFetchCategory(api, cat);
+			Article article = TryFetchCategory(api, cat);
 			if (article != null && !article.missing)
 				return article.title;
 			else
@@ -641,7 +635,7 @@ namespace WikiCrawler
 		/// <summary>
 		/// Look for the specified categories. Return the actual categories used.
 		/// </summary>
-		public static MediaWiki.Article[] TryFetchCategories(MediaWiki.Api api, IList<string> cats)
+		public static Article[] TryFetchCategories(Api api, IList<string> cats)
 		{
 			// preprocess names
 			for (int i = 0; i < cats.Count; i++)
@@ -660,7 +654,7 @@ namespace WikiCrawler
 			}
 
 			// request and map cats
-			MediaWiki.Article[] arts = GetCategories(api, requestCats);
+			Article[] arts = GetCategories(api, requestCats);
 			for (int i = 0; i < arts.Length; i++)
 			{
 				if (arts[i] != null && !arts[i].missing)
@@ -680,7 +674,7 @@ namespace WikiCrawler
 			}
 
 			// collect the full list (previously- and freshly-mapped ones)
-			MediaWiki.Article[] resultArts = new MediaWiki.Article[cats.Count];
+			Article[] resultArts = new Article[cats.Count];
 			for (int i = 0; i < cats.Count; i++)
 			{
 				resultArts[i] = s_extantCategories[cats[i]];
@@ -692,12 +686,12 @@ namespace WikiCrawler
 		/// <summary>
 		/// Look for the specified category. Return the actual category used.
 		/// </summary>
-		public static MediaWiki.Article TryFetchCategory(MediaWiki.Api api, string cat)
+		public static Article TryFetchCategory(Api api, string cat)
 		{
 			// preprocess name
 			cat = MediaWiki.WikiUtils.GetCategoryCategory(cat);
 
-			MediaWiki.Article extant;
+			Article extant;
 			if (s_extantCategories.TryGetValue(cat, out extant))
 			{
 				return extant;
@@ -705,7 +699,7 @@ namespace WikiCrawler
 
 			Console.WriteLine("FETCH: '" + cat + "'");
 
-			MediaWiki.Article art = GetCategory(api, ref cat);
+			Article art = GetCategory(api, ref cat);
 			art = ProcessCategoryRedirects(api, art);
 			s_extantCategories[cat] = art;
 			return art;
@@ -714,7 +708,7 @@ namespace WikiCrawler
 		/// <summary>
 		/// If the specified article is a category redirect, returns the article redirected to.
 		/// </summary>
-		private static MediaWiki.Article ProcessCategoryRedirects(MediaWiki.Api api, MediaWiki.Article art)
+		private static Article ProcessCategoryRedirects(Api api, Article art)
 		{
 			if (art != null)
 			{
@@ -742,7 +736,7 @@ namespace WikiCrawler
 					cat = cat.Split('|')[0];
 					if (cat.Contains("=")) cat = cat.Split('=')[1];
 					//TODO: watch out for redirect loops
-					MediaWiki.Article redir = TryFetchCategory(api, cat);
+					Article redir = TryFetchCategory(api, cat);
 					return redir;
 				}
 				else
@@ -757,14 +751,14 @@ namespace WikiCrawler
 			}
 		}
 
-		private static MediaWiki.Article[] GetCategories(MediaWiki.Api api, IList<string> cats)
+		private static Article[] GetCategories(Api api, IList<string> cats)
 		{
 			return api.GetPages(cats);
 		}
 
-		private static MediaWiki.Article GetCategory(MediaWiki.Api api, ref string cat)
+		private static Article GetCategory(Api api, ref string cat)
 		{
-			MediaWiki.Article art = api.GetPage(cat);
+			Article art = api.GetPage(cat);
 			if (art != null && !art.missing)
 			{
 				return art;

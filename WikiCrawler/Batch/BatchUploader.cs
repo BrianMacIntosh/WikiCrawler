@@ -63,8 +63,6 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		WebClient = new WebClient();
 
 		Api.AutoLogIn();
-
-		CreatorUtility.Initialize(Api);
 	}
 
 	private static bool s_stop = false;
@@ -308,15 +306,6 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	}
 
 	/// <summary>
-	/// Saves out progress to a file.
-	/// </summary>
-	protected override void SaveOut()
-	{
-		base.SaveOut();
-		CreatorUtility.SaveOut();
-	}
-
-	/// <summary>
 	/// If the image for the specified item isn't cached, caches it.
 	/// </summary>
 	public virtual void CacheImage(KeyType key, Dictionary<string, string> metadata)
@@ -501,24 +490,21 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		string finalResult = "";
 		foreach (string author in ParseAuthor(name))
 		{
-			Creator creator;
-			if (CreatorUtility.TryGetCreator(author, out creator))
+			Creator creator = CreatorUtility.GetCreator(author);
+			if (creators == null)
 			{
-				if (creators == null)
-				{
-					creators = new List<Creator>();
-				}
-				creator.Usage++;
-				if (!creators.AddUnique(creator))
-				{
-					// duplicate
-					continue;
-				}
-				else if (!string.IsNullOrEmpty(creator.Author))
-				{
-					finalResult += creator.Author;
-					continue;
-				}
+				creators = new List<Creator>();
+			}
+			creator.Usage++;
+			if (!creators.AddUnique(creator))
+			{
+				// duplicate
+				continue;
+			}
+			else if (!string.IsNullOrEmpty(creator.Author))
+			{
+				finalResult += creator.Author;
+				continue;
 			}
 
 			// if we get here, there is not yet a mapping for this creator

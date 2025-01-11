@@ -3,28 +3,44 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
+using WikiCrawler;
 
-namespace WikiCrawler
+namespace MediaWiki
 {
+	public static class CreatorUtilityMeta
+	{
+		public static bool IsInitialized = false;
+	}
+
+	/// <summary>
+	/// Caches useful information about authors and creators.
+	/// </summary>
 	public static class CreatorUtility
 	{
 		private static Dictionary<string, string> s_creatorHomecats = new Dictionary<string, string>();
 
 		private static Dictionary<string, Creator> s_creatorData;
+		private static Dictionary<string, string> s_creatorRedirects;
 
-		private static string CacheFile
+		private static string DataCacheFile
 		{
 			get { return Path.Combine(Configuration.DataDirectory, "creator_templates.json"); }
 		}
 
-		public static void Initialize(MediaWiki.Api api)
+		private static string RedirectsCacheFile
 		{
-			//load known creators
-			string creatorTemplatesFile = CacheFile;
-			if (File.Exists(creatorTemplatesFile))
+			get { return Path.Combine(Configuration.DataDirectory, "creator_redirects.json"); }
+		}
+
+		static CreatorUtility()
+		{
+			// load known creators
+			string creatorDataFile = DataCacheFile;
+			if (File.Exists(creatorDataFile))
 			{
 				s_creatorData = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, Creator>>(
-					File.ReadAllText(creatorTemplatesFile, Encoding.UTF8));
+					File.ReadAllText(creatorDataFile, Encoding.UTF8));
 				foreach (Creator creator in s_creatorData.Values)
 				{
 					creator.Usage = 0;
@@ -36,7 +52,48 @@ namespace WikiCrawler
 				s_creatorData = new Dictionary<string, Creator>();
 			}
 
-			ValidateCreators(api);
+			// load creator redirects
+			string creatorRedirectsFile = RedirectsCacheFile;
+			if (File.Exists(creatorRedirectsFile))
+			{
+				s_creatorRedirects = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(
+					File.ReadAllText(creatorRedirectsFile, Encoding.UTF8));
+			}
+			else
+			{
+				s_creatorRedirects = new Dictionary<string, string>();
+			}
+
+			CreatorUtilityMeta.IsInitialized = true;
+		}
+
+		public static void TrimEmpty()
+		{
+			List<KeyValuePair<string, Creator>> kvs = s_creatorData.ToList();
+			foreach (var kv in kvs)
+			{
+				if (kv.Value.IsEmpty)
+				{
+					s_creatorData.Remove(kv.Key);
+				}
+			}
+		}
+
+		public static void ConvertToRedirects()
+		{
+			List<KeyValuePair<string, Creator>> kvs = s_creatorData.ToList();
+			foreach (var kv in kvs)
+			{
+				if (kv.Value.Author.StartsWith("{{Creator:"))
+				{
+					// convert to redirect
+					Creator creatorCreator = GetCreator(kv.Value.Author);
+					creatorCreator.Usage++;
+					Creator.Merge(kv.Value, creatorCreator);
+					AddRedirect(kv.Key, kv.Value.Author);
+					s_creatorData.Remove(kv.Key);
+				}
+			}
 		}
 
 		/// <summary>
@@ -44,10 +101,8 @@ namespace WikiCrawler
 		/// </summary>
 		public static void SaveOut()
 		{
-			//write creators
-			string creatorTemplatesFile = CacheFile;
-
-			using (StreamWriter writer = new StreamWriter(new FileStream(creatorTemplatesFile, FileMode.Create, FileAccess.Write), Encoding.UTF8))
+			// write data
+			using (StreamWriter writer = new StreamWriter(new FileStream(DataCacheFile, FileMode.Create, FileAccess.Write), Encoding.UTF8))
 			{
 				writer.WriteLine("{");
 				List<KeyValuePair<string, Creator>> creatorsFlat = new List<KeyValuePair<string, Creator>>(s_creatorData);
@@ -64,64 +119,104 @@ namespace WikiCrawler
 					{
 						first = false;
 					}
-					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Key) + ":");
+					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Key));
+					writer.Write(":");
 					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Value, Newtonsoft.Json.Formatting.Indented));
 				}
-				writer.WriteLine("}");
+				writer.WriteLine("\n}");
 			}
-		}
 
-		private static void ValidateCreators(MediaWiki.Api api)
-		{
-			Console.WriteLine("Validating creators...");
-			foreach (KeyValuePair<string, Creator> kv in s_creatorData)
+			// write redirects
+			using (StreamWriter writer = new StreamWriter(new FileStream(RedirectsCacheFile, FileMode.Create, FileAccess.Write), Encoding.UTF8))
 			{
-				Creator data = kv.Value;
-				Console.WriteLine(kv.Key);
-
-				string attempt = kv.Key;
-
-				if (attempt.StartsWith("Creator:"))
-					attempt = attempt.Substring("Creator:".Length);
-
-				if (string.IsNullOrEmpty(data.Author) && !string.IsNullOrEmpty(attempt))
+				writer.WriteLine("{");
+				bool first = true;
+				foreach (var kv in s_creatorRedirects)
 				{
-					//1. validate suggested creator
-					//Wikimedia.Article creatorArt = Api.GetPage("Creator:" + attempt);
-					//if (creatorArt != null && !creatorArt.missing)
-					//{
-					//	data.Author = "{{" + creatorArt.title + "}}";
-					//}
-
-					//2. try to create suggested creator
-					if (string.IsNullOrEmpty(data.Author))
+					if (!first)
 					{
-						//string trying = attempt;
-						//Console.WriteLine("Attempting creation...");
-						//if (CommonsCreatorFromWikidata.TryMakeCreator(Api, ref trying))
-						//	data.Succeeeded = trying;
+						writer.WriteLine(',');
 					}
+					else
+					{
+						first = false;
+					}
+					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Key));
+					writer.Write(":");
+					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Value));
 				}
+				writer.WriteLine("\n}");
 			}
 		}
 
-		public static bool TryGetCreator(string key, out Creator creator)
+		public static void AddRedirect(string from, string to)
 		{
-			if (s_creatorData == null)
+			from = from.Trim();
+			to = to.Trim();
+
+			if (!s_creatorRedirects.ContainsKey(from))
 			{
-				throw new InvalidOperationException("CreatorUtility not initialized");
+				s_creatorRedirects.Add(from, to);
+			}
+		}
+
+		public static Creator GetCreator(string key)
+		{
+			bool eat;
+			return GetCreator(key, out eat);
+		}
+
+		public static Creator GetCreator(string key, out bool isNew)
+		{
+			key = key.Trim();
+
+			if (s_creatorRedirects.TryGetValue(key, out string redirect))
+			{
+				key = redirect;
 			}
 
-			if (s_creatorData.TryGetValue(key, out creator))
+			if (s_creatorData.TryGetValue(key, out Creator creator))
 			{
-				return true;
+				isNew = false;
+				return creator;
 			}
 			else
 			{
-				creator = new Creator();
+				isNew = true;
+				creator = CreateNewCreator(key);
 				s_creatorData.Add(key, creator);
-				return false;
+				return creator;
 			}
+		}
+
+		public static readonly Regex CreatorTemplateRegex = new Regex(@"^{{([Cc]reator:.+)}}$");
+		private static readonly Regex s_birthDeathRegex = new Regex(@"^(.+)\s+\(?([0-9][0-9][0-9][0-9])[\-–—]([0-9][0-9][0-9][0-9])\)?$");
+
+		/// <summary>
+		/// Creates a new creator, automatically filling in any info possible.
+		/// </summary>
+		private static Creator CreateNewCreator(string key)
+		{
+			Creator creator = new Creator();
+			
+			// see if the name already includes birth and death years
+			Match birthDeathMatch = s_birthDeathRegex.Match(key);
+			if (birthDeathMatch.Success)
+			{
+				if (int.TryParse(birthDeathMatch.Groups[3].Value, out int deathYear))
+				{
+					creator.DeathYear = deathYear;
+				}
+			}
+
+			//TODO: do more looking up (wikidata etc)
+			Match creatorMatch = CreatorTemplateRegex.Match(key);
+			if (creatorMatch.Success)
+			{
+
+			}
+
+			return creator;
 		}
 
 		public static bool TryGetHomeCategory(string creator, out string homeCategory)

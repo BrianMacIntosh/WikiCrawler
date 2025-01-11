@@ -1,4 +1,5 @@
-﻿using NPGallery;
+﻿using MediaWiki;
+using NPGallery;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -28,6 +29,9 @@ namespace WikiCrawler
 
 				switch (task)
 				{
+					case "trimcreators":
+						CreatorUtility.TrimEmpty();
+						break;
 					case "watermarkdl":
 						new WatermarkRemoval("Category:Images from Slovenian Ethnographic Museum website").Download();
 						break;
@@ -133,6 +137,11 @@ namespace WikiCrawler
 			{
 				//TODO: check dirty
 				CategoryTranslation.SaveOut();
+
+				if (CreatorUtilityMeta.IsInitialized)
+				{
+					CreatorUtility.SaveOut();
+				}
 
 				// allow sleep
 				WindowsUtility.SetThreadExecutionState(WindowsUtility.EXECUTION_STATE.ES_CONTINUOUS);
