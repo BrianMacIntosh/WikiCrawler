@@ -69,7 +69,7 @@ namespace Tasks
 				{
 					WebClient.DownloadFile(uri, fname);
 				}
-				catch (WebException e)
+				catch (WebException)
 				{
 					broken.Add(key);
 				}

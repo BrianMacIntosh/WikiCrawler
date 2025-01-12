@@ -9,11 +9,6 @@ namespace Tasks
 	{
 		private const int s_TestLimit = 1;
 
-		private static readonly string[] s_DoMe =
-@"File:Nicolaes Eliasz. Pickenoy - Self-Portrait at the Age of Thirty-Six - WGA17440.jpg
-File:Jochem Hendricksz Swartenhont (1566-1627), by Nicolaes Eliasz Pickenoy.jpg
-File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
-
 		private static List<string> s_Categories = new List<string>()
 		{
 			"Category:PD-old-50-1923",
@@ -78,17 +73,6 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 
 		public override void Execute()
 		{
-			foreach (string art in s_DoMe)
-			{
-				Article articleContent = GlobalAPIs.Commons.GetPage(art.Trim());
-				Do(articleContent);
-				if (articleContent.Dirty)
-				{
-					GlobalAPIs.Commons.EditPage(articleContent, articleContent.GetEditSummary());
-				}
-			}
-			return;
-
 			int successLimit = s_TestLimit;
 
 			foreach (string cat in s_Categories)

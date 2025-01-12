@@ -12,10 +12,12 @@ namespace Tasks
 	{
 		private class RawData
 		{
+#pragma warning disable 0649
 			public string item;
 			public string itemLabel;
 			public string value;
 			public string valueLabel;
+#pragma warning restore 0649
 		}
 
 		public override void Execute()
@@ -23,7 +25,7 @@ namespace Tasks
 			string rawPath = Path.Combine(Configuration.DataDirectory, "npsunits.json");
 			RawData[] rawData = JsonConvert.DeserializeObject<RawData[]>(File.ReadAllText(rawPath, Encoding.UTF8));
 
-			Api wikidata = new Api(new System.Uri("https://www.wikidata.org/"));
+			Api wikidata = new Api(new Uri("https://www.wikidata.org/"));
 			wikidata.AutoLogIn();
 
 			List<string> entityIds = new List<string>();
