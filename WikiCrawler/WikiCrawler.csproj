@@ -88,12 +88,16 @@
     <Compile Include="MediaWiki\Formats\Revision.cs" />
     <Compile Include="MediaWiki\GlobalAPIs.cs" />
     <Compile Include="MediaWiki\PageTitle.cs" />
+    <Compile Include="Tasks\BaseReplacement.cs" />
     <Compile Include="Tasks\BaseTask.cs" />
     <Compile Include="Tasks\CategoryFindReplace.cs" />
+    <Compile Include="Tasks\Commons\FixImplicitCreators.cs" />
+    <Compile Include="Tasks\Commons\PdArtFixup.cs" />
     <Compile Include="Tasks\CompoundReplacementTask.cs" />
     <Compile Include="Tasks\Commons\ExifToDateField.cs" />
     <Compile Include="Tasks\Commons\NullEditCategory.cs" />
-    <Compile Include="Tasks\Commons\PDArtFixup.cs" />
+    <Compile Include="Tasks\Commons\PdArtReplacement.cs" />
+    <Compile Include="Tasks\ReplaceInCategory.cs" />
     <Compile Include="Utility\Commons\CommonsCreatorWorksheet.cs" />
     <Compile Include="Utility\Commons\CommonsFileWorksheet.cs" />
     <Compile Include="Utility\Commons\CommonsWorksheet.cs" />
@@ -138,7 +142,7 @@
     <Compile Include="MediaWiki\DotNetWikiBot.cs" />
     <Compile Include="Old\Dsea.cs" />
     <Compile Include="Backend\EasyWeb.cs" />
-    <Compile Include="Tasks\Commons\FixImplicitCreators.cs" />
+    <Compile Include="Tasks\Commons\ImplicitCreatorsReplacement.cs" />
     <Compile Include="Backend\LightweightRobots.cs" />
     <Compile Include="Backend\MultipartUpload.cs" />
     <Compile Include="Old\NsrwCleaner.cs" />
