@@ -83,7 +83,7 @@ namespace WikiCrawler
 							//TODO: ensure date is actually in an infobox
 
 							//Scan for date
-							Marker dateMarker = new Marker("|date=", true);
+							string dateMarker = "|date=";
 							int dateStart = -1;
 							int dateEnd = -1;
 							string date = null;
@@ -91,7 +91,7 @@ namespace WikiCrawler
 							{
 								if (dateStart < 0)
 								{
-									if (dateMarker.MatchAgainst(text[c]))
+									if (text.MatchAt(dateMarker, c))
 									{
 										dateStart = c + 1;
 									}

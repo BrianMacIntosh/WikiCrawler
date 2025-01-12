@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Net;
 using System.IO;
-using System.Diagnostics;
+using System.Net;
 
 namespace WikiCrawler
 {
-    class UploadFromWeb
+	class UploadFromWeb
     {
         private static Uri page = new Uri("http://www.gutenberg.org/files/16634/16634-h/16634-h.htm");
 
@@ -27,11 +24,12 @@ namespace WikiCrawler
             List<string> images = new List<string>();
 			List<string> captions = new List<string>();
 
-            Marker imgStart = new Marker("<img ");
-            Marker srcStart = new Marker("src=");
-            Marker srcEnd = new Marker(" ");
-			Marker captionStart = new Marker("<span class=\"caption\">");
-			Marker captionEnd = new Marker("</span>");
+            //NOTE: refactored and untested
+            string imgStart = "<img ";
+            string srcStart = "src=";
+            string srcEnd = " ";
+			string captionStart = "<span class=\"caption\">";
+			string captionEnd = "</span>";
             int mode = 0;
             int startPt = 0;
             for (int c = 0; c < root.Length; c++)
@@ -50,29 +48,27 @@ namespace WikiCrawler
                 }
                 else if (mode == 0)
                 {
-                    if (imgStart.MatchAgainst(root[c]))
+                    if (root.MatchAt(imgStart, c))
                     {
                         mode = 1;
-						captionStart.Reset();
                     }
-					else if (captionStart.MatchAgainst(root[c]))
+					else if (root.MatchAt(captionStart, c))
 					{
-						startPt = c + 1;
+						startPt = c + captionStart.Length;
 						mode = -1;
-						imgStart.Reset();
 					}
                 }
                 else if (mode == 1)
                 {
-                    if (srcStart.MatchAgainst(root[c]))
+                    if (root.MatchAt(srcStart, c))
                     {
-                        startPt = c + 1;
+                        startPt = c + srcStart.Length;
                         mode = 2;
                     }
                 }
                 else if (mode == 2)
                 {
-                    if (srcEnd.MatchAgainst(root[c]))
+                    if (root.MatchAt(srcEnd, c))
                     {
                         finalize = true;
                         endPt = c - srcEnd.Length;
@@ -81,7 +77,7 @@ namespace WikiCrawler
                 }
 				else if (mode == -1)
 				{
-					if (captionEnd.MatchAgainst(root[c]))
+					if (root.MatchAt(captionEnd, c))
 					{
 						finalizeCaption = true;
 						endPt = c - captionEnd.Length;

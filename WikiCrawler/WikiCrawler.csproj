@@ -88,9 +88,9 @@
     <Compile Include="MediaWiki\Formats\Revision.cs" />
     <Compile Include="MediaWiki\GlobalAPIs.cs" />
     <Compile Include="MediaWiki\PageTitle.cs" />
+    <Compile Include="Tasks\BaseTask.cs" />
     <Compile Include="Tasks\CategoryFindReplace.cs" />
-    <Compile Include="Tasks\Commons\CityDisambigCheck.cs" />
-    <Compile Include="Tasks\Commons\CompoundReplacementTask.cs" />
+    <Compile Include="Tasks\CompoundReplacementTask.cs" />
     <Compile Include="Tasks\Commons\ExifToDateField.cs" />
     <Compile Include="Tasks\Commons\NullEditCategory.cs" />
     <Compile Include="Tasks\Commons\PDArtFixup.cs" />
@@ -98,7 +98,6 @@
     <Compile Include="Utility\Commons\CommonsFileWorksheet.cs" />
     <Compile Include="Utility\Commons\CommonsWorksheet.cs" />
     <Compile Include="UWash\SayreCategorize.cs" />
-    <Compile Include="Tasks\BatchTaskAttribute.cs" />
     <Compile Include="Utility\Exceptions\LicenseException.cs" />
     <Compile Include="Utility\Exceptions\RedownloadException.cs" />
     <Compile Include="Batch\UWash\UWashDownloader.cs" />
@@ -141,7 +140,6 @@
     <Compile Include="Backend\EasyWeb.cs" />
     <Compile Include="Tasks\Commons\FixImplicitCreators.cs" />
     <Compile Include="Backend\LightweightRobots.cs" />
-    <Compile Include="Old\Marker.cs" />
     <Compile Include="Backend\MultipartUpload.cs" />
     <Compile Include="Old\NsrwCleaner.cs" />
     <Compile Include="Tasks\Commons\NsrwFollowup.cs" />
@@ -169,7 +167,6 @@
     <Compile Include="MediaWiki\Api.cs" />
     <Compile Include="MediaWiki\WikimediaCategoryTree.cs" />
     <Compile Include="MediaWiki\WikimediaException.cs" />
-    <Compile Include="MediaWiki\WikimediaParsedArticle.cs" />
     <Compile Include="MediaWiki\WikiUtils.cs" />
   </ItemGroup>
   <ItemGroup>

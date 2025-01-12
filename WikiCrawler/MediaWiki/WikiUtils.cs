@@ -197,35 +197,28 @@ namespace MediaWiki
 		/// <summary>
 		/// Remove HTML comments from the text.
 		/// </summary>
-		public static string RemoveComments(string text, string prefix = "<!--")
+		public static string RemoveComments(string text, string commentStart = "<!--")
 		{
-			Marker start = new Marker(prefix);
-			Marker end = new Marker("-->");
-			int startPos = -1;
-			for (int c = 0; c < text.Length; c++)
+			string commentEnd = "-->";
+			int startPos = text.IndexOf(commentStart);
+			while (startPos > 0)
 			{
-				if (startPos < 0)
+				int endPos = text.IndexOf(commentEnd, startPos);
+				if (endPos >= 0)
 				{
-					if (start.MatchAgainst(text[c]))
-					{
-						startPos = c - start.Length + 1;
-					}
+					text = text.Substring(0, startPos) + text.Substring(endPos + commentEnd.Length);
+					startPos = text.IndexOf(commentStart);
 				}
 				else
 				{
-					if (end.MatchAgainst(text[c]))
-					{
-						text = text.Substring(0, startPos) + text.Substring(c + 1);
-						c = startPos - 1;
-						startPos = -1;
-					}
+					break;
 				}
 			}
 			return text;
 		}
 
-		private static Marker s_templateStartMarker = new Marker("{{");
-		private static Marker s_templateEndMarker = new Marker("}}");
+		private static string s_templateStart = "{{";
+		private static string s_templateEnd = "}}";
 
 		/// <summary>
 		/// Returns the indices of the start and end of the inner content of the first instance of the specified template.
@@ -236,7 +229,7 @@ namespace MediaWiki
 			if (startIndex >= 0)
 			{
 				endIndex = GetTemplateEnd(text, startIndex);
-				startIndex += s_templateStartMarker.Length;
+				startIndex += s_templateStart.Length;
 			}
 			else
 			{
@@ -315,12 +308,12 @@ namespace MediaWiki
 			int templatesOpen = 0;
 			for (int index = templateStart; index < text.Length;)
 			{
-				if (s_templateStartMarker.MatchAgainst(text, index))
+				if (text.MatchAt(s_templateStart, index))
 				{
 					templatesOpen++;
-					index += s_templateStartMarker.Length;
+					index += s_templateStart.Length;
 				}
-				else if (s_templateEndMarker.MatchAgainst(text, index))
+				else if (text.MatchAt(s_templateEnd, index))
 				{
 					templatesOpen--;
 					if (templatesOpen == 0)
@@ -331,7 +324,7 @@ namespace MediaWiki
 					{
 						throw new Exception();
 					}
-					index += s_templateEndMarker.Length;
+					index += s_templateEnd.Length;
 				}
 				else
 				{
@@ -384,13 +377,13 @@ namespace MediaWiki
 				}
 
 				// template nesting
-				if (s_templateStartMarker.MatchAgainst(text, c))
+				if (text.MatchAt(s_templateStart, c))
 				{
 					nestedTemplates++;
 					c++;
 					continue;
 				}
-				else if (s_templateEndMarker.MatchAgainst(text, c))
+				else if (text.MatchAt(s_templateEnd, c))
 				{
 					nestedTemplates--;
 					c++;
@@ -440,17 +433,16 @@ namespace MediaWiki
 		{
 			int state = 0;
 			int nestedTemplates = 0;
-			Marker paramName = new Marker(param, true);
 			paramValueLocation = -1;
 			for (int c = 0; c < text.Length; c++)
 			{
 				if (state == 1)
 				{
 					//parameter name
-					if (nestedTemplates <= 0 && paramName.MatchAgainst(text, c))
+					if (nestedTemplates <= 0 && text.MatchAt(param, c, true))
 					{
 						state = 2;
-						c += paramName.Length - 1;
+						c += param.Length - 1;
 						continue;
 					}
 				}
@@ -474,13 +466,13 @@ namespace MediaWiki
 				}
 
 				// template nesting
-				if (s_templateStartMarker.MatchAgainst(text, c))
+				if (text.MatchAt(s_templateStart, c))
 				{
 					nestedTemplates++;
 					c++;
 					continue;
 				}
-				else if (s_templateEndMarker.MatchAgainst(text, c))
+				else if (text.MatchAt(s_templateEnd, c))
 				{
 					nestedTemplates--;
 					c++;

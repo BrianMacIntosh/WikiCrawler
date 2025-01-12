@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -161,6 +163,38 @@ public static class StringUtility
 			lastWhitespace = char.IsWhiteSpace(text[i]);
 		}
 		return builder.ToString();
+	}
+
+	/// <summary>
+	/// Returns true if the specified substring occurs at the specified index.
+	/// </summary>
+	/// <param name="str"></param>
+	/// <param name="substring"></param>
+	/// <param name="index"></param>
+	public static bool MatchAt(this string str, string substring, int index, bool ignoreCase = false)
+	{
+		for (int si = 0; si < substring.Length; ++si)
+		{
+			if (index + si >= str.Length)
+			{
+				return false;
+			}
+			else if (ignoreCase)
+			{
+				if (char.ToLower(str[index + si]) != char.ToLower(substring[si]))
+				{
+					return false;
+				}
+			}
+			else
+			{
+				if (str[index + si] != substring[si])
+				{
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	/// <summary>

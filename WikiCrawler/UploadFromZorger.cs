@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Net;
 using System.IO;
+using System.Net;
 
 namespace WikiCrawler
 {
-    class UploadFromZorger
+	class UploadFromZorger
     {
         public static void DoHarvestImageUrls(string rootUrl)
         {
@@ -22,29 +20,30 @@ namespace WikiCrawler
             string root = read.ReadToEnd();
             read.Close();
 
+            //NOTE: refactored and utested
             //Get page links
             List<string> pages = new List<string>();
-            Marker tableStart = new Marker("<table width=100% border=1 align = 'center' valign = 'center' >");
-            Marker tableEnd = new Marker("</table>");
-            Marker linkStart = new Marker("<a href='");
-            Marker linkEnd = new Marker("'><img");
+            string tableStart = "<table width=100% border=1 align = 'center' valign = 'center' >";
+            string tableEnd = "</table>";
+            string linkStart = "<a href='";
+            string linkEnd = "'><img";
             int mode = 0;
             int startPt = 0;
             for (int c = 0; c < root.Length; c++)
             {
                 if (mode == 0)
                 {
-                    if (tableStart.MatchAgainst(root[c]))
+                    if (root.MatchAt(tableStart, c))
                         mode = 1;
                 }
                 if (mode > 0)
                 {
-                    if (tableEnd.MatchAgainst(root[c]))
+                    if (root.MatchAt(tableEnd, c))
                         break;
                 }
                 if (mode == 1)
                 {
-                    if (linkStart.MatchAgainst(root[c]))
+                    if (root.MatchAt(linkStart, c))
                     {
                         startPt = c + 1;
                         mode = 2;
@@ -52,7 +51,7 @@ namespace WikiCrawler
                 }
                 if (mode == 2)
                 {
-                    if (linkEnd.MatchAgainst(root[c]))
+                    if (root.MatchAt(linkEnd, c))
                     {
                         string link = root.Substring(startPt, c - linkEnd.Length - startPt + 1);
 
@@ -81,16 +80,16 @@ namespace WikiCrawler
                 string content = read.ReadToEnd();
                 read.Close();
 
-                Marker imageStart = new Marker("<img src=");
-                Marker imageEnd = new Marker(@" 
-	alt=");
+                string imageStart = "<img src=";
+                string imageEnd = @" 
+	alt=";
                 mode = 0;
                 startPt = 0;
                 for (int c = 0; c < content.Length; c++)
                 {
                     if (mode == 0)
                     {
-                        if (imageStart.MatchAgainst(content[c]))
+                        if (content.MatchAt(imageStart, c))
                         {
                             mode = 1;
                             startPt = c + 1;
@@ -98,7 +97,7 @@ namespace WikiCrawler
                     }
                     else if (mode == 1)
                     {
-                        if (imageEnd.MatchAgainst(content[c]))
+                        if (content.MatchAt(imageEnd, c))
                         {
                             string img = content.Substring(startPt, c - imageEnd.Length - startPt + 1);
                             string[] components = page.Split('/');

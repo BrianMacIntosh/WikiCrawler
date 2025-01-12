@@ -1,5 +1,4 @@
 ﻿using MediaWiki;
-using NPGallery;
 using System;
 using System.Diagnostics;
 using System.Net;
@@ -74,7 +73,10 @@ namespace WikiCrawler
 				WindowsUtility.SetThreadExecutionState(WindowsUtility.EXECUTION_STATE.ES_CONTINUOUS);
 			}
 
-			Console.WriteLine("Done");
+			Console.ForegroundColor = ConsoleColor.Cyan;
+			Console.WriteLine("DONE.");
+			Console.ResetColor();
+
 			WindowsUtility.FlashWindowEx(Process.GetCurrentProcess().MainWindowHandle);
 
 			// shut down

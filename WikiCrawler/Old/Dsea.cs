@@ -1,17 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
 using System.Net;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	class Dsea
+	public class DseaDownload : BaseTask
 	{
 		private const string url = "http://dsal.uchicago.edu/images/keagle/keagle_search.html?depth=details&id={0}";
 
-		public static void Harvest()
+		public override void Execute()
 		{
 			int current = 1;
 
@@ -43,23 +40,19 @@ namespace WikiCrawler
 						writer.WriteLine(string.Format("http://dsal.uchicago.edu/images/keagle/images/large/{0}.jpg", current.ToString("0000")));
 
 						//Parse it
-						Marker start = new Marker("<td width=\"40%\">");
-						int c = 0;
-						for (; c < contents.Length; c++)
-						{
-							if (start.MatchAgainst(contents[c]))
-								break;
-						}
+						string startMarker = "<td width=\"40%\">";
+						int c = contents.IndexOf(startMarker);
 
-						start = new Marker("<td>");
-						Marker end = new Marker("</td>");
+						//NOTE: refactored and untested
+						startMarker = "<td>";
+						string endMarker = "</td>";
 						int mode = 1;
 						int startPoint = c + 1;
 						for (; c < contents.Length; c++)
 						{
 							if (mode == 0)
 							{
-								if (start.MatchAgainst(contents[c]))
+								if (contents.MatchAt(startMarker, c))
 								{
 									startPoint = c + 1;
 									mode = 1;
@@ -67,9 +60,9 @@ namespace WikiCrawler
 							}
 							else if (mode == 1)
 							{
-								if (end.MatchAgainst(contents[c]))
+								if (contents.MatchAt(endMarker, c))
 								{
-									writer.WriteLine(contents.Substring(startPoint, c - startPoint - end.Length + 1));
+									writer.WriteLine(contents.Substring(startPoint, c - startPoint - endMarker.Length + 1));
 									mode = 0;
 								}
 							}
@@ -83,10 +76,6 @@ namespace WikiCrawler
 						if (maxgo <= 0) break;
 					}
 				}
-			}
-			catch (Exception e)
-			{
-				Console.WriteLine(e);
 			}
 			finally
 			{

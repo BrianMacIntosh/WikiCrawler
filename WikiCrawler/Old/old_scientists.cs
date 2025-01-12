@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
 
 namespace WikiCrawler
 {
-    class Scientist
+	class Scientist
     {
         public string Name;
         public string DOB;
@@ -45,7 +43,7 @@ namespace WikiCrawler
             StreamReader re = new StreamReader(new FileStream("C:/pages.txt", FileMode.Open));
 
             List<Scientist> scientists = new List<Scientist>();
-            Marker titlemark = new Marker("'''");
+            string titlemark = "'''";
             string sback = "START";
             bool started = false;
             string text;
@@ -75,6 +73,7 @@ namespace WikiCrawler
                     sci.Name = s.Remove(paren).Trim();
                 scientists.Add(sci);
 
+                //NOTE: refactored and untested
                 //Find name in article
                 int openpoint = -1;
                 int mode = 0;
@@ -86,7 +85,7 @@ namespace WikiCrawler
                         //Find name
                         if (openpoint >= 0)
                         {
-                            if (titlemark.MatchAgainst(text[c]))
+                            if (text.MatchAt(titlemark, c))
                             {
                                 string newname = text.Substring(openpoint, c - openpoint - 2);
                                 if (newname.Length > sci.Name.Length)
@@ -97,9 +96,9 @@ namespace WikiCrawler
                                 mode = c;
                             }
                         }
-                        else if (titlemark.MatchAgainst(text[c]))
+                        else if (text.MatchAt(titlemark, c))
                         {
-                            openpoint = c + 1;
+                            openpoint = c + titlemark.Length;
                         }
                     }
                     else
@@ -142,8 +141,8 @@ namespace WikiCrawler
         private static List<string> GetBulletLinks(string text)
         {
             List<string> names = new List<string>();
-            Marker marker1 = new Marker("* [[");
-            Marker marker2 = new Marker("*[[");
+            string marker1 = "* [[";
+            string marker2 = "*[[";
             int namestart = -1;
             for (int c = 0; c < text.Length; c++)
             {
@@ -155,12 +154,14 @@ namespace WikiCrawler
                         namestart = -1;
                     }
                 }
-                else if (marker1.MatchAgainst(text[c]) || marker2.MatchAgainst(text[c]))
+                else if (text.MatchAt(marker1, c))
                 {
-                    marker1.Reset();
-                    marker2.Reset();
-                    namestart = c + 1;
+                    namestart = c + marker1.Length;
                 }
+                else if (text.MatchAt(marker2, c))
+                {
+					namestart = c + marker2.Length;
+				}
             }
             return names;
         }
