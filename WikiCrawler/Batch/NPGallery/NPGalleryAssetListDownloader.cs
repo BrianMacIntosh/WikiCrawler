@@ -1,9 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Tasks;
 
 namespace NPGallery
 {
+	public class NPAssets : BaseTask
+	{
+		public override void Execute()
+		{
+			new NPGalleryAssetListDownloader("npgallery").Execute();
+		}
+	}
+
 	public class NPGalleryAssetListDownloader : BatchDownloader<int>
 	{
 		private List<NPGalleryAsset> m_allAssets = new List<NPGalleryAsset>();
@@ -19,6 +28,11 @@ namespace NPGallery
 			string assetlistFile = Path.Combine(ProjectDataDirectory, "assetlist.json");
 			string json = File.ReadAllText(assetlistFile);
 			m_allAssets = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
+		}
+
+		protected override HashSet<int> GetDownloadSucceededKeys()
+		{
+			return new HashSet<int>();
 		}
 
 		protected override bool GetPersistStatus()

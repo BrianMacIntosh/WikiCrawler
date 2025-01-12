@@ -10,7 +10,7 @@ namespace Tasks
 	/// <summary>
 	/// Replaces author strings with verified Creator templates.
 	/// </summary>
-	public static class FixImplicitCreators
+	public class FixImplicitCreators : BaseTask
 	{
 		private const int MaxSuccesses = int.MaxValue;
 		private const int s_SearchDepth = 1;
@@ -29,8 +29,7 @@ namespace Tasks
 		//Category:Author matching Creator template, Creator template not used
 		//Category:Book template with implicit creator
 
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
 			int successLimit = MaxSuccesses;
 
@@ -79,7 +78,8 @@ namespace Tasks
 		{
 			return IsConvertibleUnknownAuthor(author)
 				|| string.Equals(author, "{{unknown|author}}", StringComparison.InvariantCultureIgnoreCase)
-				|| string.Equals(author, "{{unknown author}}", StringComparison.InvariantCultureIgnoreCase);
+				|| string.Equals(author, "{{unknown author}}", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "{{author|unknown}}", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		private static bool IsAnonymousAuthor(string author)

@@ -13,11 +13,6 @@ using MediaWiki;
 public interface IBatchUploader : IBatchTask
 {
 	/// <summary>
-	/// Uploads all configured files.
-	/// </summary>
-	void UploadAll();
-
-	/// <summary>
 	/// Checks the downloaded image file. Throws an exception if it's invalid and needs to be redownloaded.
 	/// </summary>
 	void ValidateDownload(string imagePath);
@@ -67,10 +62,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 
 	private static bool s_stop = false;
 
-	/// <summary>
-	/// Uploads all configured files.
-	/// </summary>
-	public void UploadAll()
+	public override void Execute()
 	{
 		try
 		{

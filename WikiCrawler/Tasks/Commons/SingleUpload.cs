@@ -5,10 +5,9 @@ using System.Text;
 
 namespace Tasks
 {
-	public static class SingleUpload
+	public class SingleUpload : BaseTask
 	{
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
 			//Download
 			if (!Directory.Exists("images"))

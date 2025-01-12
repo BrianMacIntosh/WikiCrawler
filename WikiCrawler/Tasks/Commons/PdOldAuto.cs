@@ -5,11 +5,11 @@ using System.Text;
 
 namespace Tasks
 {
-	public static class PdOldAuto
+	public class PdOldAuto : BaseTask
 	{
 		private const int s_TestLimit = 1;
 
-		private static string[] s_DoMe =
+		private static readonly string[] s_DoMe =
 @"File:Nicolaes Eliasz. Pickenoy - Self-Portrait at the Age of Thirty-Six - WGA17440.jpg
 File:Jochem Hendricksz Swartenhont (1566-1627), by Nicolaes Eliasz Pickenoy.jpg
 File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
@@ -76,8 +76,7 @@ File:Portrait of an unknown man, by Nicolaes Eliasz Pickenoy.jpg".Split('\n');
 
 		//TODO: also fix [[Category:PD Old auto: no death date]]
 
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
 			foreach (string art in s_DoMe)
 			{

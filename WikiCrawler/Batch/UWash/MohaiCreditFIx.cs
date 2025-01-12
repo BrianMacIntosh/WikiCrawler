@@ -18,7 +18,7 @@ namespace UWash
 			Api.AutoLogIn();
 		}
 
-		public void Execute()
+		public override void Execute()
 		{
 			bool skipping = true;
 

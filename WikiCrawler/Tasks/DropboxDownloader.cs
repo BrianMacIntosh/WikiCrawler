@@ -1,23 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
-using System.Web.Script.Serialization;
 using System.Net;
+using System.Web.Script.Serialization;
 
 namespace Tasks
 {
 	/// <summary>
 	/// Given JSON data from a Dropbox folder, downloads all the files in that folder.
 	/// </summary>
-	public static class DropboxDownloader
+	public class DropboxDownloader : BaseTask
 	{
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
 			string json;
+
 			using (StreamReader reader = new StreamReader(new FileStream("E:/dropbox.json", FileMode.Open, FileAccess.Read)))
 			{
 				json = reader.ReadToEnd();

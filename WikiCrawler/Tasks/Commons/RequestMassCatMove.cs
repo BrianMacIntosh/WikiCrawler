@@ -1,22 +1,18 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Tasks
 {
-	public static class RequestMassCatMove
+	/// <summary>
+	/// Produces Commons Delinker move commands for a large list of categories.
+	/// </summary>
+	public class RequestMassCatMove : BaseTask
 	{
-		/// <summary>
-		/// Produces Commons Delinker move commands for a large list of categories.
-		/// </summary>
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
-			MediaWiki.Api commonsApi = new MediaWiki.Api(new Uri("https://commons.wikimedia.org"));
-
 			List<string> output = new List<string>();
 
 			foreach (string catname in File.ReadAllLines("C:/Users/Brian/Desktop/revival3.csv", Encoding.Default))
@@ -25,7 +21,7 @@ namespace Tasks
 
 				Console.WriteLine(catnameReal);
 
-				MediaWiki.Article catpage = commonsApi.GetPage("Category:" + catnameReal);
+				Article catpage = GlobalAPIs.Commons.GetPage("Category:" + catnameReal);
 
 				EasyWeb.crawlDelay = 0.1f;
 

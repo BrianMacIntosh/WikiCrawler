@@ -7,30 +7,40 @@ using System.Text.RegularExpressions;
 
 namespace Tasks
 {
-	public static class CommonsCreatorFromWikidata
+	/// <summary>
+	/// Creates creator templates from the wikidata ids in 'creator_queue.txt'.
+	/// </summary>
+	public class MakeCreatorsFromList : BaseTask
 	{
-		private static Api Wikidata = new Api(new Uri("https://www.wikidata.org/"));
+		public override void Execute()
+		{
+			using (StreamReader reader = new StreamReader(new FileStream("creator_queue.txt", FileMode.Open), Encoding.Default))
+			{
+				while (!reader.EndOfStream)
+				{
+					Entity entity = GlobalAPIs.Wikidata.GetEntity(reader.ReadLine());
+					string page;
+					CommonsCreatorFromWikidata.TryMakeCreator(entity, "", null, out page);
+				}
+			}
+		}
+	}
 
+	/// <summary>
+	/// Creates creator templates from 'Category:Creator templates to be created by a bot'.
+	/// </summary>
+	public class CommonsCreatorFromWikidata : BaseTask
+	{
 		//TODO: support BC dates
 
-		private static bool s_DoBotCat = false;
-		private static bool s_DoNormalCat = true;
-		private static int s_TestLimit = int.MaxValue;
-		private static bool s_MakeNewCreators = false;
-		private static bool s_FixImplicitCreators = true;
+		private static readonly bool s_DoBotCat = false;
+		private static readonly bool s_DoNormalCat = true;
+		private static readonly int s_TestLimit = int.MaxValue;
+		private static readonly bool s_MakeNewCreators = false;
+		private static readonly bool s_FixImplicitCreators = true;
 
-		/// <summary>
-		/// Creates creator templates as indicated by 'Category:Creator templates to be created by a bot'.
-		/// </summary>
-		[BatchTask]
-		public static void MakeCreatorsFromCat()
+		public override void Execute()
 		{
-			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
-
-			Console.WriteLine("Logging in...");
-			commonsApi.AutoLogIn();
-			Wikidata.AutoLogIn();
-
 			int successLimit = s_TestLimit;
 
 			string normalCatLastPage = "";
@@ -47,7 +57,7 @@ namespace Tasks
 			{
 				if (s_DoBotCat)
 				{
-					foreach (Article article in commonsApi.GetCategoryEntries("Category:Creator templates to be created by a bot", cmtype: CMType.subcat))
+					foreach (Article article in GlobalAPIs.Commons.GetCategoryEntries("Category:Creator templates to be created by a bot", cmtype: CMType.subcat))
 					{
 						Console.WriteLine("Checking verified '" + article.title + "'...");
 
@@ -57,14 +67,14 @@ namespace Tasks
 							continue;
 						}
 
-						Article articleContent = commonsApi.GetPage(article);
+						Article articleContent = GlobalAPIs.Commons.GetPage(article);
 						string text = articleContent.revisions[0].text;
 
 						// find template parameter
 						string wikidataId = WikiUtils.GetTemplateParameter("wikidata", text);
 						Console.WriteLine("Wikidata Id is " + wikidataId);
 
-						if (ProcessCreatorCategory(commonsApi, articleContent, wikidataId))
+						if (ProcessCreatorCategory(articleContent, wikidataId))
 						{
 							--successLimit;
 							if (successLimit <= 0)
@@ -77,7 +87,7 @@ namespace Tasks
 
 				if (s_DoNormalCat)
 				{
-					foreach (Article article in commonsApi.GetCategoryEntries("Category:People by name", cmtype: CMType.subcat, cmstartsortkeyprefix: normalCatLastPage))
+					foreach (Article article in GlobalAPIs.Commons.GetCategoryEntries("Category:People by name", cmtype: CMType.subcat, cmstartsortkeyprefix: normalCatLastPage))
 					{
 						Console.WriteLine("----- Checking '" + article.title + "'...");
 
@@ -87,7 +97,7 @@ namespace Tasks
 							continue;
 						}
 
-						Article articleContent = commonsApi.GetPage(article);
+						Article articleContent = GlobalAPIs.Commons.GetPage(article);
 						string text = articleContent.revisions[0].text;
 
 						string name = article.title.Substring("Category:".Length);
@@ -103,7 +113,7 @@ namespace Tasks
 								int creatorEnd = text.IndexOf("}}", creatorIndex);
 								string creator = text.Substring(creatorIndex + 2, creatorEnd - (creatorIndex + 2));
 
-								Article creatorArt = commonsApi.GetPage(creator);
+								Article creatorArt = GlobalAPIs.Commons.GetPage(creator);
 								if (!Article.IsNullOrEmpty(creatorArt))
 								{
 									Console.WriteLine("Checking Creator for wikidata id");
@@ -164,7 +174,7 @@ namespace Tasks
 						{
 							Console.WriteLine("++ Matched " + wikidataId + ".");
 
-							if (ProcessCreatorCategory(commonsApi, articleContent, wikidataId))
+							if (ProcessCreatorCategory(articleContent, wikidataId))
 							{
 								--successLimit;
 								if (successLimit <= 0)
@@ -201,10 +211,10 @@ namespace Tasks
 		private static string GetWikidataId(string name, string yearOfBirth, string yearOfDeath)
 		{
 			// search wikidata
-			string[] search = Wikidata.SearchEntities(name);
+			string[] search = GlobalAPIs.Wikidata.SearchEntities(name);
 			foreach (string result in search)
 			{
-				Entity entity = Wikidata.GetEntity(result);
+				Entity entity = GlobalAPIs.Wikidata.GetEntity(result);
 
 				if (!entity.HasClaim(MediaWiki.Wikidata.Prop_DateOfBirth)
 					|| entity.GetClaimValueAsDate(MediaWiki.Wikidata.Prop_DateOfBirth).GetYear().ToString() != yearOfBirth)
@@ -242,14 +252,13 @@ namespace Tasks
 		/// Parse the specified article and attempt to create a Creator based on it and the provided wikidata.
 		/// </summary>
 		/// <returns>Success</returns>
-		private static bool ProcessCreatorCategory(Api commonsApi,
-			Article article, string wikidataId)
+		private static bool ProcessCreatorCategory(Article article, string wikidataId)
 		{
 			string text = article.revisions[0].text;
 
 			text = WikiUtils.RemoveDuplicateCategories(text);
 
-			Entity entity = Wikidata.GetEntity(wikidataId);
+			Entity entity = GlobalAPIs.Wikidata.GetEntity(wikidataId);
 			if (entity != null && !entity.missing)
 			{
 				bool needsRefetch = false;
@@ -258,7 +267,7 @@ namespace Tasks
 				if (!entity.HasClaim("P373"))
 				{
 					string artNameNoSpace = article.title.Substring("Category:".Length);
-					Wikidata.CreateEntityClaim(entity, "P373", artNameNoSpace, "(BOT) propagating Commons homecat", true);
+					GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P373", artNameNoSpace, "(BOT) propagating Commons homecat", true);
 					needsRefetch = true;
 				}
 
@@ -290,7 +299,7 @@ namespace Tasks
 								string converted = MediaWiki.Wikidata.ConvertAuthorityFromCommonsToWikidata(kvPair.Key, kvPair.Value);
 								if (!string.IsNullOrEmpty(converted))
 								{
-									Wikidata.CreateEntityClaim(entity, prop,
+									GlobalAPIs.Wikidata.CreateEntityClaim(entity, prop,
 										converted, "(BOT) Propagate authority from category on Commons", true);
 								}
 							}
@@ -301,7 +310,7 @@ namespace Tasks
 				if (needsRefetch)
 				{
 					// HACK: lazy refetch...
-					entity = Wikidata.GetEntity(wikidataId);
+					entity = GlobalAPIs.Wikidata.GetEntity(wikidataId);
 				}
 
 				// get existing sortkey for creator
@@ -316,12 +325,12 @@ namespace Tasks
 				}
 
 				string creatorPage;
-				TryMakeCreator(commonsApi, entity, sortkey, existingAuthDict, out creatorPage);
+				TryMakeCreator(entity, sortkey, existingAuthDict, out creatorPage);
 
 				// add creator template to page
 				//TODO: try to maintain position
 				Article creatorArticle = !string.IsNullOrEmpty(creatorPage)
-					? commonsApi.GetPage(creatorPage)
+					? GlobalAPIs.Commons.GetPage(creatorPage)
 					: null;
 				if (creatorArticle != null && !creatorArticle.missing)
 				{
@@ -345,7 +354,7 @@ namespace Tasks
 					if (!entity.HasClaim("P1472"))
 					{
 						string creatorNameNoSpace = creatorArticle.title.Substring("Creator:".Length);
-						Wikidata.CreateEntityClaim(entity, "P1472", creatorNameNoSpace, "(BOT) propagating Commons creator", true);
+						GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P1472", creatorNameNoSpace, "(BOT) propagating Commons creator", true);
 					}
 
 					// remove On Wikidata template (redundant with creator)
@@ -364,17 +373,17 @@ namespace Tasks
 					if (s_FixImplicitCreators)
 					{
 						Console.WriteLine("...checking child files");
-						foreach (Article subArticle in commonsApi.GetCategoryPagesRecursive(article.title, 4))
+						foreach (Article subArticle in GlobalAPIs.Commons.GetCategoryPagesRecursive(article.title, 4))
 						{
 							if (subArticle.ns == Namespace.File)
 							{
-								Article gotSubArticle = commonsApi.GetPage(subArticle);
+								Article gotSubArticle = GlobalAPIs.Commons.GetPage(subArticle);
 								FixImplicitCreators.Do(gotSubArticle, PageTitle.Parse(creatorArticle.title));
 								//PdOldAuto.Do(commonsApi, gotSubArticle);
 
 								if (gotSubArticle.Dirty)
 								{
-									commonsApi.EditPage(gotSubArticle, gotSubArticle.GetEditSummary());
+									GlobalAPIs.Commons.EditPage(gotSubArticle, gotSubArticle.GetEditSummary());
 								}
 							}
 						}
@@ -530,7 +539,7 @@ namespace Tasks
 				if (article.revisions[0].text != text)
 				{
 					article.revisions[0].text = text;
-					if (!commonsApi.EditPage(article, "BOT: creator cleanup tasks"))
+					if (!GlobalAPIs.Commons.EditPage(article, "BOT: creator cleanup tasks"))
 					{
 						Console.WriteLine("Page set failed.");
 						return false;
@@ -554,34 +563,11 @@ namespace Tasks
 		}
 
 		/// <summary>
-		/// Creates creator templates from the wikidata ids in 'creator_queue.txt'.
-		/// </summary>
-		[BatchTask]
-		public static void MakeCreators()
-		{
-			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
-
-			Console.WriteLine("Logging in...");
-			commonsApi.AutoLogIn();
-			Wikidata.AutoLogIn();
-
-			using (StreamReader reader = new StreamReader(new FileStream("creator_queue.txt", FileMode.Open), Encoding.Default))
-			{
-				while (!reader.EndOfStream)
-				{
-					Entity entity = Wikidata.GetEntity(reader.ReadLine());
-					string page;
-					TryMakeCreator(commonsApi, entity, "", null, out page);
-				}
-			}
-		}
-
-		/// <summary>
 		/// Tries to create a Creator template for the specified Wikimedia entity, on Commons.
 		/// </summary>
 		/// <param name="creatorPage">The name of the Creator page created.</param>
 		/// <returns>True if the Creator page now exists.</returns>
-		public static bool TryMakeCreator(Api commonsApi, Entity entity,
+		public static bool TryMakeCreator(Entity entity,
 			string sortkey, Dictionary<string, string> extraAuthority,
 			out string creatorPage)
 		{
@@ -643,7 +629,7 @@ namespace Tasks
 			string nationality = "";
 			if (entity.HasClaim("P27"))
 			{
-				Entity nationalityEntity = entity.GetClaimValueAsEntity("P27", Wikidata);
+				Entity nationalityEntity = entity.GetClaimValueAsEntity("P27", GlobalAPIs.Wikidata);
 				if (nationalityEntity.HasClaim("P297"))
 					nationality = nationalityEntity.GetClaimValueAsString("P297");
 			}
@@ -659,7 +645,7 @@ namespace Tasks
 			string occupation = "";
 			if (entity.HasClaim("P106"))
 			{
-				foreach (Entity occupationEntity in entity.GetClaimValuesAsEntity("P106", Wikidata))
+				foreach (Entity occupationEntity in entity.GetClaimValuesAsEntity("P106", GlobalAPIs.Wikidata))
 				{
 					occupation += occupationEntity.labels["en"] + "/";
 				}
@@ -685,13 +671,13 @@ namespace Tasks
 			string birthloc = "";
 			if (entity.HasClaim("P19"))
 			{
-				Entity locEntity = entity.GetClaimValueAsEntity("P19", Wikidata);
+				Entity locEntity = entity.GetClaimValueAsEntity("P19", GlobalAPIs.Wikidata);
 				birthloc = locEntity.labels["en"];
 			}
 			string deathloc = "";
 			if (entity.HasClaim("P20"))
 			{
-				Entity locEntity = entity.GetClaimValueAsEntity("P20", Wikidata);
+				Entity locEntity = entity.GetClaimValueAsEntity("P20", GlobalAPIs.Wikidata);
 				deathloc = locEntity.labels["en"];
 			}
 
@@ -699,7 +685,7 @@ namespace Tasks
 			string workloc = "";
 			if (entity.HasClaim("P937"))
 			{
-				Entity locEntity = entity.GetClaimValueAsEntity("P937", Wikidata);
+				Entity locEntity = entity.GetClaimValueAsEntity("P937", GlobalAPIs.Wikidata);
 				workloc = locEntity.labels["en"];
 			}
 			string workperiod = "";
@@ -750,10 +736,10 @@ namespace Tasks
 				"\n|Wikidata=" + entity.id +
 				"\n}}";
 
-			Wikidata.CreateEntityClaim(entity, "P1472", name, "(BOT) creating Commons creator page", true);
+			GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P1472", name, "(BOT) creating Commons creator page", true);
 
 			//Do not overwrite if it exists
-			Article safety = commonsApi.GetPage(creatorArt);
+			Article safety = GlobalAPIs.Commons.GetPage(creatorArt);
 			if (safety != null && !safety.missing)
 			{
 				Console.WriteLine("Creator page already exists!");
@@ -761,7 +747,7 @@ namespace Tasks
 				return true;
 			}
 
-			if (commonsApi.CreatePage(creatorArt, "BOT: Making creator based on Wikidata."))
+			if (GlobalAPIs.Commons.CreatePage(creatorArt, "BOT: Making creator based on Wikidata."))
 			{
 				Console.WriteLine("Creator created!");
 				creatorPage = creatorArt.title;

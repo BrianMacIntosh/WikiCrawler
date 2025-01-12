@@ -5,14 +5,20 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading;
+using Tasks;
 using WikiCrawler;
 
 public interface IBatchTask
 {
+	void Execute();
+
 	string GetImageCacheDirectory();
 }
 
-public abstract class BatchTask : IBatchTask
+/// <summary>
+/// Base class for a batch file upload or download task.
+/// </summary>
+public abstract class BatchTask : BaseTask, IBatchTask
 {
 	public readonly string ProjectDataDirectory;
 

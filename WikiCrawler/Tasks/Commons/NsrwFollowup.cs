@@ -1,24 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
 using System.Globalization;
+using System.IO;
+using System.Linq;
 
 namespace Tasks
 {
-	public static class NsrwFollowup
+	/// <summary>
+	/// Updates page text for images extracted from NSRW after extracting them with CropTool.
+	/// </summary>
+	public class NsrwFollowup : BaseTask
 	{
 		private static MediaWiki.Api Api;
 
-		/// <summary>
-		/// Updates page text for images extracted from NSRW after extracting them with CropTool.
-		/// </summary>
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
 			//Read queue
 			List<string> queue = new List<string>();
+
 			using (StreamReader reader = new StreamReader(new FileStream("nsrwqueue.txt", FileMode.Open)))
 			{
 				while (!reader.EndOfStream)
@@ -104,7 +103,7 @@ namespace Tasks
 					if (MediaWiki.WikiUtils.HasNoCategories(text))
 					{
 						string month = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(DateTime.Now.Month);
-						text = text.TrimEnd() + "\n{{Uncategorized|year=" + DateTime.Now.Year + 
+						text = text.TrimEnd() + "\n{{Uncategorized|year=" + DateTime.Now.Year +
 							"|month=" + month + "|day=" + DateTime.Now.Day + "}}";
 					}
 

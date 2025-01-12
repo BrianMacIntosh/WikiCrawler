@@ -3,38 +3,16 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using WikiCrawler;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	public static class BatchController
+	/// <summary>
+	/// Task that finds the correct class for a batch download task and runs it.
+	/// </summary>
+	public class BatchDown : BaseTask
 	{
-		public static void DownloadAll()
-		{
-			foreach (string directory in Directory.GetDirectories(Configuration.DataDirectory))
-			{
-				string key = directory.Split(new char[] { Path.DirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries).Last();
-				Console.WriteLine(key);
-
-				UWash.UWashDownloader downloader = new UWash.UWashDownloader(key);
-				downloader.DownloadAll();
-			}
-		}
-
-		public static IBatchDownloader CreateDownloader(string downloader, string projectKey)
-		{
-			switch (downloader)
-			{
-				case "UWash":
-					return new UWash.UWashDownloader(projectKey);
-				case "NPGallery":
-					return new NPGallery.NPGalleryDownloader(projectKey);
-				default:
-					throw new NotImplementedException("Downloader '" + "'.");
-			}
-		}
-
-		public static void Download()
+		public override void Execute()
 		{
 			Console.Write("Project Key>");
 			string projectKey = Console.ReadLine();
@@ -51,7 +29,46 @@ namespace WikiCrawler
 				File.ReadAllText(Path.Combine(projectDir, "config.json")));
 
 			IBatchDownloader downloader = CreateDownloader(config.downloader, projectKey);
-			downloader.DownloadAll();
+			downloader.Execute();
+		}
+
+		public static IBatchDownloader CreateDownloader(string downloader, string projectKey)
+		{
+			switch (downloader)
+			{
+				case "UWash":
+					return new UWash.UWashDownloader(projectKey);
+				case "NPGallery":
+					return new NPGallery.NPGalleryDownloader(projectKey);
+				default:
+					throw new NotImplementedException("Downloader '" + "'.");
+			}
+		}
+	}
+
+	/// <summary>
+	/// Task that finds the correct class for a batch upload task and runs it.
+	/// </summary>
+	public class BatchUp : BaseTask
+	{
+		public override void Execute()
+		{
+			Console.Write("Project Key>");
+			string projectKey = Console.ReadLine();
+			string projectDir = Path.Combine(Configuration.DataDirectory, projectKey);
+
+			if (!Directory.Exists(projectDir))
+			{
+				Console.WriteLine("Project not found.");
+				return;
+			}
+
+			//TODO: don't deserialize this twice
+			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
+				File.ReadAllText(Path.Combine(projectDir, "config.json")));
+
+			IBatchUploader uploader = CreateUploader(config.uploader, projectKey);
+			uploader.Execute();
 		}
 
 		public static IBatchUploader CreateUploader(string uploader, string projectKey)
@@ -72,28 +89,14 @@ namespace WikiCrawler
 					throw new NotImplementedException("Uploader '" + uploader + "'.");
 			}
 		}
+	}
 
-		public static void Upload()
-		{
-			Console.Write("Project Key>");
-			string projectKey = Console.ReadLine();
-			string projectDir = Path.Combine(Configuration.DataDirectory, projectKey);
-
-			if (!Directory.Exists(projectDir))
-			{
-				Console.WriteLine("Project not found.");
-				return;
-			}
-
-			//TODO: don't deserialize this twice
-			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
-				File.ReadAllText(Path.Combine(projectDir, "config.json")));
-
-			IBatchUploader uploader = CreateUploader(config.uploader, projectKey);
-			uploader.UploadAll();
-		}
-
-		public static void RebuildSuccesses()
+	/// <summary>
+	/// Task that rebuilds the succeeded list by seeing what's on Commons.
+	/// </summary>
+	public class BatchRebuildSuccesses : BaseTask
+	{
+		public override void Execute()
 		{
 			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org/"));
 
@@ -146,8 +149,14 @@ namespace WikiCrawler
 
 			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded, Formatting.Indented));
 		}
+	}
 
-		public static void RevalidateDownloads()
+	/// <summary>
+	/// Task that throws away downloaded data that's invalid.
+	/// </summary>
+	public class BatchRevalidateDownloads : BaseTask
+	{
+		public override void Execute()
 		{
 			Console.Write("Project Key>");
 			string projectKey = Console.ReadLine();
@@ -163,7 +172,7 @@ namespace WikiCrawler
 			ProjectConfig config = JsonConvert.DeserializeObject<ProjectConfig>(
 				File.ReadAllText(Path.Combine(projectDir, "config.json")));
 
-			IBatchUploader uploader = CreateUploader(config.uploader, projectKey);
+			IBatchUploader uploader = BatchUp.CreateUploader(config.uploader, projectKey);
 			foreach (string file in Directory.GetFiles(uploader.GetImageCacheDirectory()))
 			{
 				Console.WriteLine(Path.GetFileName(file));

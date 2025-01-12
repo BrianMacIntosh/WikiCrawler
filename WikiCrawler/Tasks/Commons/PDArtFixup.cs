@@ -10,52 +10,18 @@ using WikiCrawler;
 namespace Tasks
 {
 	/// <summary>
-	/// Replaces naked PD-Art with a more specific license, if one can be determined.
+	/// Caches files for PDArtFixup to test on.
 	/// </summary>
-	public static class PDArtFixup
+	//TODO: make generic
+	public class PDArtFixupCache : BaseTask
 	{
-		/// <summary>
-		/// If true, will use previously cached files as a test. Will not make edits.
-		/// </summary>
-		private const bool UseCachedFiles = false;
-
-		/// <summary>
-		/// Directory where task-specific data is stored.
-		/// </summary>
-		public static string ProjectDataDirectory
+		public override void Execute()
 		{
-			get { return Path.Combine(Configuration.DataDirectory, "pdartfixup"); }
-		}
-
-		private static string FileCacheDirectory
-		{
-			get { return Path.Combine(ProjectDataDirectory, "cache"); }
-		}
-
-		private static List<Regex> s_dateRegexes = new List<Regex>();
-		private static Regex s_sRegex = new Regex("^([0-9]+)'?[Ss]$");
-
-		static PDArtFixup()
-		{
-			Directory.CreateDirectory(FileCacheDirectory);
-
-			foreach (string regex in File.ReadAllLines(Path.Combine(ProjectDataDirectory, "date-regexes.txt")))
-			{
-				if (!string.IsNullOrWhiteSpace(regex))
-				{
-					s_dateRegexes.Add(new Regex(regex));
-				}
-			}
-		}
-
-		//[BatchTask]
-		public static void Cache()
-		{
-			foreach (Article file in GetFilesToAffectUncached(""))
+			foreach (Article file in PDArtFixup.GetFilesToAffectUncached(""))
 			{
 				Console.WriteLine(file.title);
 
-				string filename = Path.Combine(FileCacheDirectory, string.Concat(file.title.Split(Path.GetInvalidFileNameChars())));
+				string filename = Path.Combine(PDArtFixup.FileCacheDirectory, string.Concat(file.title.Split(Path.GetInvalidFileNameChars())));
 				if (filename.Length > 250)
 				{
 					filename = filename.Substring(0, 250);
@@ -70,8 +36,48 @@ namespace Tasks
 				File.WriteAllText(filename, file.title + "\n" + file.revisions[0].text, Encoding.UTF8);
 			}
 		}
+	}
 
-		private static IEnumerable<Article> GetFilesToAffect(string startSortkey)
+	/// <summary>
+	/// Replaces naked PD-Art with a more specific license, if one can be determined.
+	/// </summary>
+	public class PDArtFixup : BaseTask
+	{
+		/// <summary>
+		/// If true, will use previously cached files as a test. Will not make edits.
+		/// </summary>
+		private const bool UseCachedFiles = false;
+
+		/// <summary>
+		/// Directory where task-specific data is stored.
+		/// </summary>
+		public static string ProjectDataDirectory
+		{
+			get { return Path.Combine(Configuration.DataDirectory, "pdartfixup"); }
+		}
+
+		public static string FileCacheDirectory
+		{
+			get { return Path.Combine(ProjectDataDirectory, "cache"); }
+		}
+
+		private static List<Regex> s_dateRegexes = new List<Regex>();
+		private static Regex s_sRegex = new Regex("^([0-9]+)'?[Ss]$");
+
+		public PDArtFixup()
+		{
+			Directory.CreateDirectory(FileCacheDirectory);
+
+			foreach (string regex in File.ReadAllLines(Path.Combine(ProjectDataDirectory, "date-regexes.txt")))
+			{
+				if (!string.IsNullOrWhiteSpace(regex))
+				{
+					s_dateRegexes.Add(new Regex(regex));
+				}
+			}
+		}
+
+		public static IEnumerable<Article> GetFilesToAffect(string startSortkey)
 		{
 			if (UseCachedFiles)
 			{
@@ -83,7 +89,7 @@ namespace Tasks
 			}
 		}
 
-		private static IEnumerable<Article> GetFilesToAffectCached()
+		public static IEnumerable<Article> GetFilesToAffectCached()
 		{
 			char[] filesplitter = new char[] { '\n' };
 			foreach (string path in Directory.GetFiles(FileCacheDirectory))
@@ -96,7 +102,7 @@ namespace Tasks
 			}
 		}
 
-		private static IEnumerable<Article> GetFilesToAffectUncached(string startSortkey)
+		public static IEnumerable<Article> GetFilesToAffectUncached(string startSortkey)
 		{
 			//TODO: runs out of memory
 			IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntries("Category:PD-Art (PD-old default)", CMType.file, cmstartsortkeyprefix: startSortkey);
@@ -120,20 +126,19 @@ namespace Tasks
 			}
 		}
 
-		private static int qtyProcessed = 0;
-		private static int qtyInfoFindFail = 0;
-		private static int qtyDateParseFail = 0;
-		private static int qtyNotPDUS = 0;
-		private static int qtyNoCreator = 0;
-		private static int qtyNoDeathYear = 0;
-		private static int qtyInsufficientPMA = 0;
-		private static int qtyOtherLicense = 0;
-		private static int qtySuccess = 0;
+		private int qtyProcessed = 0;
+		private int qtyInfoFindFail = 0;
+		private int qtyDateParseFail = 0;
+		private int qtyNotPDUS = 0;
+		private int qtyNoCreator = 0;
+		private int qtyNoDeathYear = 0;
+		private int qtyInsufficientPMA = 0;
+		private int qtyOtherLicense = 0;
+		private int qtySuccess = 0;
 
-		private static Dictionary<string, int> unparsedDates = new Dictionary<string, int>();
+		private Dictionary<string, int> unparsedDates = new Dictionary<string, int>();
 
-		[BatchTask]
-		public static void Run()
+		public override void Execute()
 		{
 			//TODO: actually use this
 			string startSortkey = "";
@@ -215,7 +220,7 @@ OtherLicense: {8}",
 		/// Determines the license that can replace PD-Art and replaces it.
 		/// </summary>
 		/// <returns>True if a replacement was made.</returns>
-		public static bool Do(Article article)
+		public bool Do(Article article)
 		{
 			Console.WriteLine("PDArtFixup: checking '{0}'...", article.title);
 

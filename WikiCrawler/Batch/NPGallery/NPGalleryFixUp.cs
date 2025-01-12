@@ -2,62 +2,46 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Tasks;
 
 namespace NPGallery
 {
-	public class NPGalleryFixUp : BatchTaskKeyed<Guid>
+	/// <summary>
+	/// Remove anything from the data_cache that matches a succeeded or permafailed entry.
+	/// </summary>
+	public class NPGalleryCullCache : BatchTaskKeyed<Guid>
 	{
-		protected Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
-
-		private NPGalleryDownloader m_downloader;
-		private NPGalleryUploader m_uploader;
-
-		public NPGalleryFixUp()
+		public NPGalleryCullCache()
 			: base("npgallery")
 		{
-			//m_downloader = new NPGalleryDownloader("npgallery");
-			//m_downloader.HeartbeatEnabled = false;
-
-			//m_uploader = new NPGalleryUploader("npgallery");
 		}
 
-		protected override Guid StringToKey(string str)
+		public override void Execute()
 		{
-			return NPGallery.StringToKey(str);
-		}
-
-		public void Do()
-		{
-			Api.AutoLogIn();
-
-			DoAddRelated();
-
-			SaveOut();
-		}
-
-		private void DoRetroactivePermanentSkip()
-		{
-			foreach (string imageFile in Directory.GetFiles(ImageCacheDirectory))
-			{
-
-			}
-		}
-
-		public void DoCullCache()
-		{
-			// remove anything from the data_cache that matches a succeeded or permafailed entry
 			foreach (string file in Directory.GetFiles(MetadataCacheDirectory))
 			{
 				Guid key = StringToKey(Path.GetFileNameWithoutExtension(file));
 				if (m_succeeded.Contains(key) || m_permanentlyFailed.Contains(key))
 				{
-					File.Delete(file);
 					Console.WriteLine("Delete " + file);
+					File.Delete(file);
 				}
 			}
 		}
+	}
 
-		public void GuidifyFileNames()
+	/// <summary>
+	/// Makes the cached data filenames consistent guids.
+	/// </summary>
+	public class NPGalleryGuidify : BatchTaskKeyed<Guid>
+	{
+		public NPGalleryGuidify()
+			: base("npgallery")
+		{
+
+		}
+
+		public override void Execute()
 		{
 			foreach (string file in Directory.GetFiles(MetadataCacheDirectory))
 			{
@@ -89,15 +73,28 @@ namespace NPGallery
 				}
 			}
 		}
+	}
 
-		private void DoAddRelated()
+	/// <summary>
+	/// 
+	/// </summary>
+	public class NPGalleryAddRelated : BaseTask
+	{
+		protected static Guid StringToKey(string str)
 		{
+			return NPGallery.StringToKey(str);
+		}
+
+		public override void Execute()
+		{
+			NPGalleryDownloader downloader = new NPGalleryDownloader("npgallery");
+
 			// fetch all files from the category
-			foreach (Article article in Api.Search("insource:\"{{Information field|name=NPS Unit Code|value=LIBI}}\"", srnamespace: Api.BuildNamespaceList(Namespace.File)))
+			foreach (Article article in GlobalAPIs.Commons.Search("insource:\"{{Information field|name=NPS Unit Code|value=LIBI}}\"", srnamespace: Api.BuildNamespaceList(Namespace.File)))
 			{
 				//TODO: only before 22:51, 20 July 2019
 
-				Article fullArticle = Api.GetPage(article);
+				Article fullArticle = GlobalAPIs.Commons.GetPage(article);
 				string articleText = fullArticle.revisions[0].text;
 				if (articleText.Contains("<gallery>"))
 				{
@@ -113,7 +110,7 @@ namespace NPGallery
 						int closeParenIndex = article.title.IndexOf(')', lastParenIndex);
 						string thisId = article.title.Substring(lastParenIndex + 1, closeParenIndex - lastParenIndex - 1);
 						Guid thisKey = StringToKey(thisId);
-						Dictionary<string, string> thisMetadata = m_downloader.Download(thisKey, false);
+						Dictionary<string, string> thisMetadata = downloader.Download(thisKey, false);
 
 						string relatedFlat;
 						if (thisMetadata.TryGetValue("~Related", out relatedFlat))

@@ -2,15 +2,13 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using WikiCrawler;
 
 namespace Tasks
 {
-	public static class CollectParkLocations
+	public class CollectParkLocations : BaseTask
 	{
 		private class RawData
 		{
@@ -19,9 +17,8 @@ namespace Tasks
 			public string value;
 			public string valueLabel;
 		}
-		
-		[BatchTask]
-		public static void Do()
+
+		public override void Execute()
 		{
 			string rawPath = Path.Combine(Configuration.DataDirectory, "npsunits.json");
 			RawData[] rawData = JsonConvert.DeserializeObject<RawData[]>(File.ReadAllText(rawPath, Encoding.UTF8));

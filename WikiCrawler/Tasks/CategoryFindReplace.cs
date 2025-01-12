@@ -1,13 +1,11 @@
 ﻿using MediaWiki;
 using System;
-using System.Linq;
 
 namespace Tasks
 {
-	public static class CategoryFindReplace
+	public class CategoryFindReplace : BaseTask
 	{
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
 			EasyWeb.crawlDelay = 0.0f;
 

@@ -1,16 +1,14 @@
 ﻿using MediaWiki;
 using System;
 using System.IO;
-using System.Linq;
 using System.Text;
 using WikiCrawler;
 
 namespace Tasks
 {
-	public static class ExifToDateField
+	public class ExifToDateField : BaseTask
 	{
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
 			using (StreamWriter logWriter = new StreamWriter(
 				new FileStream(Path.Combine(Configuration.DataDirectory, "exiftodate.txt"), FileMode.Append, FileAccess.Write), Encoding.UTF8))

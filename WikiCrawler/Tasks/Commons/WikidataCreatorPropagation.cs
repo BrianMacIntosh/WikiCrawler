@@ -1,23 +1,17 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
 namespace Tasks
 {
-	public static class WikidataCreatorPropagation
+	public class WikidataCreatorPropagation : BaseTask
 	{
-		private static MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
-		private static MediaWiki.Api WikidataApi = new MediaWiki.Api(new Uri("http://www.wikidata.org/"));
-
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
-			Console.WriteLine("Logging in...");
-			Api.AutoLogIn();
-			WikidataApi.AutoLogIn();
-
 			List<string> creators = new List<string>();
+
 			using (StreamReader reader = new StreamReader(new FileStream("authority_in.txt", FileMode.Open), Encoding.Default))
 			{
 				while (!reader.EndOfStream)
@@ -37,7 +31,7 @@ namespace Tasks
 					continue;
 				}
 
-				MediaWiki.Article creatorArticle = Api.GetPage(creatorPage);
+				MediaWiki.Article creatorArticle = GlobalAPIs.Commons.GetPage(creatorPage);
 
 				if (creatorArticle == null || creatorArticle.missing)
 				{
@@ -55,20 +49,20 @@ namespace Tasks
 				//got it?
 				if (!string.IsNullOrEmpty(wikidataId) && wikidataId[0] == 'Q')
 				{
-					MediaWiki.Entity entity = WikidataApi.GetEntity(wikidataId);
+					MediaWiki.Entity entity = GlobalAPIs.Wikidata.GetEntity(wikidataId);
 					if (entity != null && !entity.missing)
 					{
 						string homecat = MediaWiki.WikiUtils.GetTemplateParameter("homecat", articleText);
 						if (!string.IsNullOrEmpty(homecat) && !entity.HasClaim("P373"))
 						{
 							//propagate homecat
-							WikidataApi.CreateEntityClaim(entity, "P373", homecat, "(BOT) propagating Commons category from Creator", true);
+							GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P373", homecat, "(BOT) propagating Commons category from Creator", true);
 						}
 
 						if (!entity.HasClaim("P1472"))
 						{
 							//propagate creator
-							WikidataApi.CreateEntityClaim(entity, "P1472", creatorPage.Substring("Creator:".Length), "(BOT) propagating Commons Creator", true);
+							GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P1472", creatorPage.Substring("Creator:".Length), "(BOT) propagating Commons Creator", true);
 						}
 
 						// populate creator authority
@@ -109,7 +103,7 @@ namespace Tasks
 								// insert content into authority param
 								articleLines[authorityLine] += " " + authority;
 								creatorArticle.revisions[0].text = string.Join("\n", articleLines.ToArray());
-								Api.EditPage(creatorArticle, "(BOT) propagate authorities from Wikidata");
+								GlobalAPIs.Commons.EditPage(creatorArticle, "(BOT) propagate authorities from Wikidata");
 							}
 							else
 							{
@@ -130,7 +124,7 @@ namespace Tasks
 								if (success)
 								{
 									creatorArticle.revisions[0].text = string.Join("\n", articleLines.ToArray());
-									Api.EditPage(creatorArticle, "(BOT) propagate authorities from Wikidata");
+									GlobalAPIs.Commons.EditPage(creatorArticle, "(BOT) propagate authorities from Wikidata");
 								}
 								else
 								{

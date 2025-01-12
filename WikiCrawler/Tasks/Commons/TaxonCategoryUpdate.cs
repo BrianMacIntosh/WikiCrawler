@@ -1,14 +1,11 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
-using MySql.Data.MySqlClient;
-using MediaWiki;
 
 namespace Tasks
 {
-	public static class TaxonCategoryUpdate
+	public class TaxonCategoryUpdate : BaseTask
 	{
 		private static Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
 		private static Api SpeciesApi = new Api(new Uri("http://species.wikimedia.org/"));
@@ -18,7 +15,7 @@ namespace Tasks
 		private static List<string> todoCategories = new List<string>();
 		private static Dictionary<string, List<string>> catTree = new Dictionary<string, List<string>>();
 
-		private static MySqlConnection itisConnection;
+		//private static MySqlConnection itisConnection;
 
 		/*
 		 * Prefer FishBase over ITIS when available
@@ -44,9 +41,8 @@ namespace Tasks
 		 * * {{WRMS|<INDEX>|}}
 		 * * {{NCBI|<INDEX>|}}
 		*/
-		
-		[BatchTask]
-		public static void Do()
+
+		public override void Execute()
 		{
 			// read todo list
 			using (StreamReader reader = new StreamReader(new FileStream(taxonTodoFile, FileMode.Open)))
@@ -73,8 +69,8 @@ namespace Tasks
 				}
 			}
 
-			itisConnection = new MySqlConnection("server=127.0.0.1;uid=root;pwd=;database=ITIS;");
-			itisConnection.Open();
+			//itisConnection = new MySqlConnection("server=127.0.0.1;uid=root;pwd=;database=ITIS;");
+			//itisConnection.Open();
 
 			Console.WriteLine("Logging in...");
 			Api.AutoLogIn();

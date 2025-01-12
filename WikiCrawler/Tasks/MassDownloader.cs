@@ -6,10 +6,9 @@ using System.Text.RegularExpressions;
 
 namespace Tasks
 {
-	public static class MassDownloader
+	public class MassDownloader : BaseTask
 	{
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
 			/*List<string> lines = new List<string>();
 			foreach (string path in Directory.GetFiles("E:/downloadedimages"))

@@ -9,10 +9,7 @@ using WikiCrawler;
 
 public interface IBatchDownloader : IBatchTask
 {
-	/// <summary>
-	/// Downloads all metadata and images.
-	/// </summary>
-	void DownloadAll();
+
 }
 
 public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatchDownloader
@@ -53,24 +50,13 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 	/// </summary>
 	protected bool Finished = false;
 
-	/// <summary>
-	/// Downloads all metadata and images.
-	/// </summary>
-	public void DownloadAll()
+	public override void Execute()
 	{
 		string stopFile = Path.Combine(Configuration.DataDirectory, "STOP");
 
 		try
 		{
-			// load the list of metadata that has already been downloaded
-			HashSet<KeyType> succeededMetadata = new HashSet<KeyType>();
-			foreach (string cachedData in Directory.GetFiles(MetadataCacheDirectory))
-			{
-				succeededMetadata.Add(StringToKey(Path.GetFileNameWithoutExtension(cachedData)));
-			}
-
-			// load the list of files that have already been uploaded
-			succeededMetadata.AddRange(m_succeeded);
+			HashSet<KeyType> downloadSucceededKeys = GetDownloadSucceededKeys();
 
 			int saveOutInterval = 10;
 			int saveOutTimer = saveOutInterval;
@@ -79,7 +65,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 			int totalKeyCount = allKeys.Count();
 			m_heartbeatData["nTotal"] = totalKeyCount - m_permanentlyFailed.Count;
 			m_heartbeatData["nCompleted"] = m_succeeded.Count;
-			m_heartbeatData["nDownloaded"] = succeededMetadata.Count;
+			m_heartbeatData["nDownloaded"] = downloadSucceededKeys.Count;
 			m_heartbeatData["nFailed"] = m_failMessages.Count;
 			m_heartbeatData["nFailedLicense"] = 0;
 
@@ -87,7 +73,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 
 			// load metadata
 			IEnumerable<KeyType> downloadKeys = allKeys.Where(
-				key => !succeededMetadata.Contains(key)
+				key => !downloadSucceededKeys.Contains(key)
 					&& !m_succeeded.Contains(key)
 					&& !m_permanentlyFailed.Contains(key));
 			int downloadCount = downloadKeys.Count();
@@ -96,7 +82,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 				Dictionary<string, string> metadata = Download(key);
 				if (metadata != null)
 				{
-					succeededMetadata.Add(key);
+					downloadSucceededKeys.Add(key);
 				}
 				saveOutTimer--;
 
@@ -104,7 +90,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 				{
 					m_heartbeatData["nTotal"] = totalKeyCount - m_permanentlyFailed.Count;
 					m_heartbeatData["nCompleted"] = m_succeeded.Count;
-					m_heartbeatData["nDownloaded"] = succeededMetadata.Count;
+					m_heartbeatData["nDownloaded"] = downloadSucceededKeys.Count;
 					m_heartbeatData["nFailed"] = m_failMessages.Count;
 					m_heartbeatData["nFailedLicense"] = 0;
 				}
@@ -132,6 +118,21 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 			SaveOut();
 			SendHeartbeat(true);
 		}
+	}
+
+	protected virtual HashSet<KeyType> GetDownloadSucceededKeys()
+	{
+		// load the list of metadata that has already been downloaded
+		HashSet<KeyType> downloadSucceededKeys = new HashSet<KeyType>();
+		foreach (string cachedData in Directory.GetFiles(MetadataCacheDirectory))
+		{
+			downloadSucceededKeys.Add(StringToKey(Path.GetFileNameWithoutExtension(cachedData)));
+		}
+
+		// load the list of files that have already been uploaded
+		downloadSucceededKeys.AddRange(m_succeeded);
+
+		return downloadSucceededKeys;
 	}
 
 	/// <summary>

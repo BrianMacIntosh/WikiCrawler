@@ -3,13 +3,12 @@ using System;
 
 namespace Tasks
 {
-	public class FindCategoryCreators
+	/// <summary>
+	/// Produces a list of users who have created subcategories of a given category.
+	/// </summary>
+	public class FindCategoryCreators : BaseTask
 	{
-		/// <summary>
-		/// Produces a list of users who have created subcategories of a given category.
-		/// </summary>
-		[BatchTask]
-		public static void Find()
+		public override void Execute()
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);

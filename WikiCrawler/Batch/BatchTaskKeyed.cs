@@ -5,10 +5,14 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-public class BatchTaskKeyed<KeyType> : BatchTask
+/// <summary>
+/// Base class for a batch file upload or download task with uniquely-keyed files.
+/// </summary>
+/// <typeparam name="KeyType">The type of the unique key for files in this task.</typeparam>
+public abstract class BatchTaskKeyed<KeyType> : BatchTask
 {
 	/// <summary>
-	/// Set of keys for files that
+	/// Set of keys for files that have already been uploaded.
 	/// </summary>
 	protected HashSet<KeyType> m_succeeded = new HashSet<KeyType>();
 	protected HashSet<KeyType> m_permanentlyFailed = new HashSet<KeyType>();

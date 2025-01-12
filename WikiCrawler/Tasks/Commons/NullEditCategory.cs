@@ -5,23 +5,20 @@ using System.Linq;
 
 namespace Tasks
 {
-	public class NullEditCategory
+	/// <summary>
+	/// Performs a null edit on each file in a specified category.
+	/// </summary>
+	public class NullEditCategory : BaseTask
 	{
-		/// <summary>
-		/// Performs a null edit on each file in a specified category.
-		/// </summary>
-		[BatchTask]
-		public static void Do(string categoryName)
+		public override void Execute()
 		{
+			Console.Write("Category>");
+			string categoryName = Console.ReadLine();
 			categoryName = WikiUtils.GetCategoryCategory(categoryName);
-
-			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
-			Console.WriteLine("Logging in...");
-			commonsApi.AutoLogIn();
 
 			int maxEdits = int.MaxValue;
 
-			IEnumerable<Article> allFiles = commonsApi.GetCategoryEntries(categoryName, CMType.file);
+			IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntries(categoryName, CMType.file);
 			while (true)
 			{
 				IEnumerable<Article> theseFiles = allFiles.Take(50);
@@ -40,10 +37,10 @@ namespace Tasks
 
 					Console.WriteLine(file.title);
 
-					Article fileGot = commonsApi.GetPage(file, prop: "info|revisions", iiprop: "url");
+					Article fileGot = GlobalAPIs.Commons.GetPage(file, prop: "info|revisions", iiprop: "url");
 					try
 					{
-						commonsApi.SetPage(fileGot, "null edit");
+						GlobalAPIs.Commons.SetPage(fileGot, "null edit");
 					}
 					catch (WikimediaCodeException e)
 					{

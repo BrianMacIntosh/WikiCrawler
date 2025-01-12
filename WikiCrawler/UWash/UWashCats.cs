@@ -6,14 +6,13 @@ using WikiCrawler;
 
 namespace Tasks
 {
-	public static class UWashCats
+	public class UWashCats : BaseTask
 	{
 		private static Dictionary<string, string> categoryMap = new Dictionary<string, string>();
 
 		private static int completed = 0;
 
-		[BatchTask]
-		public static void Do()
+		public override void Execute()
 		{
 			//load mapped categories
 			if (File.Exists("uwash_cats.txt"))

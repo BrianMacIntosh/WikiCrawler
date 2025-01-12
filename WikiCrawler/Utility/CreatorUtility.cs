@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Tasks;
 using WikiCrawler;
 
 namespace MediaWiki
@@ -11,6 +11,17 @@ namespace MediaWiki
 	public static class CreatorUtilityMeta
 	{
 		public static bool IsInitialized = false;
+	}
+
+	/// <summary>
+	/// Removes all creators from the cache that have no useful data.
+	/// </summary>
+	public class TrimCreators : BaseTask
+	{
+		public override void Execute()
+		{
+			CreatorUtility.TrimEmpty();
+		}
 	}
 
 	/// <summary>

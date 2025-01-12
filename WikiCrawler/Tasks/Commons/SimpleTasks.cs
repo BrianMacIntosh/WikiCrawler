@@ -7,21 +7,17 @@ using MediaWiki;
 namespace Tasks
 {
 	/// <summary>
-	/// Class for simple, self contained tasks.
+	/// Does a null edit on all pages with incoming links to a set of pages.
 	/// </summary>
-	public class SimpleTasks
+	public class NullEditLinks : BaseTask
 	{
-		/// <summary>
-		/// Does a null edit on all pages with incoming links to a set of pages.
-		/// </summary>
-		[BatchTask]
-		public static void NullEditLinks()
+		public override void Execute()
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
 			Api Api = new Api(commons);
-			
 			Api.AutoLogIn();
+
 
 			string[] pages = new string[]
 			{
@@ -47,12 +43,14 @@ namespace Tasks
 
 			File.WriteAllLines("E:/temp.txt", links.ToArray());
 		}
+	}
 
-		/// <summary>
-		/// Adds a check category to files that haven't been checked yet.
-		/// </summary>
-		[BatchTask]
-		public static void AddCheckCategory()
+	/// <summary>
+	/// Adds a check category to files that haven't been checked yet.
+	/// </summary>
+	public class AddCheckCategory : BaseTask
+	{
+		public override void Execute()
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);
@@ -79,12 +77,14 @@ namespace Tasks
 				}
 			}
 		}
+	}
 
-		/// <summary>
-		/// Reverts a range of contributions.
-		/// </summary>
-		[BatchTask]
-		public static void RevertContribs()
+	/// <summary>
+	/// Reverts a range of contributions.
+	/// </summary>
+	public class RevertContribs : BaseTask
+	{
+		public override void Execute()
 		{
 			Uri commons = new Uri("https://commons.wikimedia.org/");
 			EasyWeb.SetDelayForDomain(commons, 0.1f);

@@ -22,7 +22,7 @@ namespace Dsal
 		{
 		}
 
-		public void Parse()
+		public override void Execute()
 		{
 			string[] lines = File.ReadAllLines(Path.Combine(ProjectDataDirectory, "metadata.txt"));
 			for (int i = 9; i < lines.Length; i += 9)
