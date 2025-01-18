@@ -220,11 +220,11 @@ namespace MediaWiki
 				}
 			}
 
-			//TODO: do more looking up (wikidata etc)
 			Match creatorMatch = CreatorTemplateRegex.Match(key);
 			if (creatorMatch.Success)
 			{
-
+				creator.Author = key;
+				creator.DeathYear = PdOldAuto.GetCreatorDeathYear(PageTitle.Parse(creatorMatch.Groups[1].Value));
 			}
 
 			return creator;
