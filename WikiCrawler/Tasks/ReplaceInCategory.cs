@@ -170,9 +170,7 @@ namespace Tasks
 
 				if (file.Dirty && !UseCachedFiles)
 				{
-					CommonsCreatorFromWikidata.FixInformationTemplates(file);
 					GlobalAPIs.Commons.EditPage(file, file.GetEditSummary());
-
 					maxEdits--;
 				}
 			}

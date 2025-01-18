@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Web.UI;
 
 namespace MediaWiki
 {
@@ -263,35 +264,45 @@ namespace MediaWiki
 			return text.IndexOf("{{" + templateName, StringComparison.InvariantCultureIgnoreCase);
 		}
 
+		public static readonly string[] PrimaryInfoTemplates = new string[]
+		{
+			"information",
+			"Information",
+			"artwork",
+			"Artwork",
+			"Art photo",
+			"Art Photo",
+			"art photo",
+			"art Photo",
+			"book",
+			"Book",
+			"photograph",
+			"Photograph",
+			"google Art Project",
+			"Google Art Project"
+		};
+
+		public static readonly string[] ArtworkTemplates = new string[]
+		{
+			"artwork",
+			"Artwork"
+		};
+
 		/// <summary>
 		/// Returns the index of the {{ at the start of the primary info template;
 		/// </summary>
 		public static int GetPrimaryInfoTemplateStart(string text)
 		{
-			int infoStart = text.IndexOf("{{Information");
-			if (infoStart < 0)
+			int earliestStartIndex = int.MaxValue;
+			foreach (string template in PrimaryInfoTemplates)
 			{
-				infoStart = text.IndexOf("{{information");
+				int startIndex = text.IndexOf("{{" + template);
+				if (startIndex >= 0)
+				{
+					earliestStartIndex = Math.Min(earliestStartIndex, startIndex);
+				}
 			}
-
-			int artStart = text.IndexOf("{{Artwork");
-			if (artStart < 0)
-			{
-				artStart = text.IndexOf("{{artwork");
-			}
-
-			if (infoStart >= 0 && (artStart < 0 || infoStart < artStart))
-			{
-				return infoStart;
-			}
-			else if (artStart >= 0)
-			{
-				return artStart;
-			}
-			else
-			{
-				return -1;
-			}
+			return earliestStartIndex;
 		}
 
 		/// <summary>
