@@ -46,7 +46,7 @@ namespace Tasks
 		/// <summary>
 		/// If true, will use previously cached files as a test. Will not make edits.
 		/// </summary>
-		private const bool UseCachedFiles = true;
+		private const bool UseCachedFiles = false;
 
 		/// <summary>
 		/// The replacement operation to run.
@@ -68,6 +68,8 @@ namespace Tasks
 
 		public ReplaceInCategory(BaseReplacement replacement)
 		{
+			HeartbeatEnabled = true;
+
 			m_replacement = replacement;
 
 			Directory.CreateDirectory(FileCacheDirectory);
@@ -137,11 +139,13 @@ namespace Tasks
 				startSortkey = File.ReadAllText(progressFile);
 			}
 
-			int maxReads = 10;
-			int maxEdits = 2;
+			int maxReads = 100;
+			int maxEdits = int.MaxValue;
 
 			int saveOutInterval = 1;
 			int saveOutCounter = 0;
+
+			StartHeartbeat();
 
 			foreach (Article file in GetFilesToAffect(startSortkey))
 			{
@@ -171,9 +175,12 @@ namespace Tasks
 				if (file.Dirty && !UseCachedFiles)
 				{
 					GlobalAPIs.Commons.EditPage(file, file.GetEditSummary());
+					m_heartbeatData["nEdits"] = (int)m_heartbeatData["nEdits"] + 1;
 					maxEdits--;
 				}
 			}
+
+			SendHeartbeat(true);
 
 			m_replacement.SaveOut();
 		}
