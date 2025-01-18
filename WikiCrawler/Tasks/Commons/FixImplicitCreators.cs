@@ -3,8 +3,8 @@
 	public class FixImplicitCreators : ReplaceInCategory
 	{
 		public FixImplicitCreators()
-			: base(new CompoundReplacementTask(
-				new ImplicitCreatorsReplacement()))
+			: base(new CompoundReplacementTask(new ImplicitCreatorsReplacement())
+				  .Conditional(new FixInformationTemplates()))
 		{
 
 		}

@@ -9,9 +9,20 @@ namespace Tasks
 	{
 		private BaseReplacement[] m_tasks;
 
+		/// <summary>
+		/// Tasks that will only run if the primary tasks make an edit.
+		/// </summary>
+		private BaseReplacement[] m_conditionalTasks;
+
 		public CompoundReplacementTask(params BaseReplacement[] tasks)
 		{
 			m_tasks = tasks;
+		}
+
+		public CompoundReplacementTask Conditional(params BaseReplacement[] conditionalTasks)
+		{
+			m_conditionalTasks = conditionalTasks;
+			return this;
 		}
 
 		public override bool DoReplacement(Article article)
@@ -24,7 +35,15 @@ namespace Tasks
 				bAnyChange = bAnyChange || bChange;
 			}
 
-			return bAnyChange;
+            if (bAnyChange)
+            {
+				foreach (BaseReplacement task in m_conditionalTasks)
+				{
+					task.DoReplacement(article);
+				}
+			}
+
+            return bAnyChange;
 		}
 
 		public override void SaveOut()

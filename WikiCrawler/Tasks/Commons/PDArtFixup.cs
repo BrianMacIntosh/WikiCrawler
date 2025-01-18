@@ -3,9 +3,8 @@
 	public class PdArtFixup : ReplaceInCategory
 	{
 		public PdArtFixup()
-			: base (new CompoundReplacementTask(
-				new ImplicitCreatorsReplacement(),
-				new PdArtReplacement()))
+			: base(new CompoundReplacementTask(new ImplicitCreatorsReplacement(), new PdArtReplacement())
+				  .Conditional(new FixInformationTemplates()))
 		{
 
 		}
