@@ -89,19 +89,25 @@ OtherLicense: {8}",
 				qtyInfoFindFail++;
 				return false;
 			}
-			if (string.IsNullOrEmpty(worksheet.Date))
-			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Failed to find date.");
-				Console.ResetColor();
-				qtyInfoFindFail++;
-				return false;
-			}
+
+			Creator creator = CreatorUtility.GetCreator(worksheet.Author);
+			creator.Usage++;
 
 			// try to parse date
 			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
-			if (dateParseMetadata.LatestYear == 9999)
+			int latestYear;
+			if (dateParseMetadata.LatestYear != 9999)
 			{
+				latestYear = dateParseMetadata.LatestYear;
+			}
+			else
+			{
+				// if not work date, assume it cannot be later than the death year
+				latestYear = creator.DeathYear;
+			}
+
+			if (latestYear == 9999)
+			{ 
 				if (!unparsedDates.ContainsKey(worksheet.Date))
 				{
 					unparsedDates[worksheet.Date] = 1;
@@ -117,17 +123,15 @@ OtherLicense: {8}",
 				qtyDateParseFail++;
 				return false;
 			}
-			else if (dateParseMetadata.LatestYear >= System.DateTime.Now.Year - 95)
+			else if (latestYear >= System.DateTime.Now.Year - 95)
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Date {0} is after the US expired threshold.", dateParseMetadata.LatestYear);
+				Console.WriteLine("  Date {0} is after the US expired threshold.", latestYear);
 				Console.ResetColor();
 				qtyNotPDUS++;
 				return false;
 			}
 
-			Creator creator = CreatorUtility.GetCreator(worksheet.Author);
-			creator.Usage++;
 			if (creator.DeathYear == 9999)
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
