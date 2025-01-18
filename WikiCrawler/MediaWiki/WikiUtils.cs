@@ -221,6 +221,9 @@ namespace MediaWiki
 		private static string s_templateStart = "{{";
 		private static string s_templateEnd = "}}";
 
+		private static string s_wikilinkStart = "[[";
+		private static string s_wikilinkEnd = "]]";
+
 		/// <summary>
 		/// Returns the indices of the start and end of the inner content of the first instance of the specified template.
 		/// </summary>
@@ -435,6 +438,12 @@ namespace MediaWiki
 			return GetTemplateParameter(param, text, out eat);
 		}
 
+		private enum NestingType
+		{
+			Template,
+			Link
+		}
+
 		/// <summary>
 		/// 
 		/// </summary>
@@ -443,14 +452,14 @@ namespace MediaWiki
 		public static string GetTemplateParameter(string param, string text, out int paramValueLocation)
 		{
 			int state = 0;
-			int nestedTemplates = 0;
+			Stack<NestingType> nestingStack = new Stack<NestingType>();
 			paramValueLocation = -1;
 			for (int c = 0; c < text.Length; c++)
 			{
 				if (state == 1)
 				{
 					//parameter name
-					if (nestedTemplates <= 0 && text.MatchAt(param, c, true))
+					if (nestingStack.Count <= 0 && text.MatchAt(param, c, true))
 					{
 						state = 2;
 						c += param.Length - 1;
@@ -479,13 +488,37 @@ namespace MediaWiki
 				// template nesting
 				if (text.MatchAt(s_templateStart, c))
 				{
-					nestedTemplates++;
+					nestingStack.Push(NestingType.Template);
 					c++;
 					continue;
 				}
 				else if (text.MatchAt(s_templateEnd, c))
 				{
-					nestedTemplates--;
+					NestingType lastNest = nestingStack.Pop();
+					if (lastNest != NestingType.Template)
+					{
+						// mismatched open/close; failed to parse
+						return "";
+					}
+					c++;
+					continue;
+				}
+
+				// link nesting
+				if (text.MatchAt(s_wikilinkStart, c))
+				{
+					nestingStack.Push(NestingType.Link);
+					c++;
+					continue;
+				}
+				else if (text.MatchAt(s_wikilinkEnd, c))
+				{
+					NestingType lastNest = nestingStack.Pop();
+					if (lastNest != NestingType.Link)
+					{
+						// mismatched open/close; failed to parse
+						return "";
+					}
 					c++;
 					continue;
 				}
@@ -495,7 +528,7 @@ namespace MediaWiki
 					//read param content
 					bool templateEnd = c >= text.Length - 1;
 
-					bool paramEnd = nestedTemplates <= 0 && text[c] == '|';
+					bool paramEnd = nestingStack.Count <= 0 && text[c] == '|';
 					if (paramEnd)
 					{
 						// do not include any trailing line returns
@@ -517,7 +550,7 @@ namespace MediaWiki
 				}
 
 				//pipe resets any time
-				if (nestedTemplates <= 0 && text[c] == '|')
+				if (nestingStack.Count <= 0 && text[c] == '|')
 				{
 					state = 1;
 					continue;
