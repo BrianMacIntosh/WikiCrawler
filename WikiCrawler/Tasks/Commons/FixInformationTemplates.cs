@@ -171,7 +171,8 @@ namespace Tasks
 							//2. place a newline
 							if (!alreadyHasNewline)
 							{
-								text = text.Substring(0, backtrack) + "\n" + text.Substring(backtrack, text.Length - backtrack);
+								//TODO: instead of TrimStart, match other indentation
+								text = text.Substring(0, backtrack) + "\n" + text.Substring(backtrack, text.Length - backtrack).TrimStart();
 								c++;
 							}
 
