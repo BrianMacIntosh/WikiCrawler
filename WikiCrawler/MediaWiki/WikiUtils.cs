@@ -292,20 +292,42 @@ namespace MediaWiki
 		};
 
 		/// <summary>
+		/// Returns the name of the primary info template in the page.
+		/// </summary>
+		public static string GetPrimaryInfoTemplate(string text)
+		{
+			int earliestStartIndex = int.MaxValue;
+			string earliestTemplate = "";
+			foreach (string template in PrimaryInfoTemplates)
+			{
+				int startIndex = text.IndexOf("{{" + template);
+				if (startIndex >= 0 && startIndex < earliestStartIndex)
+				{
+					earliestTemplate = template;
+					earliestStartIndex = startIndex;
+				}
+			}
+			return earliestTemplate;
+		}
+
+		/// <summary>
 		/// Returns the index of the {{ at the start of the primary info template;
 		/// </summary>
 		public static int GetPrimaryInfoTemplateStart(string text)
 		{
-			int earliestStartIndex = int.MaxValue;
+			int? earliestStartIndex = null;
 			foreach (string template in PrimaryInfoTemplates)
 			{
 				int startIndex = text.IndexOf("{{" + template);
 				if (startIndex >= 0)
 				{
-					earliestStartIndex = Math.Min(earliestStartIndex, startIndex);
+					if (startIndex < earliestStartIndex || !earliestStartIndex.HasValue)
+					{
+						earliestStartIndex = startIndex;
+					}
 				}
 			}
-			return earliestStartIndex;
+			return earliestStartIndex.HasValue ? earliestStartIndex.Value : -1;
 		}
 
 		/// <summary>
