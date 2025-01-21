@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 using WikiCrawler;
 
 namespace Tasks
@@ -44,8 +45,8 @@ namespace Tasks
 	/// </summary>
 	public abstract class ReplaceInCategory : BaseTask
 	{
-		private static int s_MaxReads = 1500;
-		private static int s_MaxEdits = int.MaxValue;
+		private static readonly int s_MaxReads = 120;
+		private static readonly int s_MaxEdits = int.MaxValue;
 
 		/// <summary>
 		/// If true, will use previously cached files as a test. Will not make edits.
@@ -140,7 +141,6 @@ namespace Tasks
 
 		public override void Execute()
 		{
-			//TODO: actually use this
 			string startSortkey = "";
 			string progressFile = Path.Combine(ProjectDataDirectory, "checkpoint.txt");
 			if (File.Exists(progressFile))
@@ -151,16 +151,19 @@ namespace Tasks
 			int saveOutInterval = 1;
 			int saveOutCounter = 0;
 
+			int readCount = 0;
+			int editCount = 0;
+
 			StartHeartbeat();
 
 			foreach (Article file in GetFilesToAffect(startSortkey))
 			{
-				if (s_MaxEdits <= 0 || s_MaxReads <= 0)
+				if (editCount >= s_MaxEdits || readCount >= s_MaxReads)
 				{
 					break;
 				}
 
-				s_MaxReads--;
+				readCount++;
 
 				// save out stats
 				if (saveOutCounter >= saveOutInterval)
@@ -175,7 +178,10 @@ namespace Tasks
 				File.WriteAllText(progressFile, WikiUtils.GetSortkey(file));
 
 				Console.ForegroundColor = ConsoleColor.White;
+				Console.WriteLine();
 				Console.WriteLine("{0} on '{1}'", m_replacement.GetType().Name, file.title);
+				Console.ForegroundColor = ConsoleColor.DarkGray;
+				Console.WriteLine("Read {0}/{1}, Edit {2}/{3}", readCount, FormatInt(s_MaxReads), editCount, FormatInt(s_MaxEdits));
 				Console.ResetColor();
 
 				m_replacement.DoReplacement(file);
@@ -184,13 +190,18 @@ namespace Tasks
 				{
 					GlobalAPIs.Commons.EditPage(file, file.GetEditSummary());
 					m_heartbeatData["nEdits"] = (int)m_heartbeatData["nEdits"] + 1;
-					s_MaxEdits--;
+					editCount++;
 				}
 			}
 
 			SendHeartbeat(true);
 
 			m_replacement.SaveOut();
+		}
+
+		private string FormatInt(int value)
+		{
+			return value == int.MaxValue ? "INF" : value.ToString();
 		}
 	}
 }
