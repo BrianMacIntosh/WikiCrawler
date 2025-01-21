@@ -558,7 +558,7 @@ namespace MediaWiki
 				baseQuery += "&bot";
 			}
 
-			HttpWebRequest request = CreateApiRequest(baseQuery);
+			HttpWebRequest request = CreateApiRequest();
 			LogApiRequest("wbcreateclaim", property);
 
 			//Read response
