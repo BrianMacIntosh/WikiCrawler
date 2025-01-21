@@ -201,7 +201,7 @@ namespace MediaWiki
 		}
 
 		public static readonly Regex CreatorTemplateRegex = new Regex(@"^{{([Cc]reator:.+)}}$");
-		private static readonly Regex s_birthDeathRegex = new Regex(@"^(.+)\s+\(?([0-9][0-9][0-9][0-9])[\-–—]([0-9][0-9][0-9][0-9])\)?$");
+		private static readonly Regex s_birthDeathRegex = new Regex(@"^([^\(\)]+)\s+\(?([0-9][0-9][0-9][0-9])[\-–—]([0-9][0-9][0-9][0-9])\)?$");
 
 		/// <summary>
 		/// Creates a new creator, automatically filling in any info possible.
