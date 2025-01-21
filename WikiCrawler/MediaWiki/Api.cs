@@ -6,6 +6,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web.Script.Serialization;
+using System.Xml.Linq;
 
 namespace MediaWiki
 {
@@ -83,6 +84,7 @@ namespace MediaWiki
             //Upload stream
             m_cookies = new CookieContainer();
 			HttpWebRequest request = CreateApiRequest();
+			LogApiRequest("login", lgname);
 
 			//Read response
 			string json;
@@ -103,8 +105,9 @@ namespace MediaWiki
                 //Send request again, adding lgtoken from "token"
                 baseQuery += "&lgtoken=" + UrlEncode((string)login["token"]);
                 request = CreateApiRequest();
+				LogApiRequest("login-lgtoken", lgname);
 
-                //Read response
+				//Read response
 				using (StreamReader read = new StreamReader(EasyWeb.Post(request, baseQuery)))
 				{
 					json = read.ReadToEnd();
@@ -241,6 +244,7 @@ namespace MediaWiki
 			}
 
 			HttpWebRequest request = CreateApiRequest();
+			LogApiRequest("query", GetOneOrMany(titles));
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.Post(request, baseQuery)))
@@ -351,8 +355,9 @@ namespace MediaWiki
 			}
 
             HttpWebRequest request = CreateApiRequest();
+			LogApiRequest("edit", newpage.title);
 
-            //Read response
+			//Read response
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.Post(request, baseQuery)))
 			{
@@ -391,6 +396,7 @@ namespace MediaWiki
 			}
 
 			HttpWebRequest request = CreateApiRequest();
+			LogApiRequest("edit-undo", pageid.ToString());
 
 			//Read response
 			string json;
@@ -431,6 +437,7 @@ namespace MediaWiki
 				+ "&titles=" + UrlEncode(string.Join("|", inpages))
 				+ "&forcelinkupdate";
 			HttpWebRequest request = CreateApiRequest();
+			LogApiRequest("purge", GetOneOrMany(inpages));
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.Post(request, baseQuery)))
@@ -471,6 +478,7 @@ namespace MediaWiki
 			do
 			{
 				HttpWebRequest request = CreateApiRequest();
+				LogApiRequest("query-search", srsearch);
 
 				//Read response
 				string json;
@@ -514,6 +522,7 @@ namespace MediaWiki
 			}
 			
 			HttpWebRequest request = CreateApiRequest(baseQuery);
+			LogApiRequest("wbsearchentities", search);
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
@@ -550,6 +559,7 @@ namespace MediaWiki
 			}
 
 			HttpWebRequest request = CreateApiRequest(baseQuery);
+			LogApiRequest("wbcreateclaim", property);
 
 			//Read response
 			string json;
@@ -667,6 +677,7 @@ namespace MediaWiki
 			}
 
 			HttpWebRequest request = CreateApiRequest(baseQuery);
+			LogApiRequest("wbgetentities", GetOneOrMany(ids));
 
 			// Read response
 			string json;
@@ -720,6 +731,7 @@ namespace MediaWiki
 			do
 			{
 				HttpWebRequest request = CreateApiRequest();
+				LogApiRequest("query-usercontribs", ucuser);
 
 				//Read response
 				string json;
@@ -770,6 +782,7 @@ namespace MediaWiki
 			}
 
 			HttpWebRequest request = CreateApiRequest();
+			LogApiRequest("upload", newpage.title);
 
 			//Read response
 			string json;
@@ -850,6 +863,7 @@ namespace MediaWiki
 					//TODO: error handling
 
 					HttpWebRequest request = CreateApiRequest();
+					LogApiRequest("upload-chunked", newpage.title);
 
 					Console.Write("0%");
 
@@ -895,6 +909,7 @@ namespace MediaWiki
 					data.Remove("stash");
 					data.Remove("offset");
 					HttpWebRequest request = CreateApiRequest();
+					LogApiRequest("upload-finish", newpage.title);
 					using (StreamReader read = new StreamReader(EasyWeb.Post(request, data)))
 					{
 						finalResponseJson = read.ReadToEnd();
@@ -912,6 +927,7 @@ namespace MediaWiki
 					{
 						//Read response
 						HttpWebRequest request = CreateApiRequest();
+						LogApiRequest("upload", newpage.title);
 						using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, "file", rawfile)))
 						{
 							finalResponseJson = read.ReadToEnd();
@@ -1024,6 +1040,7 @@ namespace MediaWiki
 			}
 			
             HttpWebRequest request = CreateApiRequest(baseQuery);
+			LogApiRequest("query-dupes");
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
@@ -1044,6 +1061,7 @@ namespace MediaWiki
         {
 			string baseQuery = "format=json&action=query&meta=tokens&type=csrf";
             HttpWebRequest request = CreateApiRequest(baseQuery);
+			LogApiRequest("query-csrf");
 
 			string json;
 			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
@@ -1125,6 +1143,7 @@ namespace MediaWiki
 			do
 			{
 				HttpWebRequest request = CreateApiRequest();
+				LogApiRequest("query-categorymembers", cmtitle);
 
 				//Read response
 				string json;
@@ -1157,5 +1176,35 @@ namespace MediaWiki
         {
             return System.Web.HttpUtility.UrlEncode(str);
         }
+
+		private void LogApiRequest(string endpoint)
+		{
+			Console.ForegroundColor = ConsoleColor.DarkGray;
+			Console.WriteLine("    API request '{0}' ({1})", endpoint, UrlApi);
+			Console.ResetColor();
+		}
+
+		private void LogApiRequest(string endpoint, string param)
+		{
+			Console.ForegroundColor = ConsoleColor.DarkGray;
+			Console.WriteLine("    API request '{0}' ({1}): {2}", endpoint, UrlApi, param);
+			Console.ResetColor();
+		}
+
+		private static string GetOneOrMany(IEnumerable<string> strings)
+		{
+			if (!strings.Any())
+			{
+				return "";
+			}
+			else if (strings.Count() > 1)
+			{
+				return "<multiple>";
+			}
+			else
+			{
+				return strings.First();
+			}
+		}
     }
 }
