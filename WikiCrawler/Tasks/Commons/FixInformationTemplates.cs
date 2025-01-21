@@ -226,8 +226,8 @@ namespace Tasks
 			if (text != article.revisions[0].text)
 			{
 				article.revisions[0].text = text;
-				article.Dirty = true;
-				return true;
+				// minor: does not dirty: article.Dirty = true;
+				return false;
 			}
 			else
 			{

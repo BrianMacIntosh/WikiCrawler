@@ -93,6 +93,7 @@
     <Compile Include="Tasks\CategoryFindReplace.cs" />
     <Compile Include="Tasks\Commons\FixImplicitCreators.cs" />
     <Compile Include="Tasks\Commons\FixInformationTemplates.cs" />
+    <Compile Include="Tasks\Commons\LocalizeDateReplacement.cs" />
     <Compile Include="Tasks\Commons\PdArtFixup.cs" />
     <Compile Include="Tasks\CompoundReplacementTask.cs" />
     <Compile Include="Tasks\Commons\ExifToDateField.cs" />
