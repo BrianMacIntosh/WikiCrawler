@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using WikiCrawler;
 
 namespace Tasks
@@ -29,13 +30,17 @@ namespace Tasks
 			author = author.Trim(' ', ';', '.', ',');
 			return string.Equals(author, "unknown", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "desconocido", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "desconocida", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "non identifié", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		private static bool IsConvertibleAnonymousAuthor(string author)
 		{
 			author = author.Trim(' ', ';', '.', ',');
-			return string.Equals(author, "anonymous", StringComparison.InvariantCultureIgnoreCase);
+			return string.Equals(author, "anonymous", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anonyme", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "auteur anonyme", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anonimous", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		private static bool IsUnknownAuthor(string author)
@@ -87,7 +92,18 @@ namespace Tasks
 			// check for "anonymous" and "unknown"
 			if (IsConvertibleUnknownAuthor(worksheet.Author))
 			{
-				newAuthor = "{{unknown|author}}";
+				if (string.Equals(worksheet.AuthorParam, "artist") || string.Equals(worksheet.AuthorParam, "artist_display_name"))
+				{
+					newAuthor = "{{unknown|artist}}";
+				}
+				else if (string.Equals(worksheet.AuthorParam, "photographer"))
+				{
+					newAuthor = "{{unknown photographer}}";
+				}
+				else
+				{
+					newAuthor = "{{unknown|author}}";
+				}
 			}
 			else if (IsConvertibleAnonymousAuthor(worksheet.Author))
 			{
@@ -115,8 +131,7 @@ namespace Tasks
 				PageTitle creator = GetCreatorForCategories(WikiUtils.GetCategories(worksheet.Text), 1);
 				if (!creator.IsEmpty)
 				{
-					//TODO: better determination of if these two strings match
-					if (worksheet.Author.IndexOf(creator.Name, StringComparison.InvariantCultureIgnoreCase) >= 0)
+					if (AuthorIs(worksheet.Author, creator.Name))
 					{
 						newAuthor = "{{" + creator + "}}";
 
@@ -167,6 +182,35 @@ namespace Tasks
 			}
 		}
 
+		private static readonly char[] s_authorTrim = new char[] { ' ', '[', ']', '.', ',', ';' };
+		private static readonly Regex s_lifespanRegex = new Regex(@"^(.+) ?\([0-9 \-]\)+$");
+		private static readonly Regex s_wikilinkRegex = new Regex(@"^\[\[w:(.+)|(.+)\]\]$");
+
+		private bool AuthorIs(string currentAuthor, string creatorName)
+		{
+			// trailing deathyear is okay
+			Match lifespanMatch = s_lifespanRegex.Match(currentAuthor);
+			if (lifespanMatch.Success)
+			{
+				currentAuthor = lifespanMatch.Groups[1].Value;
+			}
+
+			// unwrap wikilink
+			Match wikilinkMatch = s_wikilinkRegex.Match(currentAuthor);
+			if (wikilinkMatch.Success)
+			{
+				//TODO: could use wikilink for looking up, or check both sides
+				currentAuthor = wikilinkMatch.Groups[1].Value;
+			}
+
+			// trim sirs and trailing "letters"?
+			//TODO:
+
+			currentAuthor = currentAuthor.Trim(s_authorTrim);
+
+			return currentAuthor.Equals(creatorName, StringComparison.InvariantCultureIgnoreCase);
+		}
+
 		/// <summary>
 		/// Searches a list of categories and its parents for a creator template.
 		/// </summary>
@@ -209,9 +253,16 @@ namespace Tasks
 				string creatorTemplate = WikiUtils.ExtractTemplate(categoryText, "Creator");
 				if (!string.IsNullOrEmpty(creatorTemplate))
 				{
-					PageTitle creator = PageTitle.Parse(creatorTemplate);
-					s_CategoriesToCreators[PageTitle.Parse(category.title)] = creator;
-					return creator;
+					PageTitle creator = PageTitle.TryParse(creatorTemplate);
+					if (creator.IsNamespace("Creator"))
+					{
+						s_CategoriesToCreators[PageTitle.Parse(category.title)] = creator;
+						return creator;
+					}
+					else
+					{
+						//TODO: look at wikidata template params
+					}
 				}
 
 				// look up in wikidata
@@ -224,7 +275,7 @@ namespace Tasks
 							string entityId = iwlink.value;
 							Console.WriteLine("  Interwiki Wikidata '{0}'.", entityId);
 							Entity entity = GlobalAPIs.Wikidata.GetEntity(entityId);
-							if (entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] wikidataCreator))
+							if (entity != null && entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] wikidataCreator))
 							{
 								//TODO: check multiple values
 								return new PageTitle("Creator", wikidataCreator[0]);

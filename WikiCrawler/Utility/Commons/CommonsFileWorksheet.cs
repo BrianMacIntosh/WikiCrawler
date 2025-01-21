@@ -14,9 +14,24 @@ public class CommonsFileWorksheet : CommonsWorksheet
 		{
 			if (author == null)
 			{
-				author = GetInfoParam(authorParams, out authorIndex);
+				author = GetInfoParam(authorParams, out authorParam, out authorIndex);
 			}
 			return author;
+		}
+	}
+
+	/// <summary>
+	/// The name of the parameter the 'Author' string was pulled from.
+	/// </summary>
+	public string AuthorParam
+	{
+		get
+		{
+			if (author == null)
+			{
+				author = GetInfoParam(authorParams, out authorParam, out authorIndex);
+			}
+			return authorParam;
 		}
 	}
 
@@ -29,13 +44,14 @@ public class CommonsFileWorksheet : CommonsWorksheet
 		{
 			if (author == null)
 			{
-				author = GetInfoParam(authorParams, out authorIndex);
+				author = GetInfoParam(authorParams, out authorParam, out authorIndex);
 			}
 			return authorIndex;
 		}
 	}
 
 	private string author;
+	private string authorParam; // name of the param the author string was actually pulled from
 	private int authorIndex = -1;
 	private static string[] authorParams = new string[] { "author", "artist", "photographer", "artist_display_name" };
 
@@ -48,7 +64,7 @@ public class CommonsFileWorksheet : CommonsWorksheet
 		{
 			if (date == null)
 			{
-				date = GetInfoParam(dateParams, out dateIndex);
+				date = GetInfoParam(dateParams, out dateParam, out dateIndex);
 			}
 			return date;
 		}
@@ -63,13 +79,14 @@ public class CommonsFileWorksheet : CommonsWorksheet
 		{
 			if (date == null)
 			{
-				date = GetInfoParam(dateParams, out dateIndex);
+				date = GetInfoParam(dateParams, out dateParam, out dateIndex);
 			}
 			return dateIndex;
 		}
 	}
 
 	private string date;
+	private string dateParam; // name of the param the date string was actually pulled from
 	private int dateIndex = -1;
 	private static string[] dateParams = new string[] { "date" };
 
@@ -89,7 +106,7 @@ public class CommonsFileWorksheet : CommonsWorksheet
 	/// <summary>
 	/// Returns the contents of the first info template param that's found.
 	/// </summary>
-	private string GetInfoParam(string[] paramNames, out int index)
+	private string GetInfoParam(string[] paramNames, out string outParam, out int index)
 	{
 		int templateStart = WikiUtils.GetPrimaryInfoTemplateStart(Text);
 		if (templateStart >= 0)
@@ -104,16 +121,19 @@ public class CommonsFileWorksheet : CommonsWorksheet
 				if (!string.IsNullOrEmpty(paramContent))
 				{
 					index += templateStart;
+					outParam = paramName;
 					return paramContent;
 				}
 			}
 
 			index = -1;
+			outParam = "";
 			return "";
 		}
 		else
 		{
 			index = -1;
+			outParam = "";
 			return "";
 		}
 	}
