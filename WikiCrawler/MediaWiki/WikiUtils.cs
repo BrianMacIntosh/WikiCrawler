@@ -516,6 +516,11 @@ namespace MediaWiki
 				}
 				else if (text.MatchAt(s_templateEnd, c))
 				{
+					if (nestingStack.Count == 0)
+					{
+						// unmatched close; failed to parse
+						return "";
+					}
 					NestingType lastNest = nestingStack.Pop();
 					if (lastNest != NestingType.Template)
 					{
@@ -535,6 +540,11 @@ namespace MediaWiki
 				}
 				else if (text.MatchAt(s_wikilinkEnd, c))
 				{
+					if (nestingStack.Count == 0)
+					{
+						// unmatched close; failed to parse
+						return "";
+					}
 					NestingType lastNest = nestingStack.Pop();
 					if (lastNest != NestingType.Link)
 					{
