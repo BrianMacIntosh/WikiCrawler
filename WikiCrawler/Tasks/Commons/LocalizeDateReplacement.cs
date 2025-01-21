@@ -14,6 +14,12 @@ namespace Tasks
 			Regex = new Regex(inRegex);
 			Replacement = inReplacement;
 		}
+
+		public RegexReplacement(Regex inRegex, string inReplacement)
+		{
+			Regex = inRegex;
+			Replacement = inReplacement;
+		}
 	}
 
 	/// <summary>
@@ -23,16 +29,17 @@ namespace Tasks
 	{
 		private static RegexReplacement[] s_replacements = new RegexReplacement[]
 		{
-			new RegexReplacement("^[Ll]ate ([0-9]+)$", "{{other date|late|$1}}"),
-			//new RegexReplacement("^late ([0-9]+'?s)$", "{{complex date|adj1=late|precision1=TODO|date1=$1}}")
-			new RegexReplacement("^[Ee]arly ([0-9]+)$", "{{other date|early|$1}}"),
-			new RegexReplacement("^([0-9\\-–]+s?)\\. Public domain$", "$1"),
-			new RegexReplacement("^ca[\\.,]? ?([0-9\\-]+)$", "{{other date|circa|$1}}"),
-			new RegexReplacement("^[Cc]irca ?([0-9\\-]+)$", "{{other date|circa|$1}}"),
-			new RegexReplacement("^[Dd]esconocid[ao]$", "{{unknown|date}}"),
-			new RegexReplacement("^([0-9]+)[sthrd] [Cc]entury$", "{{other date|century|$1}}"),
-			new RegexReplacement("^entre ([0-9]+) [ey] ([0-9]+)$", "{{other date|between|$1|$2}}"),
-			new RegexReplacement("^between ([0-9]+) and ([0-9]+)$", "{{other date|between|$1|$2}}"),
+			new RegexReplacement(new Regex(@"^[Ll]ate ([0-9]+)$"), "{{other date|late|$1}}"),
+			//new RegexReplacement(@"^late ([0-9]+'?s)$", "{{complex date|adj1=late|precision1=TODO|date1=$1}}")
+			new RegexReplacement(new Regex(@"^[Ee]arly ([0-9]+)$"), "{{other date|early|$1}}"),
+			new RegexReplacement(new Regex(@"^([0-9\\-–]+s?)\\. Public domain$"), "$1"),
+			new RegexReplacement(new Regex(@"^ca[\\.,]? ?([0-9\\-]+)$"), "{{other date|circa|$1}}"),
+			new RegexReplacement(new Regex(@"^[Cc]irca[\. ]*([0-9\\-]+)\.?$"), "{{other date|circa|$1}}"),
+			new RegexReplacement(new Regex(@"^[Dd]esconocid[ao]$"), "{{unknown|date}}"),
+			new RegexReplacement(new Regex(@"^([0-9]+)[sthrd] [Cc]entury$"), "{{other date|century|$1}}"),
+			new RegexReplacement(new Regex(@"^entre ([0-9]+) [ey] ([0-9]+)$"), "{{other date|between|$1|$2}}"),
+			new RegexReplacement(new Regex(@"^between ([0-9]+) and ([0-9]+)$"), "{{other date|between|$1|$2}}"),
+			new RegexReplacement(new Regex(@"^anterior a ([0-9]+)$"), "{{other date|before|$1}}"),
 		};
 
 		public override bool DoReplacement(Article article)
