@@ -1,4 +1,5 @@
 ﻿using MediaWiki;
+using System;
 
 namespace Tasks
 {
@@ -20,6 +21,10 @@ namespace Tasks
 
 			foreach (BaseReplacement task in m_tasks)
 			{
+				Console.ForegroundColor = ConsoleColor.White;
+				Console.WriteLine("{0} on '{1}'", task.GetType().Name, article.title);
+				Console.ResetColor();
+
 				bool bChange = task.DoReplacement(article);
 				bAnyChange = bAnyChange || bChange;
 			}

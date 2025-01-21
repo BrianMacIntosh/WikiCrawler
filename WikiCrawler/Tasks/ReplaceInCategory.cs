@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using WikiCrawler;
 
 namespace Tasks
@@ -43,6 +44,9 @@ namespace Tasks
 	/// </summary>
 	public abstract class ReplaceInCategory : BaseTask
 	{
+		private static int s_MaxReads = 1500;
+		private static int s_MaxEdits = int.MaxValue;
+
 		/// <summary>
 		/// If true, will use previously cached files as a test. Will not make edits.
 		/// </summary>
@@ -82,6 +86,10 @@ namespace Tasks
 
 		public IEnumerable<Article> GetFilesToAffect(string startSortkey)
 		{
+#if false
+			yield return GlobalAPIs.Commons.GetPage("File:CaronMap.jpg", prop: "info|revisions");
+			yield break;
+#else
 			if (UseCachedFiles)
 			{
 				return GetFilesToAffectCached();
@@ -90,6 +98,7 @@ namespace Tasks
 			{
 				return GetFilesToAffectUncached(startSortkey);
 			}
+#endif
 		}
 
 		public IEnumerable<Article> GetFilesToAffectCached()
@@ -139,9 +148,6 @@ namespace Tasks
 				startSortkey = File.ReadAllText(progressFile);
 			}
 
-			int maxReads = 100;
-			int maxEdits = int.MaxValue;
-
 			int saveOutInterval = 1;
 			int saveOutCounter = 0;
 
@@ -149,12 +155,12 @@ namespace Tasks
 
 			foreach (Article file in GetFilesToAffect(startSortkey))
 			{
-				if (maxEdits <= 0 || maxReads <= 0)
+				if (s_MaxEdits <= 0 || s_MaxReads <= 0)
 				{
 					break;
 				}
 
-				maxReads--;
+				s_MaxReads--;
 
 				// save out stats
 				if (saveOutCounter >= saveOutInterval)
@@ -168,7 +174,9 @@ namespace Tasks
 				// record sortkey progress
 				File.WriteAllText(progressFile, WikiUtils.GetSortkey(file));
 
-				Console.WriteLine("ReplaceInCategory on page '{0}'...", file.title);
+				Console.ForegroundColor = ConsoleColor.White;
+				Console.WriteLine("{0} on '{1}'", m_replacement.GetType().Name, file.title);
+				Console.ResetColor();
 
 				m_replacement.DoReplacement(file);
 
@@ -176,7 +184,7 @@ namespace Tasks
 				{
 					GlobalAPIs.Commons.EditPage(file, file.GetEditSummary());
 					m_heartbeatData["nEdits"] = (int)m_heartbeatData["nEdits"] + 1;
-					maxEdits--;
+					s_MaxEdits--;
 				}
 			}
 
