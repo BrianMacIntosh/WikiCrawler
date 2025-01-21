@@ -31,6 +31,8 @@ namespace Tasks
 			return string.Equals(author, "unknown", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "desconocido", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "desconocida", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "sconosciuto", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "non noto", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "non identifié", StringComparison.InvariantCultureIgnoreCase);
 		}
 
@@ -73,8 +75,6 @@ namespace Tasks
 		/// <returns>True if a replacement was made.</returns>
 		public bool DoReplacement(Article article, PageTitle? assumedCreator)
 		{
-			Console.WriteLine("FixImplictCreators: checking '{0}'...", article.title);
-
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
 			if (string.IsNullOrEmpty(worksheet.Author))
@@ -127,36 +127,71 @@ namespace Tasks
 			}
 			else
 			{
+				PageTitle creator = PageTitle.Empty;
+				string authorString;
+
+				// search for a creator by name/DOB/DOD
+				Match lifespanMatch = s_lifespanRegex.Match(worksheet.Author);
+				if (lifespanMatch.Success)
+				{
+					authorString = lifespanMatch.Groups[1].Value.Trim();
+					string dob = lifespanMatch.Groups[2].Value.Trim();
+					string dod = lifespanMatch.Groups[3].Value.Trim();
+					Entity wikidata = CommonsCreatorFromWikidata.GetWikidata(authorString, dob, dod);
+					if (!Entity.IsNullOrMissing(wikidata))
+					{
+						if (wikidata.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] creators))
+						{
+							//TODO: check exists
+							creator = new PageTitle("Creator", creators[0]);
+						}
+						else
+						{
+							CommonsCreatorFromWikidata.TryMakeCreator(wikidata, out creator);
+						}
+					}
+				}
+				else
+				{
+					authorString = worksheet.Author;
+				}
+
+				// unwrap wikilink
+				if (creator.IsEmpty)
+				{
+					Match wikilinkMatch = s_wikilinkRegex.Match(authorString);
+					if (wikilinkMatch.Success)
+					{
+						//TODO: could use wikilink for looking up, or check both sides
+						authorString = wikilinkMatch.Groups[1].Value;
+					}
+				}
+
 				// go looking for matching creator templates in parent cats
-				PageTitle creator = GetCreatorForCategories(WikiUtils.GetCategories(worksheet.Text), 1);
+				if (creator.IsEmpty)
+				{
+					creator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1);
+				}
+
 				if (!creator.IsEmpty)
 				{
-					if (AuthorIs(worksheet.Author, creator.Name))
+					newAuthor = "{{" + creator + "}}";
+
+					// assign the creator template to the cache
+					Creator cached = CreatorUtility.GetCreator(newAuthor, out bool bIsNew);
+					if (bIsNew || !string.IsNullOrEmpty(cached.Author))
 					{
-						newAuthor = "{{" + creator + "}}";
-
-						// assign the creator template to the cache
-						Creator cached = CreatorUtility.GetCreator(newAuthor, out bool bIsNew);
-						if (bIsNew || !string.IsNullOrEmpty(cached.Author))
-						{
-							cached.Author = newAuthor;
-						}
-
-						// look up death year as well
-						if (bIsNew || cached.DeathYear == 9999)
-						{
-							cached.DeathYear = PdOldAuto.GetCreatorDeathYear(creator);
-						}
-
-						// redirect the author string
-						CreatorUtility.AddRedirect(worksheet.Author, newAuthor);
+						cached.Author = newAuthor;
 					}
-					else
+
+					// look up death year as well
+					if (bIsNew || cached.DeathYear == 9999)
 					{
-						Console.ForegroundColor = ConsoleColor.Red;
-						Console.WriteLine("  Non-matching creator template '{0}'.", creator);
-						Console.ResetColor();
+						cached.DeathYear = PdOldAuto.GetCreatorDeathYear(creator);
 					}
+
+					// redirect the author string
+					CreatorUtility.AddRedirect(worksheet.Author, newAuthor);
 				}
 			}
 
@@ -165,7 +200,7 @@ namespace Tasks
 			if (!string.IsNullOrEmpty(newAuthor) && !string.Equals(newAuthor, worksheet.Author, StringComparison.InvariantCultureIgnoreCase))
 			{
 				Console.ForegroundColor = ConsoleColor.Green;
-				Console.WriteLine("  FixImplicitCreators inserting creator '{0}'.", newAuthor);
+				Console.WriteLine("  FixImplicitCreators inserting '{0}'.", newAuthor);
 				Console.ResetColor();
 
 				string textBefore = worksheet.Text.Substring(0, worksheet.AuthorIndex);
@@ -183,38 +218,61 @@ namespace Tasks
 		}
 
 		private static readonly char[] s_authorTrim = new char[] { ' ', '[', ']', '.', ',', ';' };
-		private static readonly Regex s_lifespanRegex = new Regex(@"^(.+) ?\([0-9 \-]\)+$");
-		private static readonly Regex s_wikilinkRegex = new Regex(@"^\[\[w:(.+)|(.+)\]\]$");
+		private static readonly Regex s_lifespanRegex = new Regex(@"^(.+) ?\(([0-9]+)[\-– ]([0-9]+)\)$");
+		private static readonly Regex s_wikilinkRegex = new Regex(@"^\[\[:?([a-z]+):(.+)\|(.+)\]\]$"); //TODO: support no label supplied
 
-		private bool AuthorIs(string currentAuthor, string creatorName)
+		/// <summary>
+		/// Returns true if the currentAuthor string is an acceptable match against specified entity.
+		/// </summary>
+		private static bool AuthorIs(string currentAuthor, Entity entity)
 		{
-			// trailing deathyear is okay
-			Match lifespanMatch = s_lifespanRegex.Match(currentAuthor);
-			if (lifespanMatch.Success)
-			{
-				currentAuthor = lifespanMatch.Groups[1].Value;
-			}
-
-			// unwrap wikilink
-			Match wikilinkMatch = s_wikilinkRegex.Match(currentAuthor);
-			if (wikilinkMatch.Success)
-			{
-				//TODO: could use wikilink for looking up, or check both sides
-				currentAuthor = wikilinkMatch.Groups[1].Value;
-			}
-
 			// trim sirs and trailing "letters"?
 			//TODO:
 
 			currentAuthor = currentAuthor.Trim(s_authorTrim);
 
-			return currentAuthor.Equals(creatorName, StringComparison.InvariantCultureIgnoreCase);
+			foreach (var kv in entity.labels)
+			{
+				if (currentAuthor.Equals(kv.Value, StringComparison.InvariantCultureIgnoreCase))
+				{
+					return true;
+				}
+			}
+
+			foreach (var kv in entity.aliases)
+			{
+				foreach (string alias in kv.Value)
+				{
+					if (currentAuthor.Equals(alias, StringComparison.InvariantCultureIgnoreCase))
+					{
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		private struct CheckEntity
+		{
+			/// <summary>
+			/// The page where the entity was found.
+			/// </summary>
+			public PageTitle SourcePage;
+
+			public string EntityId;
+
+			public CheckEntity(PageTitle inSourcePage, string inEntityId)
+			{
+				SourcePage = inSourcePage;
+				EntityId = inEntityId;
+			}
 		}
 
 		/// <summary>
 		/// Searches a list of categories and its parents for a creator template.
 		/// </summary>
-		private static PageTitle GetCreatorForCategories(IEnumerable<PageTitle> categories, int currentDepth)
+		private static PageTitle GetCreatorFromCategories(string authorString, IEnumerable<PageTitle> categories, int currentDepth)
 		{
 			// check cache
 			foreach (PageTitle category in categories)
@@ -225,15 +283,46 @@ namespace Tasks
 				}
 			}
 
-			// go searching
+			// list of Wikidata entity IDs to check
+			List<CheckEntity> entityIds = new List<CheckEntity>();
+
+			// go searching through cats
 			foreach (Article category in GlobalAPIs.Commons.GetPages(categories.Select((cat) => cat.ToString()).ToList(), prop: "info|revisions|iwlinks", iwprefix: "d"))
 			{
 				Console.WriteLine("  Category '{0}'.", category.title);
 
-				PageTitle parentCreator = GetCreatorForCategory(category, currentDepth);
+				PageTitle parentCreator = GetCreatorForCategory(authorString, category, currentDepth, entityIds);
 				if (!parentCreator.IsEmpty)
 				{
+					s_CategoriesToCreators[PageTitle.Parse(category.title)] = parentCreator;
 					return parentCreator;
+				}
+			}
+
+			// check any collected Wikidata entities
+			foreach (Entity entity in GlobalAPIs.Wikidata.GetEntities(entityIds.Select(ent => ent.EntityId).Distinct().ToArray()))
+			{
+				if (AuthorIs(authorString, entity))
+				{
+					if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle creator))
+					{
+						foreach (CheckEntity ent in entityIds)
+						{
+							if (ent.EntityId == entity.id)
+							{
+								s_CategoriesToCreators[ent.SourcePage] = creator;
+							}
+						}
+						
+						return creator;
+					}
+				}
+				else
+				{
+					string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
+					Console.ForegroundColor = ConsoleColor.Yellow;
+					Console.WriteLine("  Can't match '{0}' to '{1}'.", authorString, entityStr);
+					Console.ResetColor();
 				}
 			}
 
@@ -243,7 +332,8 @@ namespace Tasks
 		/// <summary>
 		/// Searches the specified category for a creator template.
 		/// </summary>
-		private static PageTitle GetCreatorForCategory(Article category, int currentDepth)
+		/// <param name="outEntityIdsBuffer">Any entities that should be checked for creators are added to this list.</param>
+		private static PageTitle GetCreatorForCategory(string authorString, Article category, int currentDepth, List<CheckEntity> outEntityIdsBuffer)
 		{
 			if (!Article.IsNullOrEmpty(category))
 			{
@@ -261,7 +351,19 @@ namespace Tasks
 					}
 					else
 					{
-						//TODO: look at wikidata template params
+						string wikidataId = WikiUtils.GetTemplateParameter("wikidata", creatorTemplate);
+						if (!string.IsNullOrEmpty(wikidataId))
+						{
+							Console.WriteLine("  Creator Wikidata '{0}'.", wikidataId);
+							Entity entity = GlobalAPIs.Wikidata.GetEntity(wikidataId);
+							if (entity != null && entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] wikidataCreator))
+							{
+								//TODO: check multiple values
+								creator = new PageTitle("Creator", wikidataCreator[0]);
+								s_CategoriesToCreators[PageTitle.Parse(category.title)] = creator;
+								return creator;
+							}
+						}
 					}
 				}
 
@@ -272,14 +374,9 @@ namespace Tasks
 					{
 						if (iwlink.prefix == "d")
 						{
-							string entityId = iwlink.value;
-							Console.WriteLine("  Interwiki Wikidata '{0}'.", entityId);
-							Entity entity = GlobalAPIs.Wikidata.GetEntity(entityId);
-							if (entity != null && entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] wikidataCreator))
-							{
-								//TODO: check multiple values
-								return new PageTitle("Creator", wikidataCreator[0]);
-							}
+							string qid = iwlink.value;
+							Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
+							outEntityIdsBuffer.Add(new CheckEntity(PageTitle.Parse(category.title), qid));
 						}
 					}
 				}
@@ -292,12 +389,7 @@ namespace Tasks
 					if (!string.IsNullOrEmpty(qid))
 					{
 						Console.WriteLine("  Explicit Wikidata '{0}'.", qid);
-						Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
-						if (entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] wikidataCreator))
-						{
-							//TODO: check multiple values
-							return new PageTitle("Creator", wikidataCreator[0]);
-						}
+						outEntityIdsBuffer.Add(new CheckEntity(PageTitle.Parse(category.title), qid));
 					}
 				}
 
@@ -305,7 +397,7 @@ namespace Tasks
 				if (currentDepth < s_SearchDepth ||
 					(currentDepth < s_SearchDepth + 1 && category.GetTitle().Contains(" by ")))
 				{
-					PageTitle parentCreator = GetCreatorForCategories(WikiUtils.GetCategories(categoryText), currentDepth + 1);
+					PageTitle parentCreator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(categoryText), currentDepth + 1);
 					if (!parentCreator.IsEmpty)
 					{
 						s_CategoriesToCreators[PageTitle.Parse(category.title)] = parentCreator;

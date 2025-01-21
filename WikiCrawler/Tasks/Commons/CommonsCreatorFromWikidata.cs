@@ -19,8 +19,8 @@ namespace Tasks
 				while (!reader.EndOfStream)
 				{
 					Entity entity = GlobalAPIs.Wikidata.GetEntity(reader.ReadLine());
-					string page;
-					CommonsCreatorFromWikidata.TryMakeCreator(entity, "", null, out page);
+					PageTitle page;
+					CommonsCreatorFromWikidata.TryMakeCreator(entity, out page);
 				}
 			}
 		}
@@ -36,7 +36,7 @@ namespace Tasks
 		private static readonly bool s_DoBotCat = false;
 		private static readonly bool s_DoNormalCat = true;
 		private static readonly int s_TestLimit = int.MaxValue;
-		private static readonly bool s_MakeNewCreators = false;
+		private static readonly bool s_MakeNewCreators = true;
 		private static readonly bool s_FixImplicitCreators = true;
 
 		public override void Execute()
@@ -162,9 +162,10 @@ namespace Tasks
 							}
 							else
 							{
-								wikidataId = GetWikidataId(article.GetTitle(), yearOfBirth, yearOfDeath);
-								if (!string.IsNullOrEmpty(wikidataId))
+								Entity wikidata = GetWikidata(article.GetTitle(), yearOfBirth, yearOfDeath);
+								if (!Entity.IsNullOrMissing(wikidata))
 								{
+									wikidataId = wikidata.id;
 									Console.WriteLine("Got wikidata from Creator");
 								}
 							}
@@ -205,10 +206,7 @@ namespace Tasks
 		/// <summary>
 		/// Searches for a wikidata entity matching the specified info.
 		/// </summary>
-		/// <param name="name"></param>
-		/// <param name="yob"></param>
-		/// <param name="yod"></param>
-		private static string GetWikidataId(string name, string yearOfBirth, string yearOfDeath)
+		public static Entity GetWikidata(string name, string yearOfBirth, string yearOfDeath)
 		{
 			// search wikidata
 			string[] search = GlobalAPIs.Wikidata.SearchEntities(name);
@@ -216,13 +214,13 @@ namespace Tasks
 			{
 				Entity entity = GlobalAPIs.Wikidata.GetEntity(result);
 
-				if (!entity.HasClaim(MediaWiki.Wikidata.Prop_DateOfBirth)
-					|| entity.GetClaimValueAsDate(MediaWiki.Wikidata.Prop_DateOfBirth).GetYear().ToString() != yearOfBirth)
+				if (!entity.HasClaim(Wikidata.Prop_DateOfBirth)
+					|| entity.GetClaimValueAsDate(Wikidata.Prop_DateOfBirth).GetYear().ToString() != yearOfBirth)
 				{
 					continue;
 				}
-				if (!entity.HasClaim(MediaWiki.Wikidata.Prop_DateOfDeath)
-					|| entity.GetClaimValueAsDate(MediaWiki.Wikidata.Prop_DateOfDeath).GetYear().ToString() != yearOfDeath)
+				if (!entity.HasClaim(Wikidata.Prop_DateOfDeath)
+					|| entity.GetClaimValueAsDate(Wikidata.Prop_DateOfDeath).GetYear().ToString() != yearOfDeath)
 				{
 					continue;
 				}
@@ -231,7 +229,7 @@ namespace Tasks
 				{
 					if (label == name)
 					{
-						return result;
+						return entity;
 					}
 				}
 				foreach (string[] labels in entity.aliases.Values)
@@ -240,12 +238,12 @@ namespace Tasks
 					{
 						if (label == name)
 						{
-							return result;
+							return entity;
 						}
 					}
 				}
 			}
-			return "";
+			return null;
 		}
 
 		/// <summary>
@@ -324,13 +322,13 @@ namespace Tasks
 					sortkey = text.Substring(sortkeyStart, sortkeyEnd - sortkeyStart);
 				}
 
-				string creatorPage;
-				TryMakeCreator(entity, sortkey, existingAuthDict, out creatorPage);
+				PageTitle creatorPage;
+				TryMakeCreator(entity, out creatorPage);
 
 				// add creator template to page
 				//TODO: try to maintain position
-				Article creatorArticle = !string.IsNullOrEmpty(creatorPage)
-					? GlobalAPIs.Commons.GetPage(creatorPage)
+				Article creatorArticle = !creatorPage.IsEmpty
+					? GlobalAPIs.Commons.GetPage(creatorPage.ToString())
 					: null;
 				if (creatorArticle != null && !creatorArticle.missing)
 				{
@@ -351,10 +349,10 @@ namespace Tasks
 					/*text =*/ WikiUtils.RemoveTemplate("Authority control", text, out existingAuthority);
 
 					// propagate existing creator to wikidata
-					if (!entity.HasClaim("P1472"))
+					if (!entity.HasClaim(Wikidata.Prop_CommonsCreator))
 					{
 						string creatorNameNoSpace = creatorArticle.title.Substring("Creator:".Length);
-						GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P1472", creatorNameNoSpace, "(BOT) propagating Commons creator", true);
+						GlobalAPIs.Wikidata.CreateEntityClaim(entity, Wikidata.Prop_CommonsCreator, creatorNameNoSpace, "(BOT) propagating Commons creator", true);
 					}
 
 					// remove On Wikidata template (redundant with creator)
@@ -567,196 +565,84 @@ namespace Tasks
 		/// </summary>
 		/// <param name="creatorPage">The name of the Creator page created.</param>
 		/// <returns>True if the Creator page now exists.</returns>
-		public static bool TryMakeCreator(Entity entity,
-			string sortkey, Dictionary<string, string> extraAuthority,
-			out string creatorPage)
+		public static bool TryMakeCreator(Entity entity, out PageTitle creatorPage)
 		{
+			Console.WriteLine("Attempting to create creator from wikidata '{0}'...", entity.id);
+
 			if (!entity.labels.ContainsKey("en"))
 			{
-				Console.WriteLine("No English label.");
-				creatorPage = "";
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("  Entity {0} has no English label.", entity.id);
+				Console.ResetColor();
+				creatorPage = PageTitle.Empty;
 				return false;
 			}
 			if (!entity.HasClaim("P31") || entity.GetClaimValueAsEntityId("P31") != 5)
 			{
-				Console.WriteLine("Wikidata entity is not a person.");
-				creatorPage = "";
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("  Entity '{0}' is not a person.", entity.labels["en"]);
+				Console.ResetColor();
+				creatorPage = PageTitle.Empty;
 				return false;
 			}
 
+			// already has creator?
+			if (entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] creator))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("  Entity '{0}' has creator.", creator[0]);
+				Console.ResetColor();
+				creatorPage = new PageTitle("Creator", creator[0]);
+				return true;
+			}
+
 			string name = entity.labels["en"];
-			string commonsArticle = "Creator:" + name;
+			PageTitle commonsArticle = new PageTitle("Creator", name);
 
-			Console.WriteLine("Attempting to create '" + commonsArticle + "' from wikidata.");
-
-			//Check that it does not already exist on commons
-			/*Wikimedia.Article existing = commonsApi.GetPage(commonsArticle);
-			if (existing != null && existing.revisions != null && existing.revisions.Length > 0)
+			// Check that it does not already exist on commons
+			Article existing = GlobalAPIs.Commons.GetPage(commonsArticle.ToString());
+			if (!Article.IsNullOrMissing(existing))
 			{
-				Console.WriteLine("Already exists.");
-				return true;
-			}*/
-
-			//already has creator?
-			if (entity.HasClaim("P1472"))
-			{
-				Console.WriteLine("Creator claim already exists.");
-				creatorPage = "Creator:" + entity.GetClaimValueAsString("P1472");
-				return true;
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("  Creator page '{0}' already exists.");
+				Console.ResetColor();
+				creatorPage = PageTitle.Empty;
+				return false;
 			}
 
 			// creation disabled?
 			if (!s_MakeNewCreators)
 			{
-				creatorPage = "";
+				creatorPage = PageTitle.Empty;
 				return false;
 			}
 
-			//get name(s)
-			string langnames = "";
-			foreach (KeyValuePair<string, string> kv in entity.labels)
-			{
-				if (entity.sitelinks.ContainsKey(kv.Key + "wiki"))
-				{
-					string sitelink = entity.sitelinks[kv.Key + "wiki"];
-					langnames += "\n |" + kv.Key + "=[[:" + kv.Key + ":" + kv.Value + "|" + sitelink + "]]";
-				}
-				else
-					langnames += "\n |" + kv.Key + "=" + kv.Value;
-			}
-
-			//get nationality
-			string nationality = "";
-			if (entity.HasClaim("P27"))
-			{
-				Entity nationalityEntity = entity.GetClaimValueAsEntity("P27", GlobalAPIs.Wikidata);
-				if (nationalityEntity.HasClaim("P297"))
-					nationality = nationalityEntity.GetClaimValueAsString("P297");
-			}
-
-			//get gender
-			string gender = "";
-			if (entity.HasClaim("P21"))
-			{
-				gender = entity.GetClaimValueAsGender("P21");
-			}
-
-			//get occupation
-			string occupation = "";
-			if (entity.HasClaim("P106"))
-			{
-				foreach (Entity occupationEntity in entity.GetClaimValuesAsEntity("P106", GlobalAPIs.Wikidata))
-				{
-					occupation += occupationEntity.labels["en"] + "/";
-				}
-				if (occupation.Length > 0)
-				{
-					occupation = occupation.Remove(occupation.Length - 1);
-				}
-			}
-
-			//birth/death dates
-			string birthdate = "";
-			if (entity.HasClaim("P569"))
-			{
-				birthdate = entity.GetClaimValueAsDate("P569").GetString(MediaWiki.DateTime.DayPrecision);
-			}
-			string deathdate = "";
-			if (entity.HasClaim("P570"))
-			{
-				deathdate = entity.GetClaimValueAsDate("P570").GetString(MediaWiki.DateTime.DayPrecision);
-			}
-
-			//birth/death locs
-			string birthloc = "";
-			if (entity.HasClaim("P19"))
-			{
-				Entity locEntity = entity.GetClaimValueAsEntity("P19", GlobalAPIs.Wikidata);
-				birthloc = locEntity.labels["en"];
-			}
-			string deathloc = "";
-			if (entity.HasClaim("P20"))
-			{
-				Entity locEntity = entity.GetClaimValueAsEntity("P20", GlobalAPIs.Wikidata);
-				deathloc = locEntity.labels["en"];
-			}
-
-			// working
-			string workloc = "";
-			if (entity.HasClaim("P937"))
-			{
-				Entity locEntity = entity.GetClaimValueAsEntity("P937", GlobalAPIs.Wikidata);
-				workloc = locEntity.labels["en"];
-			}
-			string workperiod = "";
-			if (entity.HasClaim("P2031"))
-			{
-				workperiod = entity.GetClaimValueAsDate("P2031").GetString(MediaWiki.DateTime.DayPrecision);
-				if (entity.HasClaim("P2032"))
-				{
-					workperiod = "{{other date|-|" + workperiod + "|"
-						+ entity.GetClaimValueAsDate("P2032").GetString(MediaWiki.DateTime.DayPrecision) +"}}";
-				}
-			}
-
-			string homecat = name;
-			if (entity.HasClaim("P373"))
-			{
-				homecat = entity.GetClaimValueAsString("P373");
-			}
-
-			//authority control
-			string authority = MediaWiki.Wikidata.GetAuthorityControlTemplate(entity, "bare=1", extraAuthority);
-
 			Article creatorArt = new Article();
-			creatorArt.title = commonsArticle;
+			creatorArt.title = commonsArticle.ToString();
 			creatorArt.revisions = new Revision[1];
 			creatorArt.revisions[0] = new Revision();
 			creatorArt.revisions[0].text = "{{Creator" +
-				"\n|Image=" +
-				"\n|Name={{LangSwitch" + langnames +
-				"\n |default=" + name +
-				"\n}}" +
-				"\n|Alternative names=" +
-				"\n|Nationality=" + nationality +
-				"\n|Gender=" + gender +
-				"\n|Occupation=" + occupation +
-				"\n|Description=" + //(entity.descriptions.ContainsKey("en") ? entity.descriptions["en"] : "") +
-				"\n|Birthdate=" + birthdate +
-				"\n|Birthloc=" + birthloc +
-				"\n|Deathdate=" + deathdate +
-				"\n|Deathloc=" + deathloc +
-				"\n|Workperiod=" + workperiod +
-				"\n|Workloc=" + workloc +
-				"\n|Homecat=" + homecat +
-				"\n|Linkback=" + commonsArticle +
 				"\n|Option={{{1|}}}" +
-				"\n|Sortkey=" + sortkey +
-				"\n|Authority=" + authority +
 				"\n|Wikidata=" + entity.id +
 				"\n}}";
 
-			GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P1472", name, "(BOT) creating Commons creator page", true);
-
-			//Do not overwrite if it exists
-			Article safety = GlobalAPIs.Commons.GetPage(creatorArt);
-			if (safety != null && !safety.missing)
+			if (GlobalAPIs.Commons.CreatePage(creatorArt, "creating Creator template from Wikidata"))
 			{
-				Console.WriteLine("Creator page already exists!");
-				creatorPage = safety.title;
-				return true;
-			}
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("  Created page '{0}'.", creatorArt.title);
+				Console.ResetColor();
 
-			if (GlobalAPIs.Commons.CreatePage(creatorArt, "BOT: Making creator based on Wikidata."))
-			{
-				Console.WriteLine("Creator created!");
-				creatorPage = creatorArt.title;
+				GlobalAPIs.Wikidata.CreateEntityClaim(entity, Wikidata.Prop_CommonsCreator, name, "(BOT) creating Commons creator page", true);
+				creatorPage = commonsArticle;
 				return true;
 			}
 			else
 			{
-				Console.WriteLine("Failed to create page.");
-				creatorPage = "";
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("  Failed to create '{0}'.", creatorArt.title);
+				Console.ResetColor();
+
+				creatorPage = PageTitle.Empty;
 				return false;
 			}
 		}
