@@ -1,6 +1,7 @@
 ﻿using MediaWiki;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Tasks
@@ -137,10 +138,11 @@ namespace Tasks
 						Entity wikidata = GlobalAPIs.Wikidata.GetEntity(wdId);
 						if (!wikidata.missing && wikidata.HasClaim(Wikidata.Prop_DateOfDeath))
 						{
-                            MediaWiki.DateTime deathTime = wikidata.GetClaimValueAsDate(Wikidata.Prop_DateOfDeath);
-							if (deathTime.Precision >= MediaWiki.DateTime.YearPrecision)
+							IEnumerable<MediaWiki.DateTime> deathTimes = wikidata.GetClaimValueAsDate(Wikidata.Prop_DateOfDeath)
+								.Where(date => date.Precision >= MediaWiki.DateTime.YearPrecision);
+							if (deathTimes.Any())
 							{
-								int deathYear = deathTime.GetYear();
+								int deathYear = deathTimes.Max(date => date.GetYear());
 								s_CreatorToDeathYear[creator] = deathYear;
 								return deathYear;
 							}

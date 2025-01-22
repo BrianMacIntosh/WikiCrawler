@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 
 namespace MediaWiki
@@ -196,9 +197,15 @@ namespace MediaWiki
 			return claims[property][0].mainSnak.GetValueAsGender();
 		}
 
-		public DateTime GetClaimValueAsDate(string property)
+		public DateTime[] GetClaimValueAsDate(string property)
 		{
-			return claims[property][0].mainSnak.GetValueAsDate();
+			Claim[] propClaims = claims[property];
+			DateTime[] value = new DateTime[propClaims.Length];
+			for (int i = 0; i < propClaims.Length; i++)
+			{
+				value[i] = propClaims[i].mainSnak.GetValueAsDate();
+			}
+			return value;
 		}
 	}
 }
