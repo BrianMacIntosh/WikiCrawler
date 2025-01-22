@@ -90,7 +90,7 @@
     <Compile Include="MediaWiki\PageTitle.cs" />
     <Compile Include="Tasks\BaseReplacement.cs" />
     <Compile Include="Tasks\BaseTask.cs" />
-    <Compile Include="Tasks\CategoryFindReplace.cs" />
+    <Compile Include="Tasks\DownloadCategoryList.cs" />
     <Compile Include="Tasks\Commons\FixImplicitCreators.cs" />
     <Compile Include="Tasks\Commons\FixInformationTemplates.cs" />
     <Compile Include="Tasks\Commons\LocalizeDateReplacement.cs" />
