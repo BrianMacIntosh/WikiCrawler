@@ -329,6 +329,27 @@ namespace Tasks
 			return PageTitle.Empty;
 		}
 
+		public static Entity GetEntityForCreator(PageTitle creator)
+		{
+			Article article = GlobalAPIs.Commons.GetPage(creator.ToString());
+			if (!Article.IsNullOrEmpty(article))
+			{
+				string articleText = article.revisions[0].text;
+				string creatorInsides = WikiUtils.ExtractTemplate(articleText, "Creator");
+
+				if (!string.IsNullOrEmpty(creatorInsides))
+				{
+					string wdId = WikiUtils.GetTemplateParameter("Wikidata", creatorInsides);
+					if (!string.IsNullOrEmpty(wdId))
+					{
+						return GlobalAPIs.Wikidata.GetEntity(wdId);
+					}
+				}
+			}
+
+			return null;
+		}
+
 		/// <summary>
 		/// Searches the specified category for a creator template.
 		/// </summary>
@@ -346,8 +367,12 @@ namespace Tasks
 					PageTitle creator = PageTitle.TryParse(creatorTemplate);
 					if (creator.IsNamespace("Creator"))
 					{
-						s_CategoriesToCreators[PageTitle.Parse(category.title)] = creator;
-						return creator;
+						Entity creatorEntity = GetEntityForCreator(creator);
+						if (!Entity.IsNullOrMissing(creatorEntity) && AuthorIs(authorString, creatorEntity))
+						{
+							s_CategoriesToCreators[PageTitle.Parse(category.title)] = creator;
+							return creator;
+						}
 					}
 					else
 					{
@@ -356,7 +381,9 @@ namespace Tasks
 						{
 							Console.WriteLine("  Creator Wikidata '{0}'.", wikidataId);
 							Entity entity = GlobalAPIs.Wikidata.GetEntity(wikidataId);
-							if (entity != null && entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] wikidataCreator))
+							if (entity != null
+								&& AuthorIs(authorString, entity)
+								&& entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] wikidataCreator))
 							{
 								//TODO: check multiple values
 								creator = new PageTitle("Creator", wikidataCreator[0]);
