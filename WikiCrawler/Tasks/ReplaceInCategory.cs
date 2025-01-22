@@ -45,7 +45,7 @@ namespace Tasks
 	/// </summary>
 	public abstract class ReplaceInCategory : BaseTask
 	{
-		private static readonly int s_MaxReads = 120;
+		private static readonly int s_MaxReads = 500;
 		private static readonly int s_MaxEdits = int.MaxValue;
 
 		/// <summary>
@@ -175,7 +175,10 @@ namespace Tasks
 				saveOutCounter++;
 
 				// record sortkey progress
-				File.WriteAllText(progressFile, WikiUtils.GetSortkey(file));
+				if (!UseCachedFiles)
+				{
+					File.WriteAllText(progressFile, WikiUtils.GetSortkey(file));
+				}
 
 				Console.ForegroundColor = ConsoleColor.White;
 				Console.WriteLine();
