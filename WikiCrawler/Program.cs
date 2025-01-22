@@ -15,11 +15,11 @@ namespace WikiCrawler
 				   | SecurityProtocolType.Tls12
 				   | SecurityProtocolType.Ssl3;
 			
+			Console.Write("Task>");
+			string taskName = Console.ReadLine();
+
 			try
 			{
-				Console.Write("Task>");
-				string taskName = Console.ReadLine();
-
 				// disable sleep while task runs
 				WindowsUtility.SetThreadExecutionState(WindowsUtility.EXECUTION_STATE.ES_SYSTEM_REQUIRED | WindowsUtility.EXECUTION_STATE.ES_CONTINUOUS);
 
