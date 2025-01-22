@@ -166,9 +166,13 @@ namespace MediaWiki
 			string iiprop = "",
 			int iilimit = Limit.Unspecified,
 			string rvprop = "content",
-			int rvlimit = Limit.Unspecified)
+			int rvlimit = Limit.Unspecified,
+			string clshow = "",
+			int cllimit = Limit.Max,
+			string cldir = "",
+			string iwprefix = "")
 		{
-            return GetPages(new string[] { title }, prop, iiprop, iilimit, rvprop, rvlimit)[0];
+            return GetPages(new string[] { title }, prop, iiprop, iilimit, rvprop, rvlimit, clshow, cllimit, cldir, iwprefix)[0];
         }
 
 		/// <summary>
