@@ -23,6 +23,7 @@ namespace Tasks
 		}
 
 		private static List<Regex> s_dateRegexes = new List<Regex>();
+		private static List<Regex> s_centuryRegexes = new List<Regex>();
 		private static Regex s_sRegex = new Regex("^([0-9]+)'?[Ss]$");
 
 		static PdArtReplacement()
@@ -32,6 +33,14 @@ namespace Tasks
 				if (!string.IsNullOrWhiteSpace(regex))
 				{
 					s_dateRegexes.Add(new Regex(regex));
+				}
+			}
+
+			foreach (string regex in File.ReadAllLines(Path.Combine(ProjectDataDirectory, "century-regexes.txt")))
+			{
+				if (!string.IsNullOrWhiteSpace(regex))
+				{
+					s_centuryRegexes.Add(new Regex(regex));
 				}
 			}
 		}
@@ -47,6 +56,19 @@ namespace Tasks
 		private int qtySuccess = 0;
 
 		private Dictionary<string, int> unparsedDates = new Dictionary<string, int>();
+
+		private string DuplicateLicensesLogFile
+		{
+			get { return Path.Combine(ProjectDataDirectory, "duplicate-licenses.txt"); }
+		}
+
+		private static readonly string[] s_PdArtForms = new string[]
+		{
+			"{{PD-Art}}",
+			"{{PD-art}}",
+			"{{Pd-art}}",
+			"{{pd-art}}",
+		};
 
 		public override void SaveOut()
 		{
@@ -74,12 +96,26 @@ OtherLicense: {8}",
 		/// <returns>True if a replacement was made.</returns>
 		public override bool DoReplacement(Article article)
 		{
-			Console.WriteLine("PDArtFixup: checking '{0}'...", article.title);
-
 			qtyProcessed++;
 
 			string text = article.revisions[0].text;
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
+
+			bool hasPdArt = false;
+			foreach (string pdart in s_PdArtForms)
+			{
+				if (worksheet.Text.Contains(pdart))
+				{
+					hasPdArt = true;
+				}
+			}
+			if (!hasPdArt)
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("  Failed to find PD-Art template.");
+				Console.ResetColor();
+				return false;
+			}
 
 			if (string.IsNullOrEmpty(worksheet.Author))
 			{
@@ -123,14 +159,6 @@ OtherLicense: {8}",
 				qtyDateParseFail++;
 				return false;
 			}
-			else if (latestYear >= System.DateTime.Now.Year - 95)
-			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Date {0} is after the US expired threshold.", latestYear);
-				Console.ResetColor();
-				qtyNotPDUS++;
-				return false;
-			}
 
 			if (creator.DeathYear == 9999)
 			{
@@ -151,25 +179,38 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			if (text.Replace("{{PD-Art", "").Contains("{{PD"))
+			// post-2004 dates are very likely to be upload dates instead of pub dates, especially given that the author died at least 120 years ago
+			if (latestYear >= System.DateTime.Now.Year - 95 && latestYear < 2004)
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Contains other licenses.", creator.DeathYear);
+				Console.WriteLine("  Date {0} is after the US expired threshold.", latestYear);
 				Console.ResetColor();
-				qtyOtherLicense++;
+				qtyNotPDUS++;
 				return false;
+			}
+
+			foreach (string license in LicenseUtility.PrimaryLicenseTemplates)
+			{
+				if (text.IndexOf(string.Format("{{{{{0}}}}}", license), StringComparison.InvariantCultureIgnoreCase) >= 0)
+				{
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("  Contains other license '{0}'.", license);
+					Console.ResetColor();
+					qtyOtherLicense++;
+					File.AppendAllText(DuplicateLicensesLogFile, article.title + "\n");
+					return false;
+				}
 			}
 
 			string newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creator.DeathYear);
 
 			Console.ForegroundColor = ConsoleColor.Green;
-			Console.WriteLine("  PDArtFixup replacing PD-Art with '{0}'.", newLicense);
+			Console.WriteLine("  PdArtReplacement replacing PD-Art with '{0}'.", newLicense);
 			Console.ResetColor();
 
 			qtySuccess++;
 
-			//TODO: what if PD-Art doesn't look like this?
-			article.revisions[0].text = text.Replace("{{PD-Art}}", newLicense);
+			article.revisions[0].text = text.Replace(s_PdArtForms, newLicense);
 			article.Dirty = true;
 			article.Changes.Add("replacing PD-art with a more accurate license based on file data");
 			return true;
@@ -323,7 +364,7 @@ OtherLicense: {8}",
 				}
 			}
 
-			// check against various regexes
+			// year regexes
 			foreach (Regex regex in s_dateRegexes)
 			{
 				Match match = regex.Match(date);
@@ -332,14 +373,40 @@ OtherLicense: {8}",
 					DateParseMetadata? metadata = null;
 					for (int g = 1; g < match.Groups.Count; ++g)
 					{
-						Group group = match.Groups[g];
+						DateParseMetadata groupMetadata = ParseDate(match.Groups[g].Value);
 						if (metadata == null)
 						{
-							metadata = ParseDate(group.Value);
+							metadata = groupMetadata;
 						}
 						else
 						{
-							metadata = DateParseMetadata.Combine(metadata.Value, ParseDate(group.Value));
+							metadata = DateParseMetadata.Combine(metadata.Value, groupMetadata);
+						}
+					}
+					return metadata.Value;
+				}
+			}
+
+			// century regexes
+			foreach (Regex regex in s_centuryRegexes)
+			{
+				Match match = regex.Match(date);
+				if (match.Success)
+				{
+					DateParseMetadata? metadata = null;
+					for (int g = 1; g < match.Groups.Count; ++g)
+					{
+						int century = int.Parse(match.Groups[g].Value);
+						DateParseMetadata groupMetadata = new DateParseMetadata();
+						groupMetadata.EarliestYear = century * 100 - 100;
+						groupMetadata.LatestYear = century * 100 - 1;
+						if (metadata == null)
+						{
+							metadata = groupMetadata;
+						}
+						else
+						{
+							metadata = DateParseMetadata.Combine(metadata.Value, groupMetadata);
 						}
 					}
 					return metadata.Value;

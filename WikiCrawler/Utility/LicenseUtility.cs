@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
+using WikiCrawler;
 
 /// <summary>
 /// Helper function for finding media licenses.
@@ -13,6 +12,21 @@ public static class LicenseUtility
 	/// A very safe estimate of the lifetime of an author after creating a work, used if the deathyear is not known.
 	/// </summary>
 	private const int SafeLifetimeYears = 80;
+
+	private static readonly string[] s_primaryLicenseTemplates;
+
+	static LicenseUtility()
+	{
+		s_primaryLicenseTemplates = File.ReadAllLines(Path.Combine(Configuration.DataDirectory, "primary-license-tags.txt"));
+	}
+
+	/// <summary>
+	/// Returns an enumerator over the names of every primary license template (no {{}} or Template:).
+	/// </summary>
+	public static IEnumerable<string> PrimaryLicenseTemplates
+	{
+		get { return s_primaryLicenseTemplates; }
+	}
 
 	/// <summary>
 	/// Returns true if the specified country can use the EU no-author license.
