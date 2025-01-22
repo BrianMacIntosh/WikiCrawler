@@ -629,13 +629,15 @@ namespace Tasks
 				"\n|Wikidata=" + entity.id +
 				"\n}}";
 
+			// goes first, or Commons page will need a cache purge
+			GlobalAPIs.Wikidata.CreateEntityClaim(entity, Wikidata.Prop_CommonsCreator, name, "(BOT) creating Commons creator page", true);
+
 			if (GlobalAPIs.Commons.CreatePage(creatorArt, "creating Creator template from Wikidata"))
 			{
 				Console.ForegroundColor = ConsoleColor.Green;
 				Console.WriteLine("  Created page '{0}'.", creatorArt.title);
 				Console.ResetColor();
 
-				GlobalAPIs.Wikidata.CreateEntityClaim(entity, Wikidata.Prop_CommonsCreator, name, "(BOT) creating Commons creator page", true);
 				creatorPage = commonsArticle;
 				return true;
 			}
