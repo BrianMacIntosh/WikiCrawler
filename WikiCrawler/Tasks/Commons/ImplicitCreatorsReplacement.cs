@@ -218,7 +218,7 @@ namespace Tasks
 		}
 
 		private static readonly char[] s_authorTrim = new char[] { ' ', '[', ']', '.', ',', ';' };
-		private static readonly Regex s_lifespanRegex = new Regex(@"^(.+) ?\(([0-9]+)[\-– ]([0-9]+)\)$");
+		private static readonly Regex s_lifespanRegex = new Regex(@"^(.+) ?\(([0-9]+) ?[\-– ] ?([0-9]+)\)$");
 		private static readonly Regex s_wikilinkRegex = new Regex(@"^\[\[:?([a-z]+):(.+)\|(.+)\]\]$"); //TODO: support no label supplied
 
 		/// <summary>
