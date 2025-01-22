@@ -26,7 +26,7 @@ namespace MediaWiki
 
 		public bool IsEmpty
 		{
-			get { return string.IsNullOrEmpty(Namespace) && string.IsNullOrEmpty(Name); }
+			get { return string.IsNullOrEmpty(Name); }
 		}
 
 		public PageTitle(string ns, string name)
@@ -43,7 +43,7 @@ namespace MediaWiki
 			string[] split = s.Split(s_namespaceSplitter, 2);
 			if (split.Length < 2)
 			{
-				throw new ArgumentException("Failed to parse PageTitle.");
+				return new PageTitle("", split[0]);
 			}
 			if (!IsKnownNamespace(split[0]))
 			{

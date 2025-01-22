@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MediaWiki
 {
@@ -31,5 +32,22 @@ namespace MediaWiki
 			}
 		}
 		private static Api s_wikidata;
+
+		public static Api Wikipedia(string langCode)
+		{
+			langCode = langCode.ToLower();
+			if (s_wikipedias.TryGetValue(langCode, out Api api))
+			{
+				return api;
+			}
+			else
+			{
+				Api apinew = new Api(new Uri(string.Format("https://{0}.wikipedia.org", langCode)));
+				apinew.AutoLogIn();
+				s_wikipedias[langCode] = apinew;
+				return apinew;
+			}
+		}
+		private static Dictionary<string, Api> s_wikipedias = new Dictionary<string, Api>();
 	}
 }

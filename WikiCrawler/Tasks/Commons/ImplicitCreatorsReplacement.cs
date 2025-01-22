@@ -129,6 +129,7 @@ namespace Tasks
 			{
 				PageTitle creator = PageTitle.Empty;
 				string authorString;
+				List<CheckEntity> checkEntities = new List<CheckEntity>();
 
 				// search for a creator by name/DOB/DOD
 				Match lifespanMatch = s_lifespanRegex.Match(worksheet.Author);
@@ -162,16 +163,71 @@ namespace Tasks
 					Match wikilinkMatch = s_wikilinkRegex.Match(authorString);
 					if (wikilinkMatch.Success)
 					{
-						//TODO: could use wikilink for looking up, or check both sides
-						authorString = wikilinkMatch.Groups[1].Value;
+						authorString = wikilinkMatch.Groups[2].Value.Trim();
+
+						//TODO: does not actually find wikidata link
+						Article interwikiArticle = GetInterwikiPage(wikilinkMatch.Groups[1].Value, wikilinkMatch.Groups[2].Value);
+						if (!Article.IsNullOrMissing(interwikiArticle) && interwikiArticle.iwlinks != null)
+						{
+							string qid = null;
+							string commonsPage = null;
+
+							foreach (InterwikiLink iwlink in interwikiArticle.iwlinks)
+							{
+								if (iwlink.prefix == "d")
+								{
+									qid = iwlink.value;
+									Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
+									checkEntities.Add(new CheckEntity(PageTitle.Empty, qid));
+								}
+								else if (iwlink.prefix == "commons")
+								{
+									commonsPage = iwlink.value;
+								}
+							}
+
+							// if no wikidata but yes Commons, try to get WD from Commons
+							if (string.IsNullOrEmpty(qid) && !string.IsNullOrEmpty(commonsPage))
+							{
+								creator = GetCreatorFromCategories(authorString, new PageTitle[] { PageTitle.Parse(commonsPage) }, 0, checkEntities);
+							}
+						}
 					}
 				}
 
 				// go looking for matching creator templates in parent cats
 				if (creator.IsEmpty)
 				{
-					creator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1);
+					creator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1, checkEntities);
 				}
+
+				// check any prospective wikidata entity matches
+				foreach (Entity entity in GlobalAPIs.Wikidata.GetEntities(checkEntities.Select(ent => ent.EntityId).Distinct().ToArray()))
+				{
+					if (AuthorIs(authorString, entity))
+					{
+						if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
+						{
+							foreach (CheckEntity ent in checkEntities)
+							{
+								if (ent.EntityId == entity.id && !ent.SourcePage.IsEmpty)
+								{
+									s_CategoriesToCreators[ent.SourcePage] = creator;
+								}
+							}
+							creator = entityCreator;
+							break;
+						}
+					}
+					else
+					{
+						string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
+						Console.ForegroundColor = ConsoleColor.Yellow;
+						Console.WriteLine("  Can't match '{0}' to '{1}'.", authorString, entityStr);
+						Console.ResetColor();
+					}
+				}
+
 
 				if (!creator.IsEmpty)
 				{
@@ -253,6 +309,24 @@ namespace Tasks
 			return false;
 		}
 
+		private Article GetInterwikiPage(string wiki, string page)
+		{
+			switch (wiki)
+			{
+				case "w":
+				case "wikipedia":
+				case "en":
+					return GlobalAPIs.Wikipedia("en").GetPage(page, prop: "iwlinks");
+				case "fr":
+				case "de":
+				case "es":
+					return GlobalAPIs.Wikipedia(wiki).GetPage(page, prop: "iwlinks");
+				default:
+					//TODO: implement more wikis
+					return null;
+			}
+		}
+
 		private struct CheckEntity
 		{
 			/// <summary>
@@ -272,7 +346,7 @@ namespace Tasks
 		/// <summary>
 		/// Searches a list of categories and its parents for a creator template.
 		/// </summary>
-		private static PageTitle GetCreatorFromCategories(string authorString, IEnumerable<PageTitle> categories, int currentDepth)
+		private static PageTitle GetCreatorFromCategories(string authorString, IEnumerable<PageTitle> categories, int currentDepth, List<CheckEntity> checkEntities)
 		{
 			// check cache
 			foreach (PageTitle category in categories)
@@ -283,46 +357,16 @@ namespace Tasks
 				}
 			}
 
-			// list of Wikidata entity IDs to check
-			List<CheckEntity> entityIds = new List<CheckEntity>();
-
 			// go searching through cats
 			foreach (Article category in GlobalAPIs.Commons.GetPages(categories.Select((cat) => cat.ToString()).ToList(), prop: "info|revisions|iwlinks", iwprefix: "d"))
 			{
 				Console.WriteLine("  Category '{0}'.", category.title);
 
-				PageTitle parentCreator = GetCreatorForCategory(authorString, category, currentDepth, entityIds);
+				PageTitle parentCreator = GetCreatorForCategory(authorString, category, currentDepth, checkEntities);
 				if (!parentCreator.IsEmpty)
 				{
 					s_CategoriesToCreators[PageTitle.Parse(category.title)] = parentCreator;
 					return parentCreator;
-				}
-			}
-
-			// check any collected Wikidata entities
-			foreach (Entity entity in GlobalAPIs.Wikidata.GetEntities(entityIds.Select(ent => ent.EntityId).Distinct().ToArray()))
-			{
-				if (AuthorIs(authorString, entity))
-				{
-					if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle creator))
-					{
-						foreach (CheckEntity ent in entityIds)
-						{
-							if (ent.EntityId == entity.id)
-							{
-								s_CategoriesToCreators[ent.SourcePage] = creator;
-							}
-						}
-						
-						return creator;
-					}
-				}
-				else
-				{
-					string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
-					Console.ForegroundColor = ConsoleColor.Yellow;
-					Console.WriteLine("  Can't match '{0}' to '{1}'.", authorString, entityStr);
-					Console.ResetColor();
 				}
 			}
 
@@ -353,8 +397,8 @@ namespace Tasks
 		/// <summary>
 		/// Searches the specified category for a creator template.
 		/// </summary>
-		/// <param name="outEntityIdsBuffer">Any entities that should be checked for creators are added to this list.</param>
-		private static PageTitle GetCreatorForCategory(string authorString, Article category, int currentDepth, List<CheckEntity> outEntityIdsBuffer)
+		/// <param name="checkEntities">Any entities that should be checked for creators are added to this list.</param>
+		private static PageTitle GetCreatorForCategory(string authorString, Article category, int currentDepth, List<CheckEntity> checkEntities)
 		{
 			if (!Article.IsNullOrEmpty(category))
 			{
@@ -403,7 +447,7 @@ namespace Tasks
 						{
 							string qid = iwlink.value;
 							Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
-							outEntityIdsBuffer.Add(new CheckEntity(PageTitle.Parse(category.title), qid));
+							checkEntities.Add(new CheckEntity(PageTitle.Parse(category.title), qid));
 						}
 					}
 				}
@@ -416,7 +460,7 @@ namespace Tasks
 					if (!string.IsNullOrEmpty(qid))
 					{
 						Console.WriteLine("  Explicit Wikidata '{0}'.", qid);
-						outEntityIdsBuffer.Add(new CheckEntity(PageTitle.Parse(category.title), qid));
+						checkEntities.Add(new CheckEntity(PageTitle.Parse(category.title), qid));
 					}
 				}
 
@@ -424,7 +468,7 @@ namespace Tasks
 				if (currentDepth < s_SearchDepth ||
 					(currentDepth < s_SearchDepth + 1 && category.GetTitle().Contains(" by ")))
 				{
-					PageTitle parentCreator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(categoryText), currentDepth + 1);
+					PageTitle parentCreator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(categoryText), currentDepth + 1, checkEntities);
 					if (!parentCreator.IsEmpty)
 					{
 						s_CategoriesToCreators[PageTitle.Parse(category.title)] = parentCreator;
