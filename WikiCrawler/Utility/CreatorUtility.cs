@@ -11,6 +11,17 @@ namespace MediaWiki
 	public static class CreatorUtilityMeta
 	{
 		public static bool IsInitialized = false;
+
+		/// <summary>
+		/// Saves cached creator data out to files.
+		/// </summary>
+		public static void SaveOut()
+		{
+			if (IsInitialized)
+			{
+				CreatorUtility._SaveOut();
+			}
+		}
 	}
 
 	/// <summary>
@@ -33,6 +44,8 @@ namespace MediaWiki
 
 		private static Dictionary<string, Creator> s_creatorData;
 		private static Dictionary<string, string> s_creatorRedirects;
+
+		private static bool s_isDirty = false;
 
 		private static string DataCacheFile
 		{
@@ -86,6 +99,7 @@ namespace MediaWiki
 				if (kv.Value.IsEmpty)
 				{
 					s_creatorData.Remove(kv.Key);
+					s_isDirty = true;
 				}
 			}
 		}
@@ -103,6 +117,7 @@ namespace MediaWiki
 					Creator.Merge(kv.Value, creatorCreator);
 					AddRedirect(kv.Key, kv.Value.Author);
 					s_creatorData.Remove(kv.Key);
+					s_isDirty = true;
 				}
 			}
 		}
@@ -110,8 +125,13 @@ namespace MediaWiki
 		/// <summary>
 		/// Saves cached creator data out to files.
 		/// </summary>
-		public static void SaveOut()
+		public static void _SaveOut()
 		{
+			if (!s_isDirty)
+			{
+				return;
+			}
+
 			// write data
 			using (StreamWriter writer = new StreamWriter(new FileStream(DataCacheFile, FileMode.Create, FileAccess.Write), Encoding.UTF8))
 			{
@@ -158,6 +178,8 @@ namespace MediaWiki
 				}
 				writer.WriteLine("\n}");
 			}
+
+			s_isDirty = false;
 		}
 
 		public static void AddRedirect(string from, string to)
@@ -168,6 +190,7 @@ namespace MediaWiki
 			if (!s_creatorRedirects.ContainsKey(from))
 			{
 				s_creatorRedirects.Add(from, to);
+				s_isDirty = true;
 			}
 		}
 
@@ -196,6 +219,7 @@ namespace MediaWiki
 				isNew = true;
 				creator = CreateNewCreator(key);
 				s_creatorData.Add(key, creator);
+				s_isDirty = true;
 				return creator;
 			}
 		}

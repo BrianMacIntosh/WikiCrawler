@@ -14,7 +14,8 @@ namespace WikiCrawler
 				   | SecurityProtocolType.Tls11
 				   | SecurityProtocolType.Tls12
 				   | SecurityProtocolType.Ssl3;
-			
+
+			Console.OutputEncoding = System.Text.Encoding.UTF8;
 			Console.Write("Task>");
 			string taskName = Console.ReadLine();
 
@@ -64,10 +65,7 @@ namespace WikiCrawler
 				//TODO: check dirty
 				CategoryTranslation.SaveOut();
 
-				if (CreatorUtilityMeta.IsInitialized)
-				{
-					CreatorUtility.SaveOut();
-				}
+				CreatorUtilityMeta.SaveOut();
 
 				// allow sleep
 				WindowsUtility.SetThreadExecutionState(WindowsUtility.EXECUTION_STATE.ES_CONTINUOUS);

@@ -45,7 +45,7 @@ namespace Tasks
 	/// </summary>
 	public abstract class ReplaceInCategory : BaseTask
 	{
-		private static readonly int s_MaxReads = 500;
+		private static readonly int s_MaxReads = int.MaxValue;
 		private static readonly int s_MaxEdits = int.MaxValue;
 
 		/// <summary>
@@ -195,6 +195,8 @@ namespace Tasks
 					m_heartbeatData["nEdits"] = (int)m_heartbeatData["nEdits"] + 1;
 					editCount++;
 				}
+
+				CreatorUtilityMeta.SaveOut();
 			}
 
 			SendHeartbeat(true);
