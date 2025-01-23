@@ -23,7 +23,21 @@ namespace Tasks
 			get { return Path.Combine(Configuration.DataDirectory, "fiximplicitcreators"); }
 		}
 
-		private static Dictionary<PageTitle, PageTitle> s_CategoriesToCreators = new Dictionary<PageTitle, PageTitle>();
+		/// <summary>
+		/// Caches the qids of entities linked to each category.
+		/// </summary>
+		//TODO: only store entities that are actually saved in s_Entities
+		private static Dictionary<PageTitle, List<string>> s_CategoriesToEntities = new Dictionary<PageTitle, List<string>>();
+
+		/// <summary>
+		/// Caches entities by qid.
+		/// </summary>
+		private static Dictionary<string, Entity> s_Entities = new Dictionary<string, Entity>();
+
+		/// <summary>
+		/// Set of categories that have been checked for entities so far.
+		/// </summary>
+		private static HashSet<PageTitle> s_VisitedCats = new HashSet<PageTitle>();
 
 		private static bool IsConvertibleUnknownAuthor(string author)
 		{
@@ -129,7 +143,6 @@ namespace Tasks
 			{
 				PageTitle creator = PageTitle.Empty;
 				string authorString;
-				List<CheckEntity> checkEntities = new List<CheckEntity>();
 
 				// search for a creator by name/DOB/DOD
 				Match lifespanMatch = s_lifespanRegex.Match(worksheet.Author);
@@ -157,7 +170,7 @@ namespace Tasks
 					authorString = worksheet.Author;
 				}
 
-				// unwrap wikilink
+				// unwrap author wikilink
 				if (creator.IsEmpty)
 				{
 					Match wikilinkMatch = s_wikilinkRegex.Match(authorString);
@@ -165,7 +178,6 @@ namespace Tasks
 					{
 						authorString = wikilinkMatch.Groups[2].Value.Trim();
 
-						//TODO: does not actually find wikidata link
 						Article interwikiArticle = GetInterwikiPage(wikilinkMatch.Groups[1].Value, wikilinkMatch.Groups[2].Value);
 						if (!Article.IsNullOrMissing(interwikiArticle) && interwikiArticle.iwlinks != null)
 						{
@@ -178,8 +190,28 @@ namespace Tasks
 								{
 									qid = iwlink.value;
 									Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
-									checkEntities.Add(new CheckEntity(PageTitle.Empty, qid));
+
+									Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
+									if (!Entity.IsNullOrMissing(entity))
+									{
+										if (AuthorIs(authorString, entity))
+										{
+											if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
+											{
+												creator = entityCreator;
+												break;
+											}
+										}
+										else
+										{
+											string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
+											Console.ForegroundColor = ConsoleColor.Yellow;
+											Console.WriteLine("  Can't match '{0}' to '{1}'.", authorString, entityStr);
+											Console.ResetColor();
+										}
+									}
 								}
+								//HACK: does not actually find wikidata link, have to go through commons
 								else if (iwlink.prefix == "commons")
 								{
 									commonsPage = iwlink.value;
@@ -189,7 +221,7 @@ namespace Tasks
 							// if no wikidata but yes Commons, try to get WD from Commons
 							if (string.IsNullOrEmpty(qid) && !string.IsNullOrEmpty(commonsPage))
 							{
-								creator = GetCreatorFromCategories(authorString, new PageTitle[] { PageTitle.Parse(commonsPage) }, 0, checkEntities);
+								creator = GetCreatorFromCategories(authorString, new PageTitle[] { PageTitle.Parse(commonsPage) }, int.MaxValue);
 							}
 						}
 					}
@@ -198,36 +230,8 @@ namespace Tasks
 				// go looking for matching creator templates in parent cats
 				if (creator.IsEmpty)
 				{
-					creator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1, checkEntities);
+					creator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1);
 				}
-
-				// check any prospective wikidata entity matches
-				foreach (Entity entity in GlobalAPIs.Wikidata.GetEntities(checkEntities.Select(ent => ent.EntityId).Distinct().ToArray()))
-				{
-					if (AuthorIs(authorString, entity))
-					{
-						if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
-						{
-							foreach (CheckEntity ent in checkEntities)
-							{
-								if (ent.EntityId == entity.id && !ent.SourcePage.IsEmpty)
-								{
-									s_CategoriesToCreators[ent.SourcePage] = creator;
-								}
-							}
-							creator = entityCreator;
-							break;
-						}
-					}
-					else
-					{
-						string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
-						Console.ForegroundColor = ConsoleColor.Yellow;
-						Console.WriteLine("  Can't match '{0}' to '{1}'.", authorString, entityStr);
-						Console.ResetColor();
-					}
-				}
-
 
 				if (!creator.IsEmpty)
 				{
@@ -274,8 +278,8 @@ namespace Tasks
 		}
 
 		private static readonly char[] s_authorTrim = new char[] { ' ', '[', ']', '.', ',', ';' };
-		private static readonly Regex s_lifespanRegex = new Regex(@"^(.+) ?\(([0-9]+) ?[\-– ] ?([0-9]+)\)$");
-		private static readonly Regex s_wikilinkRegex = new Regex(@"^\[\[:?([a-z]+):(.+)\|(.+)\]\]$"); //TODO: support no label supplied
+		private static readonly Regex s_lifespanRegex = new Regex(@"^(.+)\s*\(?([0-9][0-9][0-9][0-9]) ?[\-– ] ?([0-9][0-9][0-9][0-9])\)?$");
+		private static readonly Regex s_wikilinkRegex = new Regex(@"^\[\[w?:?([a-z]+):(.+)\|(.+)\]\]$"); //TODO: support no label supplied
 
 		/// <summary>
 		/// Returns true if the currentAuthor string is an acceptable match against specified entity.
@@ -316,64 +320,37 @@ namespace Tasks
 				case "w":
 				case "wikipedia":
 				case "en":
-					return GlobalAPIs.Wikipedia("en").GetPage(page, prop: "iwlinks");
-				case "fr":
+					return GlobalAPIs.Wikipedia("en").GetPage(page, prop: "info|iwlinks");
+				case "ceb":
 				case "de":
+				case "fr":
+				case "sv":
+				case "nl":
+				case "ru":
 				case "es":
-					return GlobalAPIs.Wikipedia(wiki).GetPage(page, prop: "iwlinks");
+				case "it":
+				case "pl":
+				case "arz":
+				case "zh":
+				case "ja":
+				case "uk":
+				case "vi":
+				case "war":
+				case "ar":
+				case "ptr":
+				case "fa":
+				case "ca":
+				case "id":
+				case "sr":
+				case "ko":
+					return GlobalAPIs.Wikipedia(wiki).GetPage(page, prop: "info|iwlinks");
 				default:
 					//TODO: implement more wikis
 					return null;
 			}
 		}
 
-		private struct CheckEntity
-		{
-			/// <summary>
-			/// The page where the entity was found.
-			/// </summary>
-			public PageTitle SourcePage;
-
-			public string EntityId;
-
-			public CheckEntity(PageTitle inSourcePage, string inEntityId)
-			{
-				SourcePage = inSourcePage;
-				EntityId = inEntityId;
-			}
-		}
-
-		/// <summary>
-		/// Searches a list of categories and its parents for a creator template.
-		/// </summary>
-		private static PageTitle GetCreatorFromCategories(string authorString, IEnumerable<PageTitle> categories, int currentDepth, List<CheckEntity> checkEntities)
-		{
-			// check cache
-			foreach (PageTitle category in categories)
-			{
-				if (s_CategoriesToCreators.TryGetValue(category, out PageTitle creator))
-				{
-					return creator;
-				}
-			}
-
-			// go searching through cats
-			foreach (Article category in GlobalAPIs.Commons.GetPages(categories.Select((cat) => cat.ToString()).ToList(), prop: "info|revisions|iwlinks", iwprefix: "d"))
-			{
-				Console.WriteLine("  Category '{0}'.", category.title);
-
-				PageTitle parentCreator = GetCreatorForCategory(authorString, category, currentDepth, checkEntities);
-				if (!parentCreator.IsEmpty)
-				{
-					s_CategoriesToCreators[PageTitle.Parse(category.title)] = parentCreator;
-					return parentCreator;
-				}
-			}
-
-			return PageTitle.Empty;
-		}
-
-		public static Entity GetEntityForCreator(PageTitle creator)
+		public static string GetEntityIdForCreator(PageTitle creator)
 		{
 			Article article = GlobalAPIs.Commons.GetPage(creator.ToString());
 			if (!Article.IsNullOrEmpty(article))
@@ -386,7 +363,7 @@ namespace Tasks
 					string wdId = WikiUtils.GetTemplateParameter("Wikidata", creatorInsides);
 					if (!string.IsNullOrEmpty(wdId))
 					{
-						return GlobalAPIs.Wikidata.GetEntity(wdId);
+						return wdId;
 					}
 				}
 			}
@@ -395,14 +372,83 @@ namespace Tasks
 		}
 
 		/// <summary>
-		/// Searches the specified category for a creator template.
+		/// Searches a list of categories and their parents for a creator template matching the <paramref name="authorString"/>.
 		/// </summary>
-		/// <param name="checkEntities">Any entities that should be checked for creators are added to this list.</param>
-		private static PageTitle GetCreatorForCategory(string authorString, Article category, int currentDepth, List<CheckEntity> checkEntities)
+		private static PageTitle GetCreatorFromCategories(string authorString, IEnumerable<PageTitle> categories, int currentDepth)
+		{
+			HashSet<string> outNewEntities = new HashSet<string>();
+
+			// go searching through cats that haven't been visited yet
+			CacheCategoryEntities(categories, currentDepth, outNewEntities);
+
+			// fetch any new entities
+			foreach (Entity newEntity in GlobalAPIs.Wikidata.GetEntities(outNewEntities.ToList()))
+			{
+				if (newEntity.HasClaim(Wikidata.Prop_CommonsCreator))
+				{
+					s_Entities[newEntity.id] = newEntity;
+				}
+			}
+
+			// check over all relevant entities
+			foreach (PageTitle category in categories)
+			{
+				if (s_CategoriesToEntities.TryGetValue(category, out List<string> entityIds))
+				{
+					foreach (string entityId in entityIds)
+					{
+						if (s_Entities.TryGetValue(entityId, out Entity entity))
+						{
+							if (AuthorIs(authorString, entity))
+							{
+								if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
+								{
+									return entityCreator;
+								}
+							}
+							else
+							{
+								string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
+								Console.ForegroundColor = ConsoleColor.Yellow;
+								Console.WriteLine("  Can't match '{0}' to '{1}'.", authorString, entityStr);
+								Console.ResetColor();
+							}
+						}
+					}
+				}
+			}
+
+			return PageTitle.Empty;
+		}
+
+		/// <summary>
+		/// Caches all <see cref="Entity"/>s related to the specified categories or their parents.
+		/// </summary>
+		private static void CacheCategoryEntities(IEnumerable<PageTitle> categories, int currentDepth, HashSet<string> outNewEntities)
+		{
+			foreach (Article category in GlobalAPIs.Commons.GetPages(
+				categories
+					.Where((cat) => !s_VisitedCats.Contains(cat))
+					.Select((cat) => cat.ToString())
+					.ToList(),
+				prop: "info|revisions|iwlinks", iwprefix: "d"))
+			{
+				CacheCategoryEntities(category, currentDepth, outNewEntities);
+			}
+		}
+
+		/// <summary>
+		/// Caches all Entities related to the specified category or its parents.
+		/// </summary>
+		private static void CacheCategoryEntities(Article category, int currentDepth, HashSet<string> outNewEntities)
 		{
 			if (!Article.IsNullOrEmpty(category))
 			{
+				Console.WriteLine("  Category '{0}'.", category.title);
+				PageTitle categoryTitle = PageTitle.Parse(category.title);
 				string categoryText = category.revisions[0].text;
+
+				s_VisitedCats.Add(categoryTitle);
 
 				// embedded creator
 				string creatorTemplate = WikiUtils.ExtractTemplate(categoryText, "Creator");
@@ -411,29 +457,22 @@ namespace Tasks
 					PageTitle creator = PageTitle.TryParse(creatorTemplate);
 					if (creator.IsNamespace("Creator"))
 					{
-						Entity creatorEntity = GetEntityForCreator(creator);
-						if (!Entity.IsNullOrMissing(creatorEntity) && AuthorIs(authorString, creatorEntity))
+						string qid = GetEntityIdForCreator(creator);
+						if (!string.IsNullOrEmpty(qid))
 						{
-							s_CategoriesToCreators[PageTitle.Parse(category.title)] = creator;
-							return creator;
+							Console.WriteLine("  Creator Wikidata '{0}'.", qid);
+							AddCategoryEntity(categoryTitle, qid);
+							outNewEntities.Add(qid);
 						}
 					}
 					else
 					{
-						string wikidataId = WikiUtils.GetTemplateParameter("wikidata", creatorTemplate);
-						if (!string.IsNullOrEmpty(wikidataId))
+						string qid = WikiUtils.GetTemplateParameter("wikidata", creatorTemplate);
+						if (!string.IsNullOrEmpty(qid))
 						{
-							Console.WriteLine("  Creator Wikidata '{0}'.", wikidataId);
-							Entity entity = GlobalAPIs.Wikidata.GetEntity(wikidataId);
-							if (entity != null
-								&& AuthorIs(authorString, entity)
-								&& entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] wikidataCreator))
-							{
-								//TODO: check multiple values
-								creator = new PageTitle("Creator", wikidataCreator[0]);
-								s_CategoriesToCreators[PageTitle.Parse(category.title)] = creator;
-								return creator;
-							}
+							Console.WriteLine("  Creator Wikidata '{0}'.", qid);
+							AddCategoryEntity(categoryTitle, qid);
+							outNewEntities.Add(qid);
 						}
 					}
 				}
@@ -447,7 +486,8 @@ namespace Tasks
 						{
 							string qid = iwlink.value;
 							Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
-							checkEntities.Add(new CheckEntity(PageTitle.Parse(category.title), qid));
+							AddCategoryEntity(categoryTitle, qid);
+							outNewEntities.Add(qid);
 						}
 					}
 				}
@@ -460,24 +500,39 @@ namespace Tasks
 					if (!string.IsNullOrEmpty(qid))
 					{
 						Console.WriteLine("  Explicit Wikidata '{0}'.", qid);
-						checkEntities.Add(new CheckEntity(PageTitle.Parse(category.title), qid));
+						AddCategoryEntity(categoryTitle, qid);
+						outNewEntities.Add(qid);
 					}
 				}
 
 				// check parent cats
 				if (currentDepth < s_SearchDepth ||
-					(currentDepth < s_SearchDepth + 1 && category.GetTitle().Contains(" by ")))
+					(currentDepth < s_SearchDepth + 3 && category.GetTitle().Contains(" by ")))
 				{
-					PageTitle parentCreator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(categoryText), currentDepth + 1, checkEntities);
-					if (!parentCreator.IsEmpty)
+					HashSet<string> newEntities = new HashSet<string>();
+					CacheCategoryEntities(WikiUtils.GetCategories(categoryText), currentDepth + 1, newEntities);
+
+					// all child entities are also credited to me
+					foreach (string qid in newEntities)
 					{
-						s_CategoriesToCreators[PageTitle.Parse(category.title)] = parentCreator;
-						return parentCreator;
+						AddCategoryEntity(categoryTitle, qid);
 					}
+
+					outNewEntities.AddRange(newEntities);
 				}
 			}
+		}
 
-			return PageTitle.Empty;
+		private static void AddCategoryEntity(PageTitle category, string qid)
+		{
+			if (s_CategoriesToEntities.TryGetValue(category, out List<string> qids))
+			{
+				qids.AddUnique(qid);
+			}
+			else
+			{
+				s_CategoriesToEntities.Add(category, new List<string> { qid });
+			}
 		}
 	}
 }
