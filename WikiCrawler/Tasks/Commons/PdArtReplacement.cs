@@ -62,12 +62,46 @@ namespace Tasks
 			get { return Path.Combine(ProjectDataDirectory, "duplicate-licenses.txt"); }
 		}
 
-		private static readonly string[] s_PdArtForms = new string[]
+		private static readonly Regex s_PdArtForms = new Regex(@"{{[Pp][Dd]\-[Aa]rt\s*}}");
+
+		private static readonly string[] s_supersedeLicenses = new string[]
 		{
-			"{{PD-Art}}",
-			"{{PD-art}}",
-			"{{Pd-art}}",
-			"{{pd-art}}",
+			"PD-old",
+			"PD-old-100",
+			"PD-old-100-1964",
+			"PD-old-100-1996",
+			"PD-old-100-expired",
+			"PD-old-50",
+			"PD-old-50-1964",
+			"PD-old-50-1996",
+			"PD-old-50-expired",
+			"PD-old-60-1964",
+			"PD-old-60-1996",
+			"PD-old-60-expired",
+			"PD-old-70",
+			"PD-old-70-1964",
+			"PD-old-70-1996",
+			"PD-old-70-expired",
+			"PD-old-75",
+			"PD-old-75-1964",
+			"PD-old-75-1996",
+			"PD-old-75-expired",
+			"PD-old-80",
+			"PD-old-80-1964",
+			"PD-old-80-1996",
+			"PD-old-80-expired",
+			"PD-old-90",
+			"PD-old-90-expired",
+			"PD-old-95",
+			"PD-old-95-1964",
+			"PD-old-95-1996",
+			"PD-old-95-expired",
+			"PD-old-assumed",
+			"PD-old-assumed-expired",
+			"PD-old-assumed/sandbox",
+			"PD-old-auto-1964",
+			"PD-old-auto-1996",
+			"PD-old-auto-expired",
 		};
 
 		public override void SaveOut()
@@ -101,15 +135,9 @@ OtherLicense: {8}",
 			string text = article.revisions[0].text;
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
-			bool hasPdArt = false;
-			foreach (string pdart in s_PdArtForms)
-			{
-				if (worksheet.Text.Contains(pdart))
-				{
-					hasPdArt = true;
-				}
-			}
-			if (!hasPdArt)
+			Match pdArtMatch = s_PdArtForms.Match(worksheet.Text);
+			
+			if (!pdArtMatch.Success)
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine("  Failed to find PD-Art template.");
@@ -126,10 +154,56 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			Creator creator = CreatorUtility.GetCreator(worksheet.Author);
-			creator.Usage++;
+			// 1. need author death date
+			int creatorDeathYear = 9999;
 
-			// try to parse date
+			// A. is author a creator?
+			{
+				PageTitle literalCreator = CreatorUtility.GetCreatorTemplate(worksheet.Author);
+				Creator creator = CreatorUtility.GetCreator("{{" + literalCreator + "}}");
+				creator.Usage++;
+				creatorDeathYear = creator.DeathYear;
+			}
+
+			// B. can author be associated to a creator based on file categories?
+			if (creatorDeathYear == 9999)
+			{
+				PageTitle categoryCreator = ImplicitCreatorsReplacement.GetCreatorFromCategories(worksheet.Author, WikiUtils.GetCategories(worksheet.Text), 1);
+				Creator creator = CreatorUtility.GetCreator("{{" + categoryCreator + "}}");
+				creator.Usage++;
+				creatorDeathYear = creator.DeathYear;
+			}
+
+			// C. does author string contain a death date?
+			if (creatorDeathYear == 9999)
+			{
+				Match match = CreatorUtility.AuthorLifespanRegex.Match(worksheet.Author);
+				if (match.Success)
+				{
+					creatorDeathYear = int.Parse(match.Groups[3].Value);
+				}
+			}
+
+			if (creatorDeathYear == 9999)
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("  Can't determine death year for creator '{0}'.", worksheet.Author);
+				Console.ResetColor();
+				qtyNoDeathYear++;
+				return false;
+			}
+
+			int pmaYear = System.DateTime.Now.Year - 120;
+			if (creatorDeathYear >= pmaYear)
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("  Death year {0} is inside max PMA.", creatorDeathYear);
+				Console.ResetColor();
+				qtyInsufficientPMA++;
+				return false;
+			}
+
+			// 2. try to parse file/pub date
 			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
 			int latestYear;
 			if (dateParseMetadata.LatestYear != 9999)
@@ -138,8 +212,8 @@ OtherLicense: {8}",
 			}
 			else
 			{
-				// if not work date, assume it cannot be later than the death year
-				latestYear = creator.DeathYear;
+				// if no file/pub date, assume it cannot be later than the death year
+				latestYear = creatorDeathYear;
 			}
 
 			if (latestYear == 9999)
@@ -160,26 +234,8 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			if (creator.DeathYear == 9999)
-			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Can't determine death year for creator '{0}'.", worksheet.Author);
-				Console.ResetColor();
-				qtyNoDeathYear++;
-				return false;
-			}
-
-			int pmaYear = System.DateTime.Now.Year - 120;
-			if (creator.DeathYear >= pmaYear)
-			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Death year {0} is inside max PMA.", creator.DeathYear);
-				Console.ResetColor();
-				qtyInsufficientPMA++;
-				return false;
-			}
-
-			// post-2004 dates are very likely to be upload dates instead of pub dates, especially given that the author died at least 120 years ago
+			// Is file/pub date expired in the US?
+			// Exception: post-2004 dates are very likely to be upload dates instead of pub dates, especially given that the author died at least 120 years ago.
 			if (latestYear >= System.DateTime.Now.Year - 95 && latestYear < 2004)
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
@@ -189,9 +245,22 @@ OtherLicense: {8}",
 				return false;
 			}
 
+			// PD licenses that will be completely expressed by the new license can be removed
+			foreach (string supersededLicense in s_supersedeLicenses)
+			{
+				WikiUtils.RemoveTemplate(supersededLicense, text);
+			}
+
+			// Other licenses will be reported as conflicts
 			foreach (string license in LicenseUtility.PrimaryLicenseTemplates)
 			{
-				if (text.IndexOf(string.Format("{{{{{0}}}}}", license), StringComparison.InvariantCultureIgnoreCase) >= 0)
+				// CC licenses are fine (probably a back-up license from the photographer)
+				if (license.StartsWith("cc-", StringComparison.InvariantCultureIgnoreCase))
+				{
+					continue;
+				}
+
+				if (WikiUtils.GetTemplateStart(text, license) >= 0)
 				{
 					Console.ForegroundColor = ConsoleColor.Red;
 					Console.WriteLine("  Contains other license '{0}'.", license);
@@ -202,7 +271,7 @@ OtherLicense: {8}",
 				}
 			}
 
-			string newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creator.DeathYear);
+			string newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
 
 			Console.ForegroundColor = ConsoleColor.Green;
 			Console.WriteLine("  PdArtReplacement replacing PD-Art with '{0}'.", newLicense);
@@ -210,7 +279,8 @@ OtherLicense: {8}",
 
 			qtySuccess++;
 
-			article.revisions[0].text = text.Replace(s_PdArtForms, newLicense);
+			//TODO: handle multiple PD-arts
+			article.revisions[0].text = text.SubstringRange(0, pdArtMatch.Index - 1) + newLicense + text.SubstringRange(pdArtMatch.Index + pdArtMatch.Length, text.Length - 1);
 			article.Dirty = true;
 			article.Changes.Add("replacing PD-art with a more accurate license based on file data");
 			return true;
@@ -338,6 +408,17 @@ OtherLicense: {8}",
 				}
 			}
 
+			// check for "year" template
+			{
+				WikiUtils.GetTemplateLocation(date, "year", out int yearStart, out int yearEnd);
+				if (yearStart >= 0)
+				{
+					string yearTemplate = date.Substring(yearStart, yearEnd - yearStart + 1);
+					string year1 = WikiUtils.GetTemplateParameter(1, yearTemplate);
+					return ParseDate(year1);
+				}
+			}
+
 			// check for "original upload date" template
 			{
 				WikiUtils.GetTemplateLocation(date, "original upload date", out int dateStart, out int dateEnd);
@@ -362,6 +443,12 @@ OtherLicense: {8}",
 						return ParseDate(date1);
 					}
 				}
+			}
+
+			// explicit strings
+			if (date.Equals("Edo Period", StringComparison.InvariantCultureIgnoreCase))
+			{
+				return new DateParseMetadata(9999, 1603, 1868);
 			}
 
 			// year regexes
