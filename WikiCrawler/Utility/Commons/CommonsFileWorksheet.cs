@@ -112,29 +112,26 @@ public class CommonsFileWorksheet : CommonsWorksheet
 		if (templateStart >= 0)
 		{
 			int templateEnd = WikiUtils.GetTemplateEnd(Text, templateStart);
-			templateStart += 2;
-			string templateText = Text.SubstringRange(templateStart, templateEnd);
-
-			foreach (string paramName in paramNames)
+			if (templateEnd >= 0)
 			{
-				string paramContent = WikiUtils.GetTemplateParameter(paramName, templateText, out index);
-				if (!string.IsNullOrEmpty(paramContent))
+				templateStart += 2;
+				string templateText = Text.SubstringRange(templateStart, templateEnd);
+
+				foreach (string paramName in paramNames)
 				{
-					index += templateStart;
-					outParam = paramName;
-					return paramContent;
+					string paramContent = WikiUtils.GetTemplateParameter(paramName, templateText, out index);
+					if (!string.IsNullOrEmpty(paramContent))
+					{
+						index += templateStart;
+						outParam = paramName;
+						return paramContent;
+					}
 				}
 			}
+		}
 
-			index = -1;
-			outParam = "";
-			return "";
-		}
-		else
-		{
-			index = -1;
-			outParam = "";
-			return "";
-		}
+		index = -1;
+		outParam = "";
+		return "";
 	}
 }
