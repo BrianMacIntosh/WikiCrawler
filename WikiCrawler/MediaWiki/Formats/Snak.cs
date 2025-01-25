@@ -64,6 +64,11 @@ namespace MediaWiki
 
 		public DateTime GetValueAsDate()
 		{
+			if (datavalue == null)
+			{
+				return null;
+			}
+
 			Dictionary<string, object> entityValue = (Dictionary<string, object>)datavalue["value"];
 
 			int precision = (int)entityValue["precision"];
