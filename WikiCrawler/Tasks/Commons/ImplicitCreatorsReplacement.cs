@@ -47,7 +47,14 @@ namespace Tasks
 				|| string.Equals(author, "desconocida", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "sconosciuto", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "non noto", StringComparison.InvariantCultureIgnoreCase)
-				|| string.Equals(author, "non identifié", StringComparison.InvariantCultureIgnoreCase);
+				|| string.Equals(author, "non identifié", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "author unknown", StringComparison.InvariantCultureIgnoreCase);
+		}
+
+		private static bool IsConvertibleUnknownArtist(string author)
+		{
+			author = author.Trim(' ', ';', '.', ',');
+			return string.Equals(author, "Artist unknown", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		private static bool IsConvertibleAnonymousAuthor(string author)
@@ -56,7 +63,8 @@ namespace Tasks
 			return string.Equals(author, "anonymous", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "anonyme", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "auteur anonyme", StringComparison.InvariantCultureIgnoreCase)
-				|| string.Equals(author, "anonimous", StringComparison.InvariantCultureIgnoreCase);
+				|| string.Equals(author, "anonimous", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anonimus", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		private static bool IsUnknownAuthor(string author)
@@ -94,7 +102,7 @@ namespace Tasks
 			if (string.IsNullOrEmpty(worksheet.Author))
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Failed to find author string.");
+				Console.WriteLine("  Failed to find author.");
 				Console.ResetColor();
 				return false;
 			}
@@ -122,6 +130,10 @@ namespace Tasks
 			else if (IsConvertibleAnonymousAuthor(worksheet.Author))
 			{
 				newAuthor = "{{anonymous}}";
+			}
+			else if (IsConvertibleUnknownArtist(worksheet.Author))
+			{
+				newAuthor = "{{unknown|artist}}";
 			}
 			else if (IsUnknownAuthor(worksheet.Author) || IsAnonymousAuthor(worksheet.Author))
 			{
@@ -273,6 +285,9 @@ namespace Tasks
 			}
 			else
 			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("  Failed to replace author '{0}'.", worksheet.Author);
+				Console.ResetColor();
 				return false;
 			}
 		}
