@@ -119,27 +119,22 @@ namespace Tasks
 				Article article = GlobalAPIs.Commons.GetPage(creator.ToString());
 				if (!Article.IsNullOrEmpty(article))
 				{
-					string articleText = article.revisions[0].text;
-
-					int creatorStart = articleText.IndexOf("{{Creator");
-					if (creatorStart < 0)
-					{
-						s_CreatorToDeathYear[creator] = 9999;
-						return 9999;
-					}
-
-					int creatorEnd = WikiUtils.GetTemplateEnd(articleText, creatorStart);
-					string creatorInsides = articleText.Substring(creatorStart + 2, creatorEnd - creatorStart - 1);
+					article = GlobalAPIs.Commons.FollowRedirects(article);
+				}
+				if (!Article.IsNullOrEmpty(article))
+				{
+					CommonsCreatorWorksheet worksheet = new CommonsCreatorWorksheet(article);
+					//TODO: check page is a valid creator page
 
 					// get wikidata deathdate
-					string wdId = WikiUtils.GetTemplateParameter("Wikidata", creatorInsides);
+					string wdId = worksheet.Wikidata;
 					if (!string.IsNullOrEmpty(wdId))
 					{
 						Entity wikidata = GlobalAPIs.Wikidata.GetEntity(wdId);
 						if (!wikidata.missing && wikidata.HasClaim(Wikidata.Prop_DateOfDeath))
 						{
 							IEnumerable<MediaWiki.DateTime> deathTimes = wikidata.GetClaimValueAsDate(Wikidata.Prop_DateOfDeath)
-								.Where(date => date.Precision >= MediaWiki.DateTime.YearPrecision);
+								.Where(date => date != null && date.Precision >= MediaWiki.DateTime.YearPrecision);
 							if (deathTimes.Any())
 							{
 								int deathYear = deathTimes.Max(date => date.GetYear());
