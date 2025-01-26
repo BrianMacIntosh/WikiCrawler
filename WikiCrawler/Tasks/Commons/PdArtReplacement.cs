@@ -154,6 +154,16 @@ OtherLicense: {8}",
 				return false;
 			}
 
+			if (ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author)
+				|| ImplicitCreatorsReplacement.IsAnonymousAuthor(worksheet.Author))
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("  Anonymous/unknown author.");
+				Console.ResetColor();
+				qtyInfoFindFail++;
+				return false;
+			}
+
 			// 1. need author death date
 			int creatorDeathYear = 9999;
 
@@ -166,6 +176,7 @@ OtherLicense: {8}",
 			}
 
 			// B. can author be associated to a creator based on file categories?
+			//TODO: skip if there was a literal creator
 			if (creatorDeathYear == 9999)
 			{
 				PageTitle categoryCreator = ImplicitCreatorsReplacement.GetCreatorFromCategories(worksheet.Author, WikiUtils.GetCategories(worksheet.Text), 1);
@@ -248,7 +259,14 @@ OtherLicense: {8}",
 			// PD licenses that will be completely expressed by the new license can be removed
 			foreach (string supersededLicense in s_supersedeLicenses)
 			{
-				WikiUtils.RemoveTemplate(supersededLicense, text);
+				string removedTemplate;
+				text = WikiUtils.RemoveTemplate(supersededLicense, text, out removedTemplate);
+				if (!string.IsNullOrEmpty(removedTemplate))
+				{
+					Console.ForegroundColor = ConsoleColor.Green;
+					Console.WriteLine("  Removed '{0}'.", removedTemplate);
+					Console.ResetColor();
+				}
 			}
 
 			// Other licenses will be reported as conflicts
@@ -274,7 +292,7 @@ OtherLicense: {8}",
 			string newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
 
 			Console.ForegroundColor = ConsoleColor.Green;
-			Console.WriteLine("  PdArtReplacement replacing PD-Art with '{0}'.", newLicense);
+			Console.WriteLine("  Replacing PD-Art with '{0}'.", newLicense);
 			Console.ResetColor();
 
 			qtySuccess++;
