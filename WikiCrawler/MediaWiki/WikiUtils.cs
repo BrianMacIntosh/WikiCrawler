@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Web.UI;
 
 namespace MediaWiki
 {
@@ -620,11 +619,10 @@ namespace MediaWiki
 		public static string RemoveTemplate(string templateName, string text, out string template)
 		{
 			//TOOD: support nested templates
-			string startMarker = "{{" + templateName;
-			int templateStart = text.IndexOf(startMarker);
+			int templateStart = GetTemplateStart(text, templateName);
 			if (templateStart >= 0)
 			{
-				int templateEnd = text.IndexOf("}}", templateStart) + 2;
+				int templateEnd = GetTemplateEnd(text, templateStart) + 2;
 
 				// if the next character is a line return, get that too
 				if (templateEnd < text.Length && text[templateEnd] == '\n')
@@ -632,8 +630,15 @@ namespace MediaWiki
 					templateEnd++;
 				}
 
-				template = text.Substring(templateStart, templateEnd - templateStart);
-				return text.Substring(0, templateStart) + text.Substring(templateEnd, text.Length - templateEnd);
+				template = text.Substring(templateStart, templateEnd - templateStart + 1);
+				if (templateEnd == text.Length - 1)
+				{
+					return text.Substring(0, templateStart);
+				}
+				else
+				{
+					return text.Substring(0, templateStart) + text.Substring(templateEnd + 1);
+				}
 			}
 			else
 			{
