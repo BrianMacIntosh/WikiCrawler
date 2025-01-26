@@ -145,10 +145,10 @@ namespace MediaWiki
 			return limit == Limit.Max ? "max" : limit.ToString();
 		}
 
-        /// <summary>
-        /// Returns the Wiki text of the specified page
-        /// </summary>
-        public Article GetPage(Article page,
+		/// <summary>
+		/// Returns the Wiki text of the specified page
+		/// </summary>
+		public Article GetPage(Article page,
 			string prop = "info|revisions",
 			string iiprop = "",
 			int iilimit = Limit.Unspecified,
@@ -158,10 +158,27 @@ namespace MediaWiki
             return GetPage(page.title, prop, iiprop, iilimit, rvprop, rvlimit);
         }
 
-        /// <summary>
-        /// Returns the Wiki text of the specified page
-        /// </summary>
-        public Article GetPage(string title,
+		/// <summary>
+		/// Returns the Wiki text of the specified page
+		/// </summary>
+		public Article GetPage(PageTitle title,
+			string prop = "info|revisions",
+			string iiprop = "",
+			int iilimit = Limit.Unspecified,
+			string rvprop = "content",
+			int rvlimit = Limit.Unspecified,
+			string clshow = "",
+			int cllimit = Limit.Max,
+			string cldir = "",
+			string iwprefix = "")
+		{
+			return GetPages(new string[] { title.ToString() }, prop, iiprop, iilimit, rvprop, rvlimit, clshow, cllimit, cldir, iwprefix)[0];
+		}
+
+		/// <summary>
+		/// Returns the Wiki text of the specified page
+		/// </summary>
+		public Article GetPage(string title,
 			string prop = "info|revisions",
 			string iiprop = "",
 			int iilimit = Limit.Unspecified,
