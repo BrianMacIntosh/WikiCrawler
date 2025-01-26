@@ -6,6 +6,12 @@ using System.Web.UI;
 
 namespace MediaWiki
 {
+	public enum WikitextNestingType
+	{
+		Template,
+		Link
+	}
+
 	/// <summary>
 	/// Contains helper methods for manipulating wikitext.
 	/// </summary>
@@ -460,12 +466,6 @@ namespace MediaWiki
 			return GetTemplateParameter(param, text, out eat);
 		}
 
-		private enum NestingType
-		{
-			Template,
-			Link
-		}
-
 		/// <summary>
 		/// 
 		/// </summary>
@@ -474,18 +474,26 @@ namespace MediaWiki
 		public static string GetTemplateParameter(string param, string text, out int paramValueLocation)
 		{
 			int state = 0;
-			Stack<NestingType> nestingStack = new Stack<NestingType>();
+			Stack<WikitextNestingType> nestingStack = new Stack<WikitextNestingType>();
 			paramValueLocation = -1;
-			for (int c = 0; c < text.Length; c++)
+			for (int c = 0; c < text.Length; )
 			{
 				if (state == 1)
 				{
 					//parameter name
-					if (nestingStack.Count <= 0 && text.MatchAt(param, c, true))
+					if (nestingStack.Count <= 0)
 					{
-						state = 2;
-						c += param.Length - 1;
-						continue;
+						if (text.MatchAt(param, c, true))
+						{
+							state = 2;
+							c += param.Length;
+							continue;
+						}
+						else if (!char.IsWhiteSpace(text[c]))
+						{
+							// non-matching param name, reset
+							state = 0;
+						}
 					}
 				}
 				else if (state == 2)
@@ -494,6 +502,7 @@ namespace MediaWiki
 					if (text[c] == '=')
 					{
 						state = 3;
+						c++;
 						continue;
 					}
 				}
@@ -510,8 +519,8 @@ namespace MediaWiki
 				// template nesting
 				if (text.MatchAt(s_templateStart, c))
 				{
-					nestingStack.Push(NestingType.Template);
-					c++;
+					nestingStack.Push(WikitextNestingType.Template);
+					c += s_templateStart.Length;
 					continue;
 				}
 				else if (text.MatchAt(s_templateEnd, c))
@@ -521,21 +530,21 @@ namespace MediaWiki
 						// unmatched close; failed to parse
 						return "";
 					}
-					NestingType lastNest = nestingStack.Pop();
-					if (lastNest != NestingType.Template)
+					WikitextNestingType lastNest = nestingStack.Pop();
+					if (lastNest != WikitextNestingType.Template)
 					{
 						// mismatched open/close; failed to parse
 						return "";
 					}
-					c++;
+					c += s_templateEnd.Length;
 					continue;
 				}
 
 				// link nesting
 				if (text.MatchAt(s_wikilinkStart, c))
 				{
-					nestingStack.Push(NestingType.Link);
-					c++;
+					nestingStack.Push(WikitextNestingType.Link);
+					c += s_wikilinkStart.Length;
 					continue;
 				}
 				else if (text.MatchAt(s_wikilinkEnd, c))
@@ -545,13 +554,13 @@ namespace MediaWiki
 						// unmatched close; failed to parse
 						return "";
 					}
-					NestingType lastNest = nestingStack.Pop();
-					if (lastNest != NestingType.Link)
+					WikitextNestingType lastNest = nestingStack.Pop();
+					if (lastNest != WikitextNestingType.Link)
 					{
 						// mismatched open/close; failed to parse
 						return "";
 					}
-					c++;
+					c += s_wikilinkEnd.Length;
 					continue;
 				}
 
@@ -585,8 +594,11 @@ namespace MediaWiki
 				if (nestingStack.Count <= 0 && text[c] == '|')
 				{
 					state = 1;
+					c++;
 					continue;
 				}
+
+				c++;
 			}
 			return "";
 		}
