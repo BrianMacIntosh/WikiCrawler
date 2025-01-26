@@ -72,6 +72,7 @@ namespace Tasks
 		{
 			return IsConvertibleUnknownAuthor(author)
 				|| string.Equals(author, "{{unknown|author}}", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "{{unknown|1=author}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{unknown author}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{author|unknown}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{creator:unknown}}", StringComparison.InvariantCultureIgnoreCase)
@@ -268,7 +269,11 @@ namespace Tasks
 					if (wikiLinkMatch.Success)
 					{
 						authorString = wikiLinkMatch.Groups[1].Value.Trim();
-						creator = GetCreatorFromCommonsPage(authorString, PageTitle.Parse(authorString));
+						PageTitle authorTitle = PageTitle.TryParse(authorString);
+						if (!authorTitle.IsEmpty)
+						{
+							creator = GetCreatorFromCommonsPage(authorString, authorTitle);
+						}
 					}
 				}
 
@@ -311,7 +316,7 @@ namespace Tasks
 
 		private static readonly char[] s_authorTrim = new char[] { ' ', '[', ']', '.', ',', ';' };
 		private static readonly Regex s_lifespanRegex = new Regex(@"^([^\(]+)\s*\(?([0-9][0-9][0-9][0-9]) ?[\-– ] ?([0-9][0-9][0-9][0-9])\)?$");
-		private static readonly Regex s_interwikiLinkRegex = new Regex(@"^\[\[:?(?:w:)?([a-zA-Z]+):([^:]+)(?:\|(.+))?\]\]$");
+		private static readonly Regex s_interwikiLinkRegex = new Regex(@"^\[\[:?(?:w:)?([a-zA-Z]+):([^\|:]+)(?:\|(.+))?\]\]$");
 		private static readonly Regex s_wikiLinkRegex = new Regex(@"^\[\[([^\|]+)(?:\|(.+))?\]\]$");
 
 		/// <summary>
