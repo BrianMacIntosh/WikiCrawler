@@ -11,7 +11,7 @@ namespace MediaWiki
 
 		public string FullTitle
 		{
-			get { return Namespace + ":" + Name; }
+			get { return string.IsNullOrEmpty(Namespace) ? Name : Namespace + ":" + Name; }
 		}
 
 		public string Namespace
