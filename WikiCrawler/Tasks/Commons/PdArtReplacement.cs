@@ -1,6 +1,7 @@
 ﻿using MediaWiki;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -102,6 +103,7 @@ namespace Tasks
 			"PD-old-auto-1964",
 			"PD-old-auto-1996",
 			"PD-old-auto-expired",
+			"PD-US",
 		};
 
 		public override void SaveOut()
@@ -298,6 +300,8 @@ OtherLicense: {8}",
 			qtySuccess++;
 
 			//TODO: handle multiple PD-arts
+			pdArtMatch = s_PdArtForms.Match(worksheet.Text);
+			Debug.Assert(pdArtMatch.Success);
 			article.revisions[0].text = text.SubstringRange(0, pdArtMatch.Index - 1) + newLicense + text.SubstringRange(pdArtMatch.Index + pdArtMatch.Length, text.Length - 1);
 			article.Dirty = true;
 			article.Changes.Add("replacing PD-art with a more accurate license based on file data");
