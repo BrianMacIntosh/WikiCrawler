@@ -90,6 +90,8 @@
     <Compile Include="MediaWiki\PageTitle.cs" />
     <Compile Include="Tasks\BaseReplacement.cs" />
     <Compile Include="Tasks\BaseTask.cs" />
+    <Compile Include="Tasks\Commons\ReportMalformedContribs.cs" />
+    <Compile Include="Tasks\Commons\ReportMalformedPages.cs" />
     <Compile Include="Tasks\DownloadCategoryList.cs" />
     <Compile Include="Tasks\Commons\FixImplicitCreators.cs" />
     <Compile Include="Tasks\Commons\FixInformationTemplates.cs" />
@@ -99,7 +101,9 @@
     <Compile Include="Tasks\Commons\ExifToDateField.cs" />
     <Compile Include="Tasks\Commons\NullEditCategory.cs" />
     <Compile Include="Tasks\Commons\PdArtReplacement.cs" />
+    <Compile Include="Tasks\ReplaceIn.cs" />
     <Compile Include="Tasks\ReplaceInCategory.cs" />
+    <Compile Include="Tasks\ReplaceInContribs.cs" />
     <Compile Include="Utility\Commons\CommonsCreatorWorksheet.cs" />
     <Compile Include="Utility\Commons\CommonsFileWorksheet.cs" />
     <Compile Include="Utility\Commons\CommonsWorksheet.cs" />
