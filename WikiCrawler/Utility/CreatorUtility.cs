@@ -45,7 +45,8 @@ namespace MediaWiki
 		private static Dictionary<string, Creator> s_creatorData;
 		private static Dictionary<string, string> s_creatorRedirects;
 
-		private static bool s_isDirty = false;
+		private static bool s_creatorsDirty = false;
+		private static bool s_redirectsDirty = false;
 
 		private static string DataCacheFile
 		{
@@ -99,7 +100,7 @@ namespace MediaWiki
 				if (kv.Value.IsEmpty)
 				{
 					s_creatorData.Remove(kv.Key);
-					s_isDirty = true;
+					s_creatorsDirty = true;
 				}
 			}
 		}
@@ -117,7 +118,7 @@ namespace MediaWiki
 					Creator.Merge(kv.Value, creatorCreator);
 					AddRedirect(kv.Key, kv.Value.Author);
 					s_creatorData.Remove(kv.Key);
-					s_isDirty = true;
+					s_creatorsDirty = true;
 				}
 			}
 		}
@@ -127,59 +128,61 @@ namespace MediaWiki
 		/// </summary>
 		public static void _SaveOut()
 		{
-			if (!s_isDirty)
+			if (s_creatorsDirty)
 			{
-				return;
-			}
-
-			// write data
-			using (StreamWriter writer = new StreamWriter(new FileStream(DataCacheFile, FileMode.Create, FileAccess.Write), Encoding.UTF8))
-			{
-				writer.WriteLine("{");
-				List<KeyValuePair<string, Creator>> creatorsFlat = new List<KeyValuePair<string, Creator>>(s_creatorData);
-				bool first = true;
-				foreach (KeyValuePair<string, Creator> kv in creatorsFlat
-					.OrderByDescending(kv => kv.Value.Usage)
-					.OrderByDescending(kv => kv.Value.UploadableUsage))
+				// write data
+				using (StreamWriter writer = new StreamWriter(new FileStream(DataCacheFile, FileMode.Create, FileAccess.Write), Encoding.UTF8))
 				{
-					if (!first)
+					writer.WriteLine("{");
+					List<KeyValuePair<string, Creator>> creatorsFlat = new List<KeyValuePair<string, Creator>>(s_creatorData);
+					bool first = true;
+					foreach (KeyValuePair<string, Creator> kv in creatorsFlat
+						.OrderByDescending(kv => kv.Value.Usage)
+						.OrderByDescending(kv => kv.Value.UploadableUsage))
 					{
-						writer.WriteLine(',');
+						if (!first)
+						{
+							writer.WriteLine(',');
+						}
+						else
+						{
+							first = false;
+						}
+						writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Key));
+						writer.Write(":");
+						writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Value, Newtonsoft.Json.Formatting.Indented));
 					}
-					else
-					{
-						first = false;
-					}
-					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Key));
-					writer.Write(":");
-					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Value, Newtonsoft.Json.Formatting.Indented));
+					writer.WriteLine("\n}");
 				}
-				writer.WriteLine("\n}");
 			}
 
-			// write redirects
-			using (StreamWriter writer = new StreamWriter(new FileStream(RedirectsCacheFile, FileMode.Create, FileAccess.Write), Encoding.UTF8))
+			if (s_redirectsDirty)
 			{
-				writer.WriteLine("{");
-				bool first = true;
-				foreach (var kv in s_creatorRedirects)
+				// write redirects
+				using (StreamWriter writer = new StreamWriter(new FileStream(RedirectsCacheFile, FileMode.Create, FileAccess.Write), Encoding.UTF8))
 				{
-					if (!first)
+					writer.WriteLine("{");
+					bool first = true;
+					foreach (var kv in s_creatorRedirects)
 					{
-						writer.WriteLine(',');
+						if (!first)
+						{
+							writer.WriteLine(',');
+						}
+						else
+						{
+							first = false;
+						}
+						writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Key));
+						writer.Write(":");
+						writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Value));
 					}
-					else
-					{
-						first = false;
-					}
-					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Key));
-					writer.Write(":");
-					writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Value));
+					writer.WriteLine("\n}");
 				}
-				writer.WriteLine("\n}");
 			}
 
-			s_isDirty = false;
+			s_creatorsDirty = false;
+			s_redirectsDirty = false;
 		}
 
 		public static void AddRedirect(string from, string to)
@@ -190,7 +193,7 @@ namespace MediaWiki
 			if (!s_creatorRedirects.ContainsKey(from))
 			{
 				s_creatorRedirects.Add(from, to);
-				s_isDirty = true;
+				s_redirectsDirty = true;
 			}
 		}
 
