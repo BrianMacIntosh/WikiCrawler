@@ -5,9 +5,12 @@ namespace MediaWiki
 {
 	public static class Wikidata
 	{
+		public const string Prop_InstanceOf = "P31";
 		public const string Prop_DateOfBirth = "P569";
 		public const string Prop_DateOfDeath = "P570";
 		public const string Prop_CommonsCreator = "P1472";
+
+		public const int Entity_Human = 5;
 
 		/// <summary>
 		/// Gets the Wikidata property id for the specified parameter of Commons "Authority control".

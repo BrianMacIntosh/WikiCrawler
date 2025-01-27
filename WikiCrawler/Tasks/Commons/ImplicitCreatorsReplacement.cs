@@ -72,6 +72,7 @@ namespace Tasks
 		{
 			return IsConvertibleUnknownAuthor(author)
 				|| string.Equals(author, "{{unknown|author}}", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "{{unknown|artist}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{unknown|1=author}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{unknown author}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{author|unknown}}", StringComparison.InvariantCultureIgnoreCase)
@@ -436,9 +437,21 @@ namespace Tasks
 			foreach (Entity newEntity in GlobalAPIs.Wikidata.GetEntities(outNewEntities.ToList()))
 			{
 				// only cache people
-				if (newEntity.HasClaim("P31") && newEntity.GetClaimValueAsEntityId("P31") == 5)
+				if (newEntity.HasClaim(Wikidata.Prop_InstanceOf) && newEntity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) == Wikidata.Entity_Human)
 				{
 					s_Entities[newEntity.id] = newEntity;
+
+					// trim out unneeded data to save memory
+					newEntity.descriptions = null;
+					newEntity.sitelinks = null;
+					string[] claimKeys = newEntity.claims.Keys.ToArray();
+					foreach (string key in claimKeys)
+					{
+						if (key != Wikidata.Prop_InstanceOf && key != Wikidata.Prop_CommonsCreator)
+						{
+							newEntity.claims.Remove(key);
+						}
+					}
 				}
 			}
 

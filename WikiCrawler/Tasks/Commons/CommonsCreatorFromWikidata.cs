@@ -580,7 +580,7 @@ namespace Tasks
 				creatorPage = PageTitle.Empty;
 				return false;
 			}
-			if (!entity.HasClaim("P31") || entity.GetClaimValueAsEntityId("P31") != 5)
+			if (!entity.HasClaim(Wikidata.Prop_InstanceOf) || entity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) != Wikidata.Entity_Human)
 			{
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("  Entity '{0}' is not a person.", entity.labels["en"]);
@@ -607,7 +607,7 @@ namespace Tasks
 			if (!Article.IsNullOrMissing(existing))
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Creator page '{0}' already exists.");
+				Console.WriteLine("  Creator page '{0}' already exists.", existing.title);
 				Console.ResetColor();
 				creatorPage = PageTitle.Empty;
 				return false;
