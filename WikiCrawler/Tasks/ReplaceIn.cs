@@ -145,12 +145,6 @@ namespace Tasks
 				}
 				saveOutCounter++;
 
-				// record sortkey progress
-				if (!UseCachedFiles)
-				{
-					File.WriteAllText(progressFile, WikiUtils.GetSortkey(file));
-				}
-
 				Console.ForegroundColor = ConsoleColor.White;
 				Console.WriteLine();
 				Console.WriteLine("{0} on '{1}'", m_replacement.GetType().Name, file.title);
@@ -168,6 +162,12 @@ namespace Tasks
 					GlobalAPIs.Commons.EditPage(file, file.GetEditSummary());
 					m_heartbeatData["nEdits"] = (int)m_heartbeatData["nEdits"] + 1;
 					editCount++;
+				}
+
+				// record sortkey progress
+				if (!UseCachedFiles)
+				{
+					File.WriteAllText(progressFile, WikiUtils.GetSortkey(file));
 				}
 
 				CreatorUtilityMeta.SaveOut();
