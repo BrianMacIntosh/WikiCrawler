@@ -444,6 +444,7 @@ namespace Tasks
 					// trim out unneeded data to save memory
 					newEntity.descriptions = null;
 					newEntity.sitelinks = null;
+					newEntity.raw = null;
 					string[] claimKeys = newEntity.claims.Keys.ToArray();
 					foreach (string key in claimKeys)
 					{
