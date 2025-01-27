@@ -23,6 +23,11 @@ namespace Tasks
 			get { return Path.Combine(Configuration.DataDirectory, "pdartfixup"); }
 		}
 
+		public static string InsidePMA70Log
+		{
+			get { return Path.Combine(Configuration.DataDirectory, "inside-pma-70.txt"); }
+		}
+
 		private static List<Regex> s_dateRegexes = new List<Regex>();
 		private static List<Regex> s_centuryRegexes = new List<Regex>();
 		private static Regex s_sRegex = new Regex("^([0-9]+)'?[Ss]$");
@@ -134,7 +139,6 @@ OtherLicense: {8}",
 		{
 			qtyProcessed++;
 
-			string text = article.revisions[0].text;
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
 			Match pdArtMatch = s_PdArtForms.Match(worksheet.Text);
@@ -209,6 +213,12 @@ OtherLicense: {8}",
 			int pmaYear = System.DateTime.Now.Year - 120;
 			if (creatorDeathYear >= pmaYear)
 			{
+				// report PMAs that are likely to be invalid
+				if (System.DateTime.Now.Year - creatorDeathYear <= 70)
+				{
+					File.AppendAllText(InsidePMA70Log, article.title, Encoding.UTF8);
+				}
+
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine("  Death year {0} is inside max PMA.", creatorDeathYear);
 				Console.ResetColor();
@@ -262,7 +272,7 @@ OtherLicense: {8}",
 			foreach (string supersededLicense in s_supersedeLicenses)
 			{
 				string removedTemplate;
-				text = WikiUtils.RemoveTemplate(supersededLicense, text, out removedTemplate);
+				worksheet.Text = WikiUtils.RemoveTemplate(supersededLicense, worksheet.Text, out removedTemplate);
 				if (!string.IsNullOrEmpty(removedTemplate))
 				{
 					Console.ForegroundColor = ConsoleColor.Green;
@@ -280,7 +290,7 @@ OtherLicense: {8}",
 					continue;
 				}
 
-				if (WikiUtils.GetTemplateStart(text, license) >= 0)
+				if (WikiUtils.GetTemplateStart(worksheet.Text, license) >= 0)
 				{
 					Console.ForegroundColor = ConsoleColor.Red;
 					Console.WriteLine("  Contains other license '{0}'.", license);
@@ -302,7 +312,9 @@ OtherLicense: {8}",
 			//TODO: handle multiple PD-arts
 			pdArtMatch = s_PdArtForms.Match(worksheet.Text);
 			Debug.Assert(pdArtMatch.Success);
-			article.revisions[0].text = text.SubstringRange(0, pdArtMatch.Index - 1) + newLicense + text.SubstringRange(pdArtMatch.Index + pdArtMatch.Length, text.Length - 1);
+			article.revisions[0].text = worksheet.Text.SubstringRange(0, pdArtMatch.Index - 1)
+				+ newLicense
+				+ worksheet.Text.SubstringRange(pdArtMatch.Index + pdArtMatch.Length, worksheet.Text.Length - 1);
 			article.Dirty = true;
 			article.Changes.Add("replacing PD-art with a more accurate license based on file data");
 			return true;
