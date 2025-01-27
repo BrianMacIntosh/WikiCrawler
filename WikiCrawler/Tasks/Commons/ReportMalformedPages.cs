@@ -35,7 +35,7 @@ namespace Tasks
 
 		private void Log(string message)
 		{
-			File.WriteAllText(ReportFile, message, Encoding.UTF8);
+			File.AppendAllText(ReportFile, message, Encoding.UTF8);
 
 			Console.ForegroundColor = ConsoleColor.Red;
 			Console.WriteLine("  " + message);
