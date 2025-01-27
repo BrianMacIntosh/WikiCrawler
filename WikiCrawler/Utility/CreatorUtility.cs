@@ -222,13 +222,13 @@ namespace MediaWiki
 				isNew = true;
 				creator = CreateNewCreator(key);
 				s_creatorData.Add(key, creator);
-				s_isDirty = true;
+				s_creatorsDirty = true;
 				return creator;
 			}
 		}
 
 		public static readonly Regex CreatorTemplateRegex = new Regex(@"^{{([Cc]reator:.+)}}$");
-		private static readonly Regex s_birthDeathRegex = new Regex(@"^([^\(\)]+)\s+\(?([0-9][0-9][0-9][0-9])[\-–—]([0-9][0-9][0-9][0-9])\)?$");
+		public static readonly Regex AuthorLifespanRegex = new Regex(@"^([^\(\)]+)\s+\(?([0-9][0-9][0-9][0-9])[\-–—]([0-9][0-9][0-9][0-9])\)?$");
 
 		/// <summary>
 		/// Creates a new creator, automatically filling in any info possible.
@@ -238,7 +238,7 @@ namespace MediaWiki
 			Creator creator = new Creator();
 			
 			// see if the name already includes birth and death years
-			Match birthDeathMatch = s_birthDeathRegex.Match(key);
+			Match birthDeathMatch = AuthorLifespanRegex.Match(key);
 			if (birthDeathMatch.Success)
 			{
 				if (int.TryParse(birthDeathMatch.Groups[3].Value, out int deathYear))
@@ -247,14 +247,30 @@ namespace MediaWiki
 				}
 			}
 
-			Match creatorMatch = CreatorTemplateRegex.Match(key);
-			if (creatorMatch.Success)
+			PageTitle creatorTemplate = GetCreatorTemplate(key);
+			if (!creatorTemplate.IsEmpty)
 			{
-				creator.Author = key;
-				creator.DeathYear = PdOldAuto.GetCreatorDeathYear(PageTitle.Parse(creatorMatch.Groups[1].Value));
+				creator.Author = "{{" + creatorTemplate + "}}";
+				creator.DeathYear = PdOldAuto.GetCreatorDeathYear(creatorTemplate);
 			}
 
 			return creator;
+		}
+
+		/// <summary>
+		/// If the string represents a creator template, returns that template's page title.
+		/// </summary>
+		public static PageTitle GetCreatorTemplate(string str)
+		{
+			Match creatorMatch = CreatorTemplateRegex.Match(str);
+			if (creatorMatch.Success)
+			{
+				return PageTitle.Parse(creatorMatch.Groups[1].Value);
+			}
+			else
+			{
+				return PageTitle.Empty;
+			}
 		}
 
 		public static bool TryGetHomeCategory(string creator, out string homeCategory)
