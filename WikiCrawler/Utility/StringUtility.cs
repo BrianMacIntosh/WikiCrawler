@@ -139,7 +139,7 @@ public static class StringUtility
 	/// </summary>
 	public static string ToLowerFirst(this string text)
 	{
-		return char.ToLower(text[0]).ToString() + text.Substring(1);
+		return text.Length > 0 ? char.ToLower(text[0]).ToString() + text.Substring(1) : text;
 	}
 
 	/// <summary>
@@ -147,7 +147,7 @@ public static class StringUtility
 	/// </summary>
 	public static string ToUpperFirst(this string text)
 	{
-		return char.ToUpper(text[0]).ToString() + text.Substring(1);
+		return text.Length > 0 ? char.ToUpper(text[0]).ToString() + text.Substring(1) : text;
 	}
 
 	/// <summary>
