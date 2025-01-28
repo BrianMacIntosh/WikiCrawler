@@ -330,9 +330,17 @@ namespace Tasks
 
 			currentAuthor = currentAuthor.Trim(s_authorTrim);
 
+			string[] currentAuthorCommaSplit = currentAuthor.Split(',');
+			string reversedCurrentAuthor = "";
+			if (currentAuthorCommaSplit.Length == 2)
+			{
+				reversedCurrentAuthor = currentAuthorCommaSplit[1].Trim() + " " + currentAuthorCommaSplit[0].Trim();
+			}
+
 			foreach (var kv in entity.labels)
 			{
-				if (currentAuthor.Equals(kv.Value, StringComparison.InvariantCultureIgnoreCase))
+				if (currentAuthor.Equals(kv.Value, StringComparison.InvariantCultureIgnoreCase)
+					|| reversedCurrentAuthor.Equals(kv.Value, StringComparison.InvariantCultureIgnoreCase))
 				{
 					return true;
 				}
@@ -342,7 +350,8 @@ namespace Tasks
 			{
 				foreach (string alias in kv.Value)
 				{
-					if (currentAuthor.Equals(alias, StringComparison.InvariantCultureIgnoreCase))
+					if (currentAuthor.Equals(alias, StringComparison.InvariantCultureIgnoreCase)
+						|| reversedCurrentAuthor.Equals(alias, StringComparison.InvariantCultureIgnoreCase))
 					{
 						return true;
 					}
