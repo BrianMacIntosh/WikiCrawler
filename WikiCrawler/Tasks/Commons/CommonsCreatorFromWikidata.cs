@@ -211,10 +211,9 @@ namespace Tasks
 		{
 			// search wikidata
 			string[] search = GlobalAPIs.Wikidata.SearchEntities(name);
-			foreach (string result in search)
+			Entity[] entities = GlobalAPIs.Wikidata.GetEntities(search);
+			foreach (Entity entity in entities)
 			{
-				Entity entity = GlobalAPIs.Wikidata.GetEntity(result);
-
 				if (!entity.HasClaim(Wikidata.Prop_DateOfBirth)
 					|| !entity.GetClaimValueAsDate(Wikidata.Prop_DateOfBirth).Any(date => date.GetYear().ToString() == yearOfBirth))
 				{
