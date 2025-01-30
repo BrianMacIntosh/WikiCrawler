@@ -376,7 +376,7 @@ namespace Tasks
 							if (subArticle.ns == Namespace.File)
 							{
 								Article gotSubArticle = GlobalAPIs.Commons.GetPage(subArticle);
-								new ImplicitCreatorsReplacement().DoReplacement(gotSubArticle, PageTitle.Parse(creatorArticle.title));
+								//TODO: new ImplicitCreatorsReplacement().DoReplacement(gotSubArticle, PageTitle.Parse(creatorArticle.title));
 								//PdOldAuto.Do(commonsApi, gotSubArticle);
 
 								if (gotSubArticle.Dirty)
