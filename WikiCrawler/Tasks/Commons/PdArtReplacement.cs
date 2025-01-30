@@ -142,7 +142,7 @@ PMAFail:      {7}
 OtherLicense: {8}",
 				qtySuccess, qtyProcessed,
 				qtyInfoFindFail, qtyDateParseFail, qtyNotPDUS, qtyNoCreator, qtyNoDeathYear, qtyInsufficientPMA, qtyOtherLicense);
-			File.WriteAllText(Path.Combine(ProjectDataDirectory, "pdartfixup.txt"), statsText + "\n\n" + creatorsText, Encoding.UTF8);
+			File.WriteAllText(Path.Combine(ProjectDataDirectory, "pdartfixup.txt"), statsText, Encoding.UTF8);
 
 			m_dateMapping.Serialize();
 		}
