@@ -13,6 +13,11 @@ namespace Tasks
 	/// </summary>
 	public class ImplicitCreatorsReplacement : BaseReplacement
 	{
+		private class MappingCreator : MappingValue
+		{
+			public string MappedValue;
+		}
+
 		private const int s_SearchDepth = 1;
 
 		/// <summary>
@@ -38,6 +43,13 @@ namespace Tasks
 		/// Set of categories that have been checked for entities so far.
 		/// </summary>
 		private static HashSet<PageTitle> s_VisitedCats = new HashSet<PageTitle>();
+
+		private ManualMapping<MappingCreator> m_creatorMappings;
+
+		private string CreatorMappingFile
+		{
+			get { return Path.Combine(ProjectDataDirectory, "creator-mappings.txt"); }
+		}
 
 		private static bool IsConvertibleUnknownAuthor(string author)
 		{
@@ -89,18 +101,32 @@ namespace Tasks
 				|| string.Equals(author, "{{Creator:Anonymous}}", StringComparison.InvariantCultureIgnoreCase);
 		}
 
-		public override bool DoReplacement(Article article)
+		private enum CreatorReplaceType
 		{
-			return DoReplacement(article, null);
+			Implicit,
+			Inline,
+			RemoveLifespan,
+		}
+
+		public ImplicitCreatorsReplacement()
+		{
+			Directory.CreateDirectory(ProjectDataDirectory);
+			m_creatorMappings = new ManualMapping<MappingCreator>(CreatorMappingFile);
+		}
+
+		public override void SaveOut()
+		{
+			base.SaveOut();
+
+			m_creatorMappings.Serialize();
 		}
 
 		/// <summary>
 		/// Replace any verifiable implicit creators with creator templates.
 		/// </summary>
 		/// <param name="article">Article, already downloaded.</param>
-		/// <param name="creator">A creator that we have already determined should be used.</param>
 		/// <returns>True if a replacement was made.</returns>
-		public bool DoReplacement(Article article, PageTitle? assumedCreator)
+		public override bool DoReplacement(Article article)
 		{
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
@@ -115,6 +141,7 @@ namespace Tasks
 			Console.WriteLine("  Author string is '{0}'.", worksheet.Author);
 
 			string newAuthor = "";
+			CreatorReplaceType replaceType = CreatorReplaceType.Implicit;
 
 			// check for "anonymous" and "unknown"
 			if (IsConvertibleUnknownAuthor(worksheet.Author))
@@ -156,12 +183,15 @@ namespace Tasks
 				Console.ResetColor();
 				return false;
 			}
-			else if (assumedCreator.HasValue && !assumedCreator.Value.IsEmpty)
+			else if (CreatorUtility.InlineCreatorTemplateRegex.MatchOut(worksheet.Author, out Match inlineCreatorMatch))
 			{
-				// use the passed-in creator
-				if (string.Equals(assumedCreator.Value.Name, worksheet.Author, StringComparison.InvariantCultureIgnoreCase))
+				Entity entity = GlobalAPIs.Wikidata.GetEntity(inlineCreatorMatch.Groups[1].Value); //TODO: use cache
+				if (!Entity.IsNullOrMissing(entity))
 				{
-					newAuthor = "{{" + assumedCreator.Value.ToString() + "}}";
+					PageTitle creator;
+					CommonsCreatorFromWikidata.TryMakeCreator(entity, out creator);
+					newAuthor = "{{" + creator + "}}";
+					replaceType = CreatorReplaceType.Inline;
 				}
 			}
 			else
@@ -180,6 +210,7 @@ namespace Tasks
 					if (creatorTemplateMatch.Success)
 					{
 						creator = PageTitle.Parse(creatorTemplateMatch.Groups[1].Value);
+						replaceType = CreatorReplaceType.RemoveLifespan;
 					}
 					else
 					{
@@ -284,7 +315,18 @@ namespace Tasks
 					creator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1);
 				}
 
-				if (!creator.IsEmpty)
+				// manually map
+				if (creator.IsEmpty)
+				{
+					PageTitle articleTitle = PageTitle.Parse(article.title);
+					MappingCreator mapping = m_creatorMappings.TryMapValue(authorString, articleTitle);
+					if (!string.IsNullOrEmpty(mapping.MappedValue))
+					{
+						newAuthor = mapping.MappedValue;
+						mapping.FromPages.Remove(article.title);
+					}
+				}
+				else
 				{
 					newAuthor = "{{" + creator + "}}";
 				}
@@ -302,7 +344,7 @@ namespace Tasks
 				string textAfter = worksheet.Text.Substring(worksheet.AuthorIndex + worksheet.Author.Length);
 				worksheet.Text = textBefore + newAuthor + textAfter;
 
-				article.Changes.Add("replace implicit creator");
+				article.Changes.Add(GetEditSummary(replaceType));
 				article.Dirty = true;
 				return true;
 			}
@@ -312,6 +354,20 @@ namespace Tasks
 				Console.WriteLine("  Failed to replace author '{0}'.", worksheet.Author);
 				Console.ResetColor();
 				return false;
+			}
+		}
+
+		private static string GetEditSummary(CreatorReplaceType replaceType)
+		{
+			switch (replaceType)
+			{
+				case CreatorReplaceType.Inline:
+					return "replace inline creator";
+				case CreatorReplaceType.RemoveLifespan:
+					return "remove redundant creator lifespan";
+				case CreatorReplaceType.Implicit:
+				default:
+					return "replace implicit creator";
 			}
 		}
 
