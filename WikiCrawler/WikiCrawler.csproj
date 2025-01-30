@@ -107,6 +107,8 @@
     <Compile Include="Utility\Commons\CommonsCreatorWorksheet.cs" />
     <Compile Include="Utility\Commons\CommonsFileWorksheet.cs" />
     <Compile Include="Utility\Commons\CommonsWorksheet.cs" />
+    <Compile Include="Utility\ManualMapping.cs" />
+    <Compile Include="Utility\RegexUtility.cs" />
     <Compile Include="UWash\SayreCategorize.cs" />
     <Compile Include="Utility\Exceptions\LicenseException.cs" />
     <Compile Include="Utility\Exceptions\RedownloadException.cs" />

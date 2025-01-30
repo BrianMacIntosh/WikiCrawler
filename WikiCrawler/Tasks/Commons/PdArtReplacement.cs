@@ -61,11 +61,21 @@ namespace Tasks
 		private int qtyOtherLicense = 0;
 		private int qtySuccess = 0;
 
-		private Dictionary<string, int> unparsedDates = new Dictionary<string, int>();
+		private ManualMapping<MappingDate> m_dateMapping;
 
 		private string DuplicateLicensesLogFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "duplicate-licenses.txt"); }
+		}
+
+		private string NotUsExpiredLogFile
+		{
+			get { return Path.Combine(ProjectDataDirectory, "not-us-expired.txt"); }
+		}
+
+		private string DateMappingFile
+		{
+			get { return Path.Combine(ProjectDataDirectory, "date-mappings.txt"); }
 		}
 
 		private static readonly Regex s_PdArtForms = new Regex(@"{{[Pp][Dd]\-[Aa]rt\s*}}");
@@ -111,6 +121,12 @@ namespace Tasks
 			"PD-US",
 		};
 
+		public PdArtReplacement()
+		{
+			Directory.CreateDirectory(ProjectDataDirectory);
+			m_dateMapping = new ManualMapping<MappingDate>(DateMappingFile);
+		}
+
 		public override void SaveOut()
 		{
 			base.SaveOut();
@@ -126,9 +142,9 @@ PMAFail:      {7}
 OtherLicense: {8}",
 				qtySuccess, qtyProcessed,
 				qtyInfoFindFail, qtyDateParseFail, qtyNotPDUS, qtyNoCreator, qtyNoDeathYear, qtyInsufficientPMA, qtyOtherLicense);
-			string datesText = unparsedDates.OrderByDescending(kv => kv.Value).Aggregate("", (text, kv) => text + "\n" + kv.Value.ToString("00000") + " " + kv.Key);
-			string creatorsText = "";// creatorsMissingDeathyear.OrderByDescending(kv => kv.Value).Aggregate("", (text, kv) => text + "\n" + kv.Value.ToString("00000") + " " + kv.Key);
-			File.WriteAllText(Path.Combine(ProjectDataDirectory, "pdartfixup.txt"), statsText + "\n\n" + datesText + "\n\n" + creatorsText, Encoding.UTF8);
+			File.WriteAllText(Path.Combine(ProjectDataDirectory, "pdartfixup.txt"), statsText + "\n\n" + creatorsText, Encoding.UTF8);
+
+			m_dateMapping.Serialize();
 		}
 
 		/// <summary>
@@ -139,6 +155,7 @@ OtherLicense: {8}",
 		{
 			qtyProcessed++;
 
+			PageTitle articleTitle = PageTitle.Parse(article.title);
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
 			Match pdArtMatch = s_PdArtForms.Match(worksheet.Text);
@@ -226,35 +243,67 @@ OtherLicense: {8}",
 				return false;
 			}
 
+			MappingDate mappedDate = null;
+
 			// 2. try to parse file/pub date
 			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
 			int latestYear;
-			if (dateParseMetadata.LatestYear != 9999)
+			if (string.IsNullOrEmpty(worksheet.Date))
+			{
+				// if no file/pub date, assume it cannot be later than the death year
+				latestYear = creatorDeathYear;
+			}
+			else if (dateParseMetadata.LatestYear != 9999)
 			{
 				latestYear = dateParseMetadata.LatestYear;
 			}
 			else
 			{
-				// if no file/pub date, assume it cannot be later than the death year
-				latestYear = creatorDeathYear;
-			}
-
-			if (latestYear == 9999)
-			{ 
-				if (!unparsedDates.ContainsKey(worksheet.Date))
+				// unparseable date
+				mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle);
+                if (!string.IsNullOrEmpty(mappedDate.ReplaceDate))
 				{
-					unparsedDates[worksheet.Date] = 1;
+					// make the date replacement
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("  Date '{0}' is mapped to '{1}'.", worksheet.Date, mappedDate.ReplaceDate);
+						Console.ResetColor();
+
+						string textBefore = worksheet.Text.Substring(0, worksheet.DateIndex);
+						string textAfter = worksheet.Text.Substring(worksheet.DateIndex + worksheet.Date.Length);
+						worksheet.Text = textBefore + mappedDate.ReplaceDate + textAfter;
+					}
+
+					dateParseMetadata = ParseDate(mappedDate.ReplaceDate);
+					if (dateParseMetadata.LatestYear != 9999)
+					{
+						latestYear = dateParseMetadata.LatestYear;
+					}
+					else if (mappedDate.LatestYear != 9999)
+					{
+						latestYear = mappedDate.LatestYear;
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Red;
+						Console.WriteLine("  Failed to parse mapped date '{0}'.", worksheet.Date);
+						Console.ResetColor();
+						qtyDateParseFail++;
+						return false;
+					}
+				}
+				else if (mappedDate.LatestYear != 9999)
+				{
+					latestYear = mappedDate.LatestYear;
 				}
 				else
 				{
-					unparsedDates[worksheet.Date]++;
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("  Failed to parse date '{0}'.", worksheet.Date);
+					Console.ResetColor();
+					qtyDateParseFail++;
+					return false;
 				}
-
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Failed to parse date '{0}'.", worksheet.Date);
-				Console.ResetColor();
-				qtyDateParseFail++;
-				return false;
 			}
 
 			// Is file/pub date expired in the US?
@@ -265,6 +314,7 @@ OtherLicense: {8}",
 				Console.WriteLine("  Date {0} is after the US expired threshold.", latestYear);
 				Console.ResetColor();
 				qtyNotPDUS++;
+				File.AppendAllText(NotUsExpiredLogFile, article.title + "\n");
 				return false;
 			}
 
@@ -317,6 +367,13 @@ OtherLicense: {8}",
 				+ worksheet.Text.SubstringRange(pdArtMatch.Index + pdArtMatch.Length, worksheet.Text.Length - 1);
 			article.Dirty = true;
 			article.Changes.Add("replacing PD-art with a more accurate license based on file data");
+
+			// remove date mapping
+			if (mappedDate != null)
+			{
+				mappedDate.FromPages.Remove(article.title);
+			}
+
 			return true;
 		}
 
