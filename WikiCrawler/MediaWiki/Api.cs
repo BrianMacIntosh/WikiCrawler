@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
 using System.Xml.Linq;
 
@@ -144,6 +145,26 @@ namespace MediaWiki
 		{
 			return limit == Limit.Max ? "max" : limit.ToString();
 		}
+
+		/// <summary>
+		/// If the article is redirected, follows redirects until it isn't.
+		/// </summary>
+		public Article FollowRedirects(Article article)
+		{
+			//TODO: loop detection
+			Match redirectMatch = s_redirectRegex.Match(article.revisions[0].text);
+            if (redirectMatch.Success)
+            {
+				//TODO: get same props original article asked for
+				article = GetPage(redirectMatch.Groups[1].Value);
+				return FollowRedirects(article);
+            }
+			else
+			{
+				return article;
+			}
+        }
+		private static readonly Regex s_redirectRegex = new Regex(@"#REDIRECT\s*\[\[(.+)\]\]\s*");
 
 		/// <summary>
 		/// Returns the Wiki text of the specified page
