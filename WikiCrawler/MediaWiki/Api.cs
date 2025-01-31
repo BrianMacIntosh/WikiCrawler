@@ -616,6 +616,10 @@ namespace MediaWiki
 				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
 				throw new WikimediaCodeException(error);
 			}
+
+			//HACK: create locally in case cached
+			entity.claims.Add(property, new Claim[] { new Claim(value) });
+
 			return true;
 		}
 

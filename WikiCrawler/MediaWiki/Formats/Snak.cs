@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace MediaWiki
 {
@@ -21,6 +17,15 @@ namespace MediaWiki
 				datatype = (string)json["datatype"];
 			if (json.ContainsKey("datavalue"))
 				datavalue = (Dictionary<string, object>)json["datavalue"];
+		}
+
+		public Snak(string value)
+		{
+			//HACK:
+			datavalue = new Dictionary<string, object>
+			{
+				{ "value", value }
+			};
 		}
 
 		/*public string GetSerialized()

@@ -2,8 +2,13 @@
 {
 	public class PdArtFixup : ReplaceInCategory
 	{
+		public static BaseReplacement CreateReplacement()
+		{
+			return new CompoundReplacementTask(new ImplicitCreatorsReplacement(), new LocalizeDateReplacement(), new PdArtReplacement(), new FixInformationTemplates());
+		}
+
 		public PdArtFixup()
-			: base(new CompoundReplacementTask(new ImplicitCreatorsReplacement(), new LocalizeDateReplacement(), new PdArtReplacement(), new FixInformationTemplates()))
+			: base(CreateReplacement())
 		{
 
 		}

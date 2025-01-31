@@ -372,6 +372,7 @@ OtherLicense: {8}",
 			if (mappedDate != null)
 			{
 				mappedDate.FromPages.Remove(article.title);
+				m_dateMapping.SetDirty();
 			}
 
 			return true;

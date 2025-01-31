@@ -8,16 +8,17 @@ using WikiCrawler;
 
 namespace Tasks
 {
+	public class MappingCreator : MappingValue
+	{
+		public string MappedValue;
+		public string MappedQID;
+	}
+
 	/// <summary>
 	/// Replaces author strings with verified Creator templates.
 	/// </summary>
 	public class ImplicitCreatorsReplacement : BaseReplacement
 	{
-		private class MappingCreator : MappingValue
-		{
-			public string MappedValue;
-		}
-
 		private const int s_SearchDepth = 1;
 
 		/// <summary>
@@ -46,7 +47,7 @@ namespace Tasks
 
 		private ManualMapping<MappingCreator> m_creatorMappings;
 
-		private string CreatorMappingFile
+		public static string CreatorMappingFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "creator-mappings.txt"); }
 		}
@@ -324,6 +325,18 @@ namespace Tasks
 					{
 						newAuthor = mapping.MappedValue;
 						mapping.FromPages.Remove(article.title);
+						m_creatorMappings.SetDirty();
+					}
+					else if (!string.IsNullOrEmpty(mapping.MappedQID))
+					{
+						Entity entity = GlobalAPIs.Wikidata.GetEntity(mapping.MappedQID);
+						if (!Entity.IsNullOrMissing(entity))
+						{
+							if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
+							{
+								mapping.MappedValue = newAuthor = "{{" + entityCreator + "}}";
+							}
+						}
 					}
 				}
 				else
@@ -419,6 +432,7 @@ namespace Tasks
 
 		private Article GetInterwikiPage(string wiki, string page)
 		{
+			//TODO: cache
 			switch (wiki.ToLowerInvariant())
 			{
 				case "w":
