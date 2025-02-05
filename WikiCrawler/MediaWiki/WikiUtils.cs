@@ -252,7 +252,7 @@ namespace MediaWiki
 		public static string ExtractTemplate(string text, string templateName)
 		{
 			GetTemplateLocation(text, templateName, out int startIndex, out int endIndex);
-			if (startIndex >= 0)
+			if (startIndex >= 0 && endIndex >= 0)
 			{
 				return text.SubstringRange(startIndex, endIndex);
 			}
