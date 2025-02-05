@@ -1184,7 +1184,7 @@ namespace MediaWiki
 			}
 			string query = baseQuery + "&continue=";
 
-			bool doContinue = false;
+			bool doContinue;
 
 			do
 			{
@@ -1211,7 +1211,10 @@ namespace MediaWiki
 					query = baseQuery;
 					foreach (KeyValuePair<string, object> kv in continueData)
 					{
-						query += "&" + kv.Key + "=" + (string)kv.Value;
+						if (kv.Key != "continue")
+						{
+							query += "&" + kv.Key + "=" + (string)kv.Value;
+						}
 					}
 				}
 			}
