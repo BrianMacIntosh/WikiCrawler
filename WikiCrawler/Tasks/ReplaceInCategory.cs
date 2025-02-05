@@ -1,4 +1,5 @@
 ﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -23,23 +24,38 @@ namespace Tasks
 		public override IEnumerable<Article> GetFilesToAffectUncached(string startSortkey)
 		{
 			IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntries(GetCategory(), CMType.file, cmstartsortkeyprefix: startSortkey);
-			while (true)
-			{
-				IEnumerable<Article> theseFiles = allFiles.Take(50);
 
-				if (!theseFiles.Any())
+			Article[] buffer = new Article[500];
+			int bufferPtr = 0;
+
+			// query for articles in batches of fixed size
+			foreach (Article article in allFiles)
+			{
+				if (bufferPtr < buffer.Length)
 				{
-					break;
+					buffer[bufferPtr++] = article;
+					continue;
 				}
 
-				Article[] filesGot = GlobalAPIs.Commons.GetPages(theseFiles.ToList(), prop: "info|revisions");
-
+				Article[] filesGot = GlobalAPIs.Commons.GetPages(buffer, prop: "info|revisions");
 				foreach (Article file in filesGot)
 				{
 					yield return file;
 				}
 
-				allFiles = allFiles.Skip(50);
+				bufferPtr = 0;
+				Array.Clear(buffer, 0, buffer.Length);
+			}
+
+			if (bufferPtr > 0)
+			{
+				// pick up the last incomplete batch
+				Array.Resize(ref buffer, bufferPtr);
+				Article[] filesGot = GlobalAPIs.Commons.GetPages(buffer, prop: "info|revisions");
+				foreach (Article file in filesGot)
+				{
+					yield return file;
+				}
 			}
 		}
 	}
