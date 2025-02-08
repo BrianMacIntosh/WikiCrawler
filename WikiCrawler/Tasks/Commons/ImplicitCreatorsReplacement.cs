@@ -67,7 +67,8 @@ namespace Tasks
 		private static bool IsConvertibleUnknownArtist(string author)
 		{
 			author = author.Trim(' ', ';', '.', ',');
-			return string.Equals(author, "Artist unknown", StringComparison.InvariantCultureIgnoreCase);
+			return string.Equals(author, "Artist unknown", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "Unbekannter Maler", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		private static bool IsConvertibleAnonymousAuthor(string author)
@@ -89,6 +90,7 @@ namespace Tasks
 				|| string.Equals(author, "{{unknown|1=author}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{unknown author}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{author|unknown}}", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "{{unknown photographer}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{creator:unknown}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{creator:?}}", StringComparison.InvariantCultureIgnoreCase);
 		}
@@ -498,7 +500,14 @@ namespace Tasks
 			else
 			{
 				Article commonsArticle = GlobalAPIs.Commons.GetPage(pageTitle);
-				return GetCreatorFromCategories(authorString, WikiUtils.GetCategories(commonsArticle), 1);
+				if (!Article.IsNullOrMissing(commonsArticle) && commonsArticle.revisions != null)
+				{
+					return GetCreatorFromCategories(authorString, WikiUtils.GetCategories(commonsArticle), 1);
+				}
+				else
+				{
+					return PageTitle.Empty;
+				}
 			}
 		}
 
