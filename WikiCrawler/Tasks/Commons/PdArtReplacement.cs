@@ -188,20 +188,19 @@ OtherLicense: {8}",
 			}
 
 			// 1. need author death date
-			int creatorDeathYear = 9999;
+			int creatorDeathYear;
 
 			// A. is author a creator?
+			PageTitle literalCreator = CreatorUtility.GetCreatorTemplate(worksheet.Author);
+			if (!literalCreator.IsEmpty)
 			{
-				PageTitle literalCreator = CreatorUtility.GetCreatorTemplate(worksheet.Author);
 				Creator creator = CreatorUtility.GetCreator("{{" + literalCreator + "}}");
 				creator.Usage++;
 				creatorDeathYear = creator.DeathYear;
 			}
-
-			// B. can author be associated to a creator based on file categories?
-			//TODO: skip if there was a literal creator
-			if (creatorDeathYear == 9999)
+			else
 			{
+				// B. can author be associated to a creator based on file categories?
 				PageTitle categoryCreator = ImplicitCreatorsReplacement.GetCreatorFromCategories(worksheet.Author, WikiUtils.GetCategories(worksheet.Text), 1);
 				Creator creator = CreatorUtility.GetCreator("{{" + categoryCreator + "}}");
 				creator.Usage++;
