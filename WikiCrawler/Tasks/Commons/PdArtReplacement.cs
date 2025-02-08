@@ -63,17 +63,17 @@ namespace Tasks
 
 		private ManualMapping<MappingDate> m_dateMapping;
 
-		private string DuplicateLicensesLogFile
+		private static string DuplicateLicensesLogFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "duplicate-licenses.txt"); }
 		}
 
-		private string NotUsExpiredLogFile
+		private static string NotUsExpiredLogFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "not-us-expired.txt"); }
 		}
 
-		private string DateMappingFile
+		public static string DateMappingFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "date-mappings.txt"); }
 		}
@@ -535,6 +535,11 @@ OtherLicense: {8}",
 						return ParseDate(date1);
 					}
 				}
+			}
+
+			// check for "complex date" template
+			{
+				//TODO:
 			}
 
 			// explicit strings
