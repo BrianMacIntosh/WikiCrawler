@@ -74,21 +74,24 @@ namespace WikiCrawler
 
 			//load mapped categories
 			string categoryMappingsFile = Path.Combine(Configuration.DataDirectory, "category_mappings.json");
-			string serializedMappings = File.ReadAllText(categoryMappingsFile, Encoding.UTF8);
-			Dictionary<string, CategoryMappingData> readMap = JsonConvert.DeserializeObject<Dictionary<string, CategoryMappingData>>(serializedMappings);
-			
-			foreach (KeyValuePair<string, CategoryMappingData> kv in readMap)
+			if (File.Exists(categoryMappingsFile))
 			{
-				CategoryMappingData existingData;
-				if (s_categoryMap.TryGetValue(kv.Key, out existingData))
+				string serializedMappings = File.ReadAllText(categoryMappingsFile, Encoding.UTF8);
+				Dictionary<string, CategoryMappingData> readMap = JsonConvert.DeserializeObject<Dictionary<string, CategoryMappingData>>(serializedMappings);
+
+				foreach (KeyValuePair<string, CategoryMappingData> kv in readMap)
 				{
-					existingData.MergeFrom(kv.Value);
+					CategoryMappingData existingData;
+					if (s_categoryMap.TryGetValue(kv.Key, out existingData))
+					{
+						existingData.MergeFrom(kv.Value);
+					}
+					else
+					{
+						s_categoryMap[kv.Key] = kv.Value;
+					}
+					kv.Value.Usage = 0;
 				}
-				else
-				{
-					s_categoryMap[kv.Key] = kv.Value;
-				}
-				kv.Value.Usage = 0;
 			}
 
 			CategoryTree.Load(Path.Combine(Configuration.DataDirectory, "category_tree.txt"));
