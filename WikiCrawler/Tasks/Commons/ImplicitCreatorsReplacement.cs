@@ -184,6 +184,14 @@ namespace Tasks
 				Console.ForegroundColor = ConsoleColor.DarkGreen;
 				Console.WriteLine("  Already a creator");
 				Console.ResetColor();
+
+				//HACK: make sure this file is not still in the creator mappings
+				foreach (var kv in m_creatorMappings)
+				{
+					kv.Value.FromPages.Remove(article.title);
+					m_creatorMappings.SetDirty();
+				}
+
 				return false;
 			}
 			else if (CreatorUtility.InlineCreatorTemplateRegex.MatchOut(worksheet.Author, out Match inlineCreatorMatch))
