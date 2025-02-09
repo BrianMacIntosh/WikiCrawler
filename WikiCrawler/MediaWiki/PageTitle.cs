@@ -78,7 +78,8 @@ namespace MediaWiki
 				|| string.Equals("File", ns, StringComparison.OrdinalIgnoreCase)
 				|| string.Equals("Creator", ns, StringComparison.OrdinalIgnoreCase)
 				|| string.Equals("Template", ns, StringComparison.OrdinalIgnoreCase)
-				|| string.Equals("Commons", ns, StringComparison.OrdinalIgnoreCase);
+				|| string.Equals("Commons", ns, StringComparison.OrdinalIgnoreCase)
+				|| string.Equals("Special", ns, StringComparison.OrdinalIgnoreCase);
 		}
 
 		public bool IsNamespace(string ns)
