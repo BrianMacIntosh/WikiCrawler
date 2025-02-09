@@ -29,32 +29,32 @@
 
 			if (precision <= MilleniumPrecision)
 			{
-				return Data[0] + "000";
+				return Data.Substring(0, 2) + "000";
 			}
 			else if (precision <= CenturyPrecision)
 			{
-				return Data.Substring(1, 2) + "00";
+				return Data.Substring(0, 3) + "00";
 			}
 			else if (precision <= DecadePrecision)
 			{
-				return Data.Substring(1, 3) + "0";
+				return Data.Substring(0, 4) + "0";
 			}
 			else if (precision <= YearPrecision)
 			{
-				return Data.Substring(1, 4);
+				return Data.Substring(0, 5);
 			}
 			else if (precision <= MonthPrecision)
 			{
-				return Data.Substring(1, 7);
+				return Data.Substring(0, 8);
 			}
 			else if (precision <= DayPrecision)
 			{
-				return Data.Substring(1, 10);
+				return Data.Substring(0, 11);
 			}
 			//TODO: time precision
 			else
 			{
-				return Data.Substring(1);
+				return Data;
 			}
 		}
 
