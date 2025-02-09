@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using WikiCrawler;
@@ -25,7 +24,7 @@ namespace Tasks
 
 		public static string InsidePMA70Log
 		{
-			get { return Path.Combine(Configuration.DataDirectory, "inside-pma-70.txt"); }
+			get { return Path.Combine(ProjectDataDirectory, "inside-pma-70.txt"); }
 		}
 
 		private static List<Regex> s_dateRegexes = new List<Regex>();
@@ -232,7 +231,7 @@ OtherLicense: {8}",
 				// report PMAs that are likely to be invalid
 				if (System.DateTime.Now.Year - creatorDeathYear <= 70)
 				{
-					File.AppendAllText(InsidePMA70Log, article.title, Encoding.UTF8);
+					File.AppendAllText(InsidePMA70Log + "\n", article.title, Encoding.UTF8);
 				}
 
 				Console.ForegroundColor = ConsoleColor.Red;
