@@ -14,7 +14,7 @@ namespace Tasks
 			User = user;
 		}
 
-		public override IEnumerable<Article> GetFilesToAffectUncached(string startSortkey)
+		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
 		{
 			IEnumerable<Contribution> allContribs = GlobalAPIs.Commons.GetContributions(User, "now", "2025-01-25T00:00:00Z");
 			while (true)

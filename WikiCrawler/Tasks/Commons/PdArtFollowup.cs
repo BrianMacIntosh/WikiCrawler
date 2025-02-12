@@ -1,5 +1,7 @@
 ﻿using MediaWiki;
 using System.Collections.Generic;
+using System.IO;
+using WikiCrawler;
 
 namespace Tasks
 {
@@ -10,8 +12,16 @@ namespace Tasks
 		{
 		}
 
-		public override IEnumerable<Article> GetFilesToAffectUncached(string startSortkey)
+		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
 		{
+			{
+				Article[] articles = GlobalAPIs.Commons.GetPages(File.ReadAllLines(PdArtReplacement.NotUsExpiredLogFile));
+				foreach (Article article in articles)
+				{
+					yield return article;
+				}
+			}
+
 			ManualMapping<MappingDate> dateMapping = new ManualMapping<MappingDate>(PdArtReplacement.DateMappingFile);
 			foreach (var kv in dateMapping)
 			{
@@ -27,7 +37,8 @@ namespace Tasks
 				}
 			}
 
-			ManualMapping<MappingCreator> creatorMapping = new ManualMapping<MappingCreator>(ImplicitCreatorsReplacement.CreatorMappingFile);
+			string pdArtDirectory = Path.Combine(Configuration.DataDirectory, "PdArtFixup");
+			ManualMapping<MappingCreator> creatorMapping = new ManualMapping<MappingCreator>(ImplicitCreatorsReplacement.GetCreatorMappingFile(pdArtDirectory));
 			foreach (var kv in creatorMapping)
 			{
 				if (!string.IsNullOrEmpty(kv.Value.MappedValue)

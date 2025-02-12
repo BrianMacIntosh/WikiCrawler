@@ -19,15 +19,10 @@ namespace Tasks
 	/// </summary>
 	public class ImplicitCreatorsReplacement : BaseReplacement
 	{
-		private const int s_SearchDepth = 1;
-
 		/// <summary>
 		/// Directory where task-specific data is stored.
 		/// </summary>
-		public static string ProjectDataDirectory
-		{
-			get { return Path.Combine(Configuration.DataDirectory, "fiximplicitcreators"); }
-		}
+		public readonly string ProjectDataDirectory;
 
 		/// <summary>
 		/// Caches the qids of entities linked to each category.
@@ -47,9 +42,14 @@ namespace Tasks
 
 		private ManualMapping<MappingCreator> m_creatorMappings;
 
-		public static string CreatorMappingFile
+		public string CreatorMappingFile
 		{
-			get { return Path.Combine(ProjectDataDirectory, "creator-mappings.txt"); }
+			get { return GetCreatorMappingFile(ProjectDataDirectory); }
+		}
+
+		public static string GetCreatorMappingFile(string projectDataDirectory)
+		{
+			return Path.Combine(projectDataDirectory, "creator-mappings.txt");
 		}
 
 		private static bool IsConvertibleUnknownAuthor(string author)
@@ -79,7 +79,8 @@ namespace Tasks
 				|| string.Equals(author, "auteur anonyme", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "anonimous", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "anonimus", StringComparison.InvariantCultureIgnoreCase)
-				|| string.Equals(author, "anonymus", StringComparison.InvariantCultureIgnoreCase);
+				|| string.Equals(author, "anonymus", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "auteur anonyme", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		public static bool IsUnknownAuthor(string author)
@@ -91,6 +92,7 @@ namespace Tasks
 				|| string.Equals(author, "{{unknown author}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{author|unknown}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{unknown photographer}}", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "{{unknown|photographer}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{creator:unknown}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{creator:?}}", StringComparison.InvariantCultureIgnoreCase);
 		}
@@ -111,8 +113,9 @@ namespace Tasks
 			RemoveLifespan,
 		}
 
-		public ImplicitCreatorsReplacement()
+		public ImplicitCreatorsReplacement(string directory)
 		{
+			ProjectDataDirectory = Path.Combine(Configuration.DataDirectory, directory);
 			Directory.CreateDirectory(ProjectDataDirectory);
 			m_creatorMappings = new ManualMapping<MappingCreator>(CreatorMappingFile);
 		}
@@ -131,6 +134,11 @@ namespace Tasks
 		/// <returns>True if a replacement was made.</returns>
 		public override bool DoReplacement(Article article)
 		{
+			return DoReplacement(article, null);
+		}
+
+		public bool DoReplacement(Article article, Entity suggestedCreator)
+		{
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
 			if (string.IsNullOrEmpty(worksheet.Author))
@@ -146,8 +154,26 @@ namespace Tasks
 			string newAuthor = "";
 			CreatorReplaceType replaceType = CreatorReplaceType.Implicit;
 
-			// check for "anonymous" and "unknown"
-			if (IsConvertibleUnknownAuthor(worksheet.Author))
+			if (suggestedCreator != null)
+			{
+				string suggestedLabel = suggestedCreator.labels["en"];
+				if (AuthorIs(worksheet.Author, suggestedCreator))
+				{
+					Console.ForegroundColor = ConsoleColor.Green;
+					Console.WriteLine("  Suggested creator '{0}' is a match.", suggestedLabel);
+					Console.ResetColor();
+
+					newAuthor = "{{Creator:" + suggestedCreator.GetClaimValueAsString(Wikidata.Prop_CommonsCreator) + "}}";
+				}
+				else
+				{
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("  Suggested creator '{0}' is not a match.", suggestedLabel);
+					Console.ResetColor();
+					return false;
+				}
+			}
+			else if (IsConvertibleUnknownAuthor(worksheet.Author))
 			{
 				if (string.Equals(worksheet.AuthorParam, "artist") || string.Equals(worksheet.AuthorParam, "artist_display_name"))
 				{
@@ -483,27 +509,21 @@ namespace Tasks
 			Article article = GlobalAPIs.Commons.GetPage(creator.ToString());
 			if (!Article.IsNullOrEmpty(article))
 			{
-				string articleText = article.revisions[0].text;
-				string creatorInsides = WikiUtils.ExtractTemplate(articleText, "Creator");
-
-				if (!string.IsNullOrEmpty(creatorInsides))
-				{
-					string wdId = WikiUtils.GetTemplateParameter("Wikidata", creatorInsides);
-					if (!string.IsNullOrEmpty(wdId))
-					{
-						return wdId;
-					}
-				}
+				CommonsCreatorWorksheet worksheet = new CommonsCreatorWorksheet(article);
+				return worksheet.Wikidata;
 			}
-
-			return null;
+			else
+			{
+				return null;
+			}
+			
 		}
 
-		private static PageTitle GetCreatorFromCommonsPage(string authorString, PageTitle pageTitle)
+		public static PageTitle GetCreatorFromCommonsPage(string authorString, PageTitle pageTitle)
 		{
 			if (pageTitle.IsNamespace("Category"))
 			{
-				return GetCreatorFromCategories(authorString, new PageTitle[] { pageTitle }, int.MaxValue);
+				return GetCreatorFromCategories(authorString, new PageTitle[] { pageTitle }, 0);
 			}
 			else
 			{
@@ -522,12 +542,12 @@ namespace Tasks
 		/// <summary>
 		/// Searches a list of categories and their parents for a creator template matching the <paramref name="authorString"/>.
 		/// </summary>
-		public static PageTitle GetCreatorFromCategories(string authorString, IEnumerable<PageTitle> categories, int currentDepth)
+		public static PageTitle GetCreatorFromCategories(string authorString, IEnumerable<PageTitle> categories, int remainingDepth)
 		{
 			HashSet<string> outNewEntities = new HashSet<string>();
 
 			// go searching through cats that haven't been visited yet
-			CacheCategoryEntities(categories, currentDepth, outNewEntities);
+			CacheCategoryEntities(categories, remainingDepth, outNewEntities);
 
 			// fetch any new entities
 			foreach (Entity newEntity in GlobalAPIs.Wikidata.GetEntities(outNewEntities.ToList()))
@@ -561,7 +581,7 @@ namespace Tasks
 					{
 						if (s_Entities.TryGetValue(entityId, out Entity entity))
 						{
-							if (AuthorIs(authorString, entity))
+							if (authorString == null || AuthorIs(authorString, entity))
 							{
 								if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
 								{
@@ -586,7 +606,7 @@ namespace Tasks
 		/// <summary>
 		/// Caches all <see cref="Entity"/>s related to the specified categories or their parents.
 		/// </summary>
-		private static void CacheCategoryEntities(IEnumerable<PageTitle> categories, int currentDepth, HashSet<string> outNewEntities)
+		private static void CacheCategoryEntities(IEnumerable<PageTitle> categories, int remainingDepth, HashSet<string> outNewEntities)
 		{
 			foreach (Article category in GlobalAPIs.Commons.GetPages(
 				categories
@@ -595,14 +615,14 @@ namespace Tasks
 					.ToList(),
 				prop: "info|revisions|iwlinks", iwprefix: "d"))
 			{
-				CacheCategoryEntities(category, currentDepth, outNewEntities);
+				CacheCategoryEntities(category, remainingDepth, outNewEntities);
 			}
 		}
 
 		/// <summary>
 		/// Caches all Entities related to the specified category or its parents.
 		/// </summary>
-		private static void CacheCategoryEntities(Article category, int currentDepth, HashSet<string> outNewEntities)
+		private static void CacheCategoryEntities(Article category, int remainingDepth, HashSet<string> outNewEntities)
 		{
 			if (!Article.IsNullOrEmpty(category))
 			{
@@ -644,7 +664,7 @@ namespace Tasks
 				{
 					foreach (InterwikiLink iwlink in category.iwlinks)
 					{
-						if (iwlink.prefix == "d")
+						if (iwlink.prefix == "d" && iwlink.value != "main")
 						{
 							string qid = iwlink.value;
 							Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
@@ -668,11 +688,11 @@ namespace Tasks
 				}
 
 				// check parent cats
-				if (currentDepth < s_SearchDepth ||
-					(currentDepth < s_SearchDepth + 3 && category.GetTitle().Contains(" by ")))
+				if (remainingDepth > 0 ||
+					(remainingDepth > -3 && category.GetTitle().Contains(" by ")))
 				{
 					HashSet<string> newEntities = new HashSet<string>();
-					CacheCategoryEntities(WikiUtils.GetCategories(categoryText), currentDepth + 1, newEntities);
+					CacheCategoryEntities(WikiUtils.GetCategories(categoryText), remainingDepth - 1, newEntities);
 
 					// all child entities are also credited to me
 					foreach (string qid in newEntities)

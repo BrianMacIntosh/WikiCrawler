@@ -1123,27 +1123,74 @@ namespace MediaWiki
             Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
 
             return (string)((Dictionary<string, object>)((Dictionary<string, object>)deser["query"])["tokens"])["csrftoken"];
-        }
-		
-		/// <summary>
-		/// Returns all pages in the specified category and its descendents (depth-first).
-		/// </summary>
-		public IEnumerable<Article> GetCategoryPagesRecursive(string category, int maxDepth = int.MaxValue)
-		{
-			return GetCategoryPagesRecursive(category, maxDepth, new HashSet<string>());
 		}
 
-		private IEnumerable<Article> GetCategoryPagesRecursive(string category, int maxDepth, HashSet<string> alreadyHandledSubcats)
+		/// <summary>
+		/// Fetches contents for the specified unfetched articles.
+		/// </summary>
+		public IEnumerable<Article> FetchArticles(IEnumerable<Article> articles)
+		{
+			Article[] buffer = new Article[500];
+			int bufferPtr = 0;
+
+			// query for articles in batches of fixed size
+			foreach (Article article in articles)
+			{
+				if (article.revisions != null)
+				{
+					throw new Exception("Trying to fetch an article that already looks fetched.");
+				}
+
+				if (bufferPtr < buffer.Length)
+				{
+					buffer[bufferPtr++] = article;
+					continue;
+				}
+
+				Article[] filesGot = GlobalAPIs.Commons.GetPages(buffer, prop: "info|revisions");
+				foreach (Article file in filesGot)
+				{
+					yield return file;
+				}
+
+				bufferPtr = 0;
+				Array.Clear(buffer, 0, buffer.Length);
+			}
+
+			if (bufferPtr > 0)
+			{
+				// pick up the last incomplete batch
+				Array.Resize(ref buffer, bufferPtr);
+				Article[] filesGot = GlobalAPIs.Commons.GetPages(buffer, prop: "info|revisions");
+				foreach (Article file in filesGot)
+				{
+					yield return file;
+				}
+			}
+		}
+
+		/// <summary>
+		/// Returns all entries in the specified category and its descendents (depth-first).
+		/// Page contents are not fetched.
+		/// </summary>
+		public IEnumerable<Article> GetCategoryEntriesRecursive(string category, int maxDepth = int.MaxValue,
+			string cmtype = "")
+		{
+			return GetCategoryEntriesRecursive(category, maxDepth, new HashSet<string>(), cmtype);
+		}
+
+		private IEnumerable<Article> GetCategoryEntriesRecursive(string category, int maxDepth, HashSet<string> alreadyHandledSubcats,
+			string cmtype = "")
 		{
 			if (maxDepth <= 0) yield break;
 			alreadyHandledSubcats.Add(category);
-			foreach (Article article in GetCategoryEntries(category, cmtype: BuildParameterList(CMType.page, CMType.subcat)))
+			foreach (Article article in GetCategoryEntries(category, cmtype: BuildParameterList(cmtype, CMType.subcat)))
 			{
 				if (article.ns == Namespace.Category)
 				{
 					if (!alreadyHandledSubcats.Contains(article.title))
 					{
-						foreach (Article art2 in GetCategoryPagesRecursive(article.title, maxDepth - 1, alreadyHandledSubcats))
+						foreach (Article art2 in GetCategoryEntriesRecursive(article.title, maxDepth - 1, alreadyHandledSubcats))
 						{
 							yield return art2;
 						}
@@ -1155,7 +1202,7 @@ namespace MediaWiki
 				}
 			}
 		}
-		
+
 		/// <summary>
 		/// 
 		/// </summary>

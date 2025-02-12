@@ -78,7 +78,7 @@ namespace Tasks
 			Directory.CreateDirectory(FileCacheDirectory);
 		}
 
-		public IEnumerable<Article> GetFilesToAffect(string startSortkey)
+		public IEnumerable<Article> GetPagesToAffect(string startSortkey)
 		{
 #if false
 			yield return GlobalAPIs.Commons.GetPage("File:Study of a Young Girl, Pont Aven SAAM-1977.113 1.jpg", prop: "info|revisions");
@@ -86,16 +86,16 @@ namespace Tasks
 #else
 			if (UseCachedFiles)
 			{
-				return GetFilesToAffectCached();
+				return GetPagesToAffectCached();
 			}
 			else
 			{
-				return GetFilesToAffectUncached(startSortkey);
+				return GetPagesToAffectUncached(startSortkey);
 			}
 #endif
 		}
 
-		public IEnumerable<Article> GetFilesToAffectCached()
+		public IEnumerable<Article> GetPagesToAffectCached()
 		{
 			char[] filesplitter = new char[] { '\n' };
 			foreach (string path in Directory.GetFiles(FileCacheDirectory))
@@ -108,7 +108,7 @@ namespace Tasks
 			}
 		}
 
-		public abstract IEnumerable<Article> GetFilesToAffectUncached(string startSortkey);
+		public abstract IEnumerable<Article> GetPagesToAffectUncached(string startSortkey);
 
 		public override void Execute()
 		{
@@ -127,7 +127,7 @@ namespace Tasks
 
 			StartHeartbeat();
 
-			foreach (Article file in GetFilesToAffect(startSortkey))
+			foreach (Article file in GetPagesToAffect(startSortkey))
 			{
 				if (editCount >= s_MaxEdits || readCount >= s_MaxReads)
 				{

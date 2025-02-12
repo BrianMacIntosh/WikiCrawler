@@ -1,7 +1,5 @@
 ﻿using MediaWiki;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Tasks
 {
@@ -21,40 +19,44 @@ namespace Tasks
 		/// </summary>
 		public abstract string GetCategory();
 
-		public override IEnumerable<Article> GetFilesToAffectUncached(string startSortkey)
+		/// <summary>
+		/// Returns the type of category member to find.
+		/// </summary>
+		public virtual string GetCMType()
 		{
-			IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntries(GetCategory(), CMType.file, cmstartsortkeyprefix: startSortkey);
+			return CMType.file;
+		}
 
-			Article[] buffer = new Article[500];
-			int bufferPtr = 0;
+		/// <summary>
+		/// Returns true if the search should recurse child categories.
+		/// </summary>
+		public virtual bool IsRecursive()
+		{
+			return false;
+		}
 
-			// query for articles in batches of fixed size
-			foreach (Article article in allFiles)
+		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
+		{
+			return GetPagesHelper(GetCategory(), GetCMType(), startSortkey, IsRecursive());
+		}
+
+		public static IEnumerable<Article> GetPagesHelper(string category, string pageType, string startSortKey, bool recursive)
+		{
+			if (recursive)
 			{
-				if (bufferPtr < buffer.Length)
+				//TODO: pass startSortKey
+				IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntriesRecursive(category, cmtype: pageType);
+				foreach (Article article in GlobalAPIs.Commons.FetchArticles(allFiles))
 				{
-					buffer[bufferPtr++] = article;
-					continue;
+					yield return article;
 				}
-
-				Article[] filesGot = GlobalAPIs.Commons.GetPages(buffer, prop: "info|revisions");
-				foreach (Article file in filesGot)
-				{
-					yield return file;
-				}
-
-				bufferPtr = 0;
-				Array.Clear(buffer, 0, buffer.Length);
 			}
-
-			if (bufferPtr > 0)
+			else
 			{
-				// pick up the last incomplete batch
-				Array.Resize(ref buffer, bufferPtr);
-				Article[] filesGot = GlobalAPIs.Commons.GetPages(buffer, prop: "info|revisions");
-				foreach (Article file in filesGot)
+				IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntries(category, pageType, cmstartsortkeyprefix: startSortKey);
+				foreach (Article article in GlobalAPIs.Commons.FetchArticles(allFiles))
 				{
-					yield return file;
+					yield return article;
 				}
 			}
 		}
