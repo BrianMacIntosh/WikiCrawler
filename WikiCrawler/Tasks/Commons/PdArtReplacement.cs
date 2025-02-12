@@ -634,7 +634,7 @@ OtherLicense: {8}",
 						{
 							// e.g. 1850-55
 							int length2 = dateSplit[1].Length;
-							int magnitude = 10 ^ length2;
+							int magnitude = (int)Math.Pow(10, length2);
 							date2 = magnitude * (date1 / magnitude) + date2;
 							return new DateParseMetadata(0, date1, date2);
 						}
