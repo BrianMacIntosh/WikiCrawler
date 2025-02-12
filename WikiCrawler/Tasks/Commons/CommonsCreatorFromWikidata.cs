@@ -371,17 +371,17 @@ namespace Tasks
 					if (s_FixImplicitCreators)
 					{
 						Console.WriteLine("...checking child files");
-						foreach (Article subArticle in GlobalAPIs.Commons.GetCategoryEntriesRecursive(article.title, 4, cmtype: CMType.file))
+						IEnumerable<Article> subArticles = GlobalAPIs.Commons.GetCategoryEntriesRecursive(article.title, 4, cmtype: CMType.file);
+						foreach (Article subArticle in GlobalAPIs.Commons.FetchArticles(subArticles))
 						{
 							if (subArticle.ns == Namespace.File)
 							{
-								Article gotSubArticle = GlobalAPIs.Commons.GetPage(subArticle);
 								//TODO: new ImplicitCreatorsReplacement().DoReplacement(gotSubArticle, PageTitle.Parse(creatorArticle.title));
 								//PdOldAuto.Do(commonsApi, gotSubArticle);
 
-								if (gotSubArticle.Dirty)
+								if (subArticle.Dirty)
 								{
-									GlobalAPIs.Commons.EditPage(gotSubArticle, gotSubArticle.GetEditSummary());
+									GlobalAPIs.Commons.EditPage(subArticle, subArticle.GetEditSummary());
 								}
 							}
 						}
