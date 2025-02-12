@@ -733,8 +733,12 @@ namespace MediaWiki
 			}
 
 			//Parse and read
-			//TODO: error handling?
 			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+			if (deser.ContainsKey("error"))
+			{
+				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
+				throw new WikimediaCodeException(error);
+			}
 			if (!deser.ContainsKey("entities"))
 			{
 				return new Entity[0];
