@@ -625,7 +625,7 @@ namespace MediaWiki
 				int templateEnd = GetTemplateEnd(text, templateStart) + 2;
 
 				// if the next character is a line return, get that too
-				if (templateEnd < text.Length && text[templateEnd] == '\n')
+				if (templateEnd + 1 < text.Length && text[templateEnd + 1] == '\n')
 				{
 					templateEnd++;
 				}
