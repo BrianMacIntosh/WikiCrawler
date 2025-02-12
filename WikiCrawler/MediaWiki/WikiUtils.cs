@@ -695,12 +695,11 @@ namespace MediaWiki
 			//TODO: support template transclusions
 			if (!Article.IsNullOrEmpty(article))
 			{
-				string key = "{{DEFAULTSORT:";
-				int defaultSort = article.revisions[0].text.IndexOf(key);
-				if (defaultSort >= 0)
+				//HACK: relies on ExtractTemplate allowing prefixes
+				string defaultSort = ExtractTemplate(article.revisions[0].text, "DEFAULTSORT:");
+				if (!string.IsNullOrEmpty(defaultSort))
 				{
-					int defaultEnd = article.revisions[0].text.IndexOf("}}", defaultSort);
-					return article.revisions[0].text.Substring(defaultSort, defaultEnd - defaultSort - key.Length - 1);
+					return defaultSort.Substring("DEFAULTSORT:".Length);
 				}
 				else
 				{
