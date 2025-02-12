@@ -62,12 +62,12 @@ namespace Tasks
 
 		private ManualMapping<MappingDate> m_dateMapping;
 
-		private static string DuplicateLicensesLogFile
+		public static string DuplicateLicensesLogFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "duplicate-licenses.txt"); }
 		}
 
-		private static string NotUsExpiredLogFile
+		public static string NotUsExpiredLogFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "not-us-expired.txt"); }
 		}
