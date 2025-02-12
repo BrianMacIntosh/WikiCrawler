@@ -371,7 +371,7 @@ namespace Tasks
 					if (s_FixImplicitCreators)
 					{
 						Console.WriteLine("...checking child files");
-						foreach (Article subArticle in GlobalAPIs.Commons.GetCategoryPagesRecursive(article.title, 4))
+						foreach (Article subArticle in GlobalAPIs.Commons.GetCategoryEntriesRecursive(article.title, 4, cmtype: CMType.file))
 						{
 							if (subArticle.ns == Namespace.File)
 							{
