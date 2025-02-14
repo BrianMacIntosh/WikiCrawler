@@ -1174,17 +1174,23 @@ namespace MediaWiki
 		/// Page contents are not fetched.
 		/// </summary>
 		public IEnumerable<Article> GetCategoryEntriesRecursive(string category, int maxDepth = int.MaxValue,
-			string cmtype = "")
+			string cmtype = "",
+			string cmstartsortkeyprefix = "")
 		{
-			return GetCategoryEntriesRecursive(category, maxDepth, new HashSet<string>(), cmtype);
+			return GetCategoryEntriesRecursive(category, maxDepth, new HashSet<string>(), cmtype, cmstartsortkeyprefix);
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="cmstartsortkeyprefix">Only applies to the top-level category.</param>
 		private IEnumerable<Article> GetCategoryEntriesRecursive(string category, int maxDepth, HashSet<string> alreadyHandledSubcats,
-			string cmtype = "")
+			string cmtype = "",
+			string cmstartsortkeyprefix = "")
 		{
 			if (maxDepth <= 0) yield break;
 			alreadyHandledSubcats.Add(category);
-			foreach (Article article in GetCategoryEntries(category, cmtype: BuildParameterList(cmtype, CMType.subcat)))
+			foreach (Article article in GetCategoryEntries(category, cmtype: BuildParameterList(cmtype, CMType.subcat), cmstartsortkeyprefix: cmstartsortkeyprefix))
 			{
 				if (article.ns == Namespace.Category)
 				{

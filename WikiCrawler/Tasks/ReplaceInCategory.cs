@@ -44,8 +44,7 @@ namespace Tasks
 		{
 			if (recursive)
 			{
-				//TODO: pass startSortKey
-				IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntriesRecursive(category, cmtype: pageType);
+				IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntriesRecursive(category, cmtype: pageType, cmstartsortkeyprefix: startSortKey);
 				foreach (Article article in GlobalAPIs.Commons.FetchArticles(allFiles))
 				{
 					yield return article;
