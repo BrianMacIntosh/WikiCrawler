@@ -58,7 +58,7 @@ namespace Tasks.Commons
 				if (entity != null)
 				{
 					// try to use the creator in any categorized files
-					IEnumerable<Article> subArticles = GlobalAPIs.Commons.GetCategoryEntriesRecursive(article.title, cmtype: CMType.file);
+					IEnumerable<Article> subArticles = GlobalAPIs.Commons.GetCategoryEntriesRecursive(article.title, 4, cmtype: CMType.file);
 					foreach (Article subArticle in GlobalAPIs.Commons.FetchArticles(subArticles))
 					{
 						Console.ForegroundColor = ConsoleColor.White;
