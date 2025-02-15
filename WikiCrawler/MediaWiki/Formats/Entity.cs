@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MediaWiki
 {
@@ -151,13 +152,19 @@ namespace MediaWiki
 			return claims[property][0].mainSnak.GetValueAsEntityId();
 		}
 
-		public Entity[] GetClaimValuesAsEntity(string property, Api api)
+		public IEnumerable<Entity> GetClaimValuesAsEntities(string property, Api api)
 		{
-			Claim[] subclaims = claims[property];
-			Entity[] result = new Entity[subclaims.Length];
-			for (int c = 0; c < subclaims.Length; c++)
-				result[c] = subclaims[c].mainSnak.GetValueAsEntity(api);
-			return result;
+			if (claims.TryGetValue(property, out var subclaims))
+			{
+				return api.GetEntities(subclaims
+					.Where(c => c.HasValue())
+					.Select(c => "Q" + c.mainSnak.GetValueAsEntityId())
+					.ToArray());
+			}
+			else
+			{
+				return new Entity[0];
+			}
 		}
 
 		public string GetClaimValueAsString(string property)
