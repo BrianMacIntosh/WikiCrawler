@@ -283,7 +283,8 @@ namespace MediaWiki
 			Match creatorMatch = CreatorTemplateRegex.Match(str);
 			if (creatorMatch.Success)
 			{
-				template = PageTitle.Parse(creatorMatch.Groups[1].Value);
+				string templateName = creatorMatch.Groups[1].Value.Split('|').First();
+				template = PageTitle.Parse(templateName);
 				return true;
 			}
 			else
