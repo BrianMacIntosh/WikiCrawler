@@ -227,7 +227,8 @@ namespace MediaWiki
 			}
 		}
 
-		public static readonly Regex CreatorTemplateRegex = new Regex(@"^{{\s*([Cc]reator:.+)}}$");
+		private static readonly Regex CreatorTemplateRegex = new Regex(@"^{{\s*([Cc]reator:.+)}}$");
+
 		public static readonly Regex InlineCreatorTemplateRegex = new Regex(@"^{{\s*[Cc]reator\s*\|\s*[Ww]ikidata\s*=\s*(Q[0-9]+)\s*}}$");
 		public static readonly Regex AuthorLifespanRegex = new Regex(@"^([^\(\)]+)\s+\(?([0-9][0-9][0-9][0-9])[\-–—]([0-9][0-9][0-9][0-9])\)?$");
 
@@ -271,6 +272,24 @@ namespace MediaWiki
 			else
 			{
 				return PageTitle.Empty;
+			}
+		}
+
+		/// <summary>
+		/// Returns true if the string represents a creator template.
+		/// </summary>
+		public static bool TryGetCreatorTemplate(string str, out PageTitle template)
+		{
+			Match creatorMatch = CreatorTemplateRegex.Match(str);
+			if (creatorMatch.Success)
+			{
+				template = PageTitle.Parse(creatorMatch.Groups[1].Value);
+				return true;
+			}
+			else
+			{
+				template = PageTitle.Empty;
+				return false;
 			}
 		}
 
