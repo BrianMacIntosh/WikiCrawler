@@ -204,21 +204,31 @@ namespace Tasks
 				Console.ResetColor();
 				return false;
 			}
-			else if (CreatorUtility.CreatorTemplateRegex.IsMatch(worksheet.Author))
+			else if (CreatorUtility.TryGetCreatorTemplate(worksheet.Author, out PageTitle creatorTemplate))
 			{
-				// already a creator - do nothing
-				Console.ForegroundColor = ConsoleColor.DarkGreen;
-				Console.WriteLine("  Already a creator");
-				Console.ResetColor();
-
-				//HACK: make sure this file is not still in the creator mappings
-				foreach (var kv in m_creatorMappings)
+				if (!Article.IsNullOrMissing(GlobalAPIs.Commons.GetPage(creatorTemplate)))
 				{
-					kv.Value.FromPages.Remove(article.title);
-					m_creatorMappings.SetDirty();
-				}
+					// already a creator - do nothing
+					Console.ForegroundColor = ConsoleColor.DarkGreen;
+					Console.WriteLine("  Already a creator");
+					Console.ResetColor();
 
-				return false;
+					//HACK: make sure this file is not still in the creator mappings
+					foreach (var kv in m_creatorMappings)
+					{
+						kv.Value.FromPages.Remove(article.title);
+						m_creatorMappings.SetDirty();
+					}
+
+					return false;
+				}
+				else
+				{
+					// already a creator, but a missing one
+					Console.ForegroundColor = ConsoleColor.Yellow;
+					Console.WriteLine("  Author is redlink creator '{0}'", creatorTemplate);
+					Console.ResetColor();
+				}
 			}
 			else if (CreatorUtility.InlineCreatorTemplateRegex.MatchOut(worksheet.Author, out Match inlineCreatorMatch))
 			{
@@ -231,7 +241,8 @@ namespace Tasks
 					replaceType = CreatorReplaceType.Inline;
 				}
 			}
-			else
+			
+			if (string.IsNullOrEmpty(newAuthor))
 			{
 				PageTitle creator = PageTitle.Empty;
 				string authorString;
@@ -242,11 +253,9 @@ namespace Tasks
 				{
 					authorString = lifespanMatch.Groups[1].Value.Trim();
 
-					// maybe *now* it's a creator
-					Match creatorTemplateMatch = CreatorUtility.CreatorTemplateRegex.Match(authorString);
-					if (creatorTemplateMatch.Success)
+					// maybe *now* it's a creator;
+					if (CreatorUtility.TryGetCreatorTemplate(authorString, out creator))
 					{
-						creator = PageTitle.Parse(creatorTemplateMatch.Groups[1].Value);
 						replaceType = CreatorReplaceType.RemoveLifespan;
 					}
 					else
@@ -272,6 +281,16 @@ namespace Tasks
 				else
 				{
 					authorString = worksheet.Author;
+				}
+
+				// extract name from redlinked creator
+				if (CreatorUtility.TryGetCreatorTemplate(authorString, out PageTitle creatorTemplate))
+				{
+					//OPT: multiple checks against existence of this page
+					if (Article.IsNullOrMissing(GlobalAPIs.Commons.GetPage(creatorTemplate)))
+					{
+						authorString = creatorTemplate.Name;
+					}
 				}
 
 				// unwrap author iwlink

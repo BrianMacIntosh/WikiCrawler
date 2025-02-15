@@ -32,7 +32,7 @@ namespace Tasks.Commons
 
 		public CreatorPossibleReplacement()
 		{
-			m_implicitCreators = new ImplicitCreatorsReplacement("CreatorPossibleCleanup");
+			m_implicitCreators = new ImplicitCreatorsReplacement("CreatorPossible");
 		}
 
 		public override bool DoReplacement(Article article)
