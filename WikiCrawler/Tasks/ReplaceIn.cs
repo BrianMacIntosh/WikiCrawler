@@ -74,6 +74,8 @@ namespace Tasks
 			HeartbeatEnabled = true;
 
 			m_replacement = replacement;
+
+			Directory.CreateDirectory(ProjectDataDirectory);
 		}
 
 		public IEnumerable<Article> GetPagesToAffect(string startSortkey)

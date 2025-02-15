@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using WikiCrawler;
@@ -14,6 +15,14 @@ namespace Tasks
 	/// </summary>
 	public class PdArtReplacement : BaseReplacement
 	{
+		private struct CachedFile
+		{
+			public string Title;
+			public string Author;
+			public string Date;
+			public int DeathYear;
+		}
+
 		/// <summary>
 		/// Directory where task-specific data is stored.
 		/// </summary>
@@ -25,6 +34,11 @@ namespace Tasks
 		public static string InsidePMA70Log
 		{
 			get { return Path.Combine(ProjectDataDirectory, "inside-pma-70.txt"); }
+		}
+
+		public static string FileCacheDirectory
+		{
+			get { return Path.Combine(ProjectDataDirectory, "files"); }
 		}
 
 		private static List<Regex> s_dateRegexes = new List<Regex>();
@@ -123,6 +137,7 @@ namespace Tasks
 		public PdArtReplacement()
 		{
 			Directory.CreateDirectory(ProjectDataDirectory);
+			Directory.CreateDirectory(FileCacheDirectory);
 			m_dateMapping = new ManualMapping<MappingDate>(DateMappingFile);
 		}
 
@@ -167,48 +182,79 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			if (string.IsNullOrEmpty(worksheet.Author))
-			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Failed to find author.");
-				Console.ResetColor();
-				qtyInfoFindFail++;
-				return false;
-			}
-
-			if (ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author)
-				|| ImplicitCreatorsReplacement.IsAnonymousAuthor(worksheet.Author))
-			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Anonymous/unknown author.");
-				Console.ResetColor();
-				qtyInfoFindFail++;
-				return false;
-			}
-
 			// 1. need author death date
-			int creatorDeathYear;
+			int creatorDeathYear = 9999;
 
-			// A. is author a creator?
-			PageTitle literalCreator = CreatorUtility.GetCreatorTemplate(worksheet.Author);
-			if (!literalCreator.IsEmpty)
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear);
+
+			// A. does wikidata item have author info?
+			if (!string.IsNullOrEmpty(worksheet.Wikidata))
 			{
-				Creator creator = CreatorUtility.GetCreator("{{" + literalCreator + "}}");
-				creator.Usage++;
-				creatorDeathYear = creator.DeathYear;
-			}
-			else
-			{
-				// B. can author be associated to a creator based on file categories?
-				PageTitle categoryCreator = ImplicitCreatorsReplacement.GetCreatorFromCategories(worksheet.Author, WikiUtils.GetCategories(worksheet.Text), 1);
-				Creator creator = CreatorUtility.GetCreator("{{" + categoryCreator + "}}");
-				creator.Usage++;
-				creatorDeathYear = creator.DeathYear;
+				Entity artworkEntity = GlobalAPIs.Wikidata.GetEntity(worksheet.Wikidata);
+				if (artworkEntity != null)
+				{
+					var artistEntities = artworkEntity.GetClaimValuesAsEntities(Wikidata.Prop_Creator, GlobalAPIs.Wikidata);
+					if (artistEntities.Any())
+					{
+						creatorDeathYear = artistEntities
+							.Select(e =>
+							{
+								IEnumerable<MediaWiki.DateTime> deathTimes = e.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath)
+									.Where(date => date != null && date.Precision >= MediaWiki.DateTime.YearPrecision);
+								if (deathTimes.Any())
+								{
+									return deathTimes.Max(date => date.GetYear());
+								}
+								else
+								{
+									return 9999;
+								}
+							}).Max();
+					}
+				}
 			}
 
-			// C. does author string contain a death date?
 			if (creatorDeathYear == 9999)
 			{
+				if (string.IsNullOrEmpty(worksheet.Author))
+				{
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("  Failed to find author.");
+					Console.ResetColor();
+					return false;
+				}
+
+				if (ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author)
+					|| ImplicitCreatorsReplacement.IsAnonymousAuthor(worksheet.Author))
+				{
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("  Anonymous/unknown author.");
+					Console.ResetColor();
+					qtyInfoFindFail++;
+					return false;
+				}
+
+				// B. is author a creator?
+				PageTitle literalCreator = CreatorUtility.GetCreatorTemplate(worksheet.Author);
+				if (!literalCreator.IsEmpty)
+				{
+					Creator creator = CreatorUtility.GetCreator("{{" + literalCreator + "}}");
+					creator.Usage++;
+					creatorDeathYear = creator.DeathYear;
+				}
+				else if (ImplicitCreatorsReplacement.SlowCategoryWalk)
+				{
+					// C. can author be associated to a creator based on file categories?
+					PageTitle categoryCreator = ImplicitCreatorsReplacement.GetCreatorFromCategories(worksheet.Author, WikiUtils.GetCategories(worksheet.Text), 1);
+					Creator creator = CreatorUtility.GetCreator("{{" + categoryCreator + "}}");
+					creator.Usage++;
+					creatorDeathYear = creator.DeathYear;
+				}
+			}
+
+			if (creatorDeathYear == 9999)
+			{
+				// D. does author string contain a death date?
 				Match match = CreatorUtility.AuthorLifespanRegex.Match(worksheet.Author);
 				if (match.Success)
 				{
@@ -225,13 +271,15 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			int pmaYear = System.DateTime.Now.Year - 120;
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear);
+
+			int pmaYear = System.DateTime.Now.Year - 100;
 			if (creatorDeathYear >= pmaYear)
 			{
 				// report PMAs that are likely to be invalid
 				if (System.DateTime.Now.Year - creatorDeathYear <= 70)
 				{
-					File.AppendAllText(InsidePMA70Log + "\n", article.title, Encoding.UTF8);
+					File.AppendAllText(InsidePMA70Log, article.title + "\n", Encoding.UTF8);
 				}
 
 				Console.ForegroundColor = ConsoleColor.Red;
@@ -248,7 +296,7 @@ OtherLicense: {8}",
 			int latestYear;
 			if (string.IsNullOrEmpty(worksheet.Date))
 			{
-				// if no file/pub date, assume it cannot be later than the death year
+				// if no file/pub date, assume it is not later than the death year
 				latestYear = creatorDeathYear;
 			}
 			else if (dateParseMetadata.LatestYear != 9999)
@@ -305,7 +353,7 @@ OtherLicense: {8}",
 			}
 
 			// Is file/pub date expired in the US?
-			// Exception: post-2004 dates are very likely to be upload dates instead of pub dates, especially given that the author died at least 120 years ago.
+			// Exception: post-2004 dates are very likely to be upload dates instead of pub dates, especially given that the author died at least 100 years ago.
 			if (latestYear >= System.DateTime.Now.Year - 95 && latestYear < 2004)
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
@@ -374,6 +422,24 @@ OtherLicense: {8}",
 			}
 
 			return true;
+		}
+
+		private void CacheFile(PageTitle title, string author, string date, int deathyear)
+		{
+			CachedFile cache;
+			cache.Title = title.ToString();
+			cache.Author = author;
+			cache.Date = date;
+			cache.DeathYear = deathyear;
+
+			string filename = Path.Combine(FileCacheDirectory, string.Concat(cache.Title.Split(Path.GetInvalidFileNameChars())));
+			if (filename.Length > 250)
+			{
+				filename = filename.Substring(0, 250);
+			}
+			filename = filename + ".txt";
+
+			File.WriteAllText(filename, Newtonsoft.Json.JsonConvert.SerializeObject(cache), Encoding.UTF8);
 		}
 
 		private static bool IsAllowedOtherDateClass(string dateClass)

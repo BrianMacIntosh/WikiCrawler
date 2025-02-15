@@ -4,7 +4,7 @@
 	{
 		public static BaseReplacement CreateReplacement()
 		{
-			return new CompoundReplacementTask(new ImplicitCreatorsReplacement("PdArtFixup"), new LocalizeDateReplacement(), new PdArtReplacement(), new FixInformationTemplates());
+			return new CompoundReplacementTask(new ImplicitCreatorsReplacement("PdArtReplacement"), new LocalizeDateReplacement(), new PdArtReplacement(), new FixInformationTemplates());
 		}
 
 		public PdArtFixup()

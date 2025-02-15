@@ -56,6 +56,26 @@ public class CommonsFileWorksheet : CommonsWorksheet
 	private static string[] authorParams = new string[] { "author", "artist", "photographer", "artist_display_name" };
 
 	/// <summary>
+	/// The contents of the Wikidata field in a primary information template.
+	/// </summary>
+	public string Wikidata
+	{
+		get
+		{
+			if (wikidata == null)
+			{
+				wikidata = GetInfoParam(wikidataParams, out wikidataParam, out wikidataIndex);
+			}
+			return wikidata;
+		}
+	}
+
+	private string wikidata;
+	private string wikidataParam; // name of the param the wikidata string was actually pulled from
+	private int wikidataIndex = -1;
+	private static string[] wikidataParams = new string[] { "wikidata" };
+
+	/// <summary>
 	/// The contents of the date field in a primary information template.
 	/// </summary>
 	public string Date

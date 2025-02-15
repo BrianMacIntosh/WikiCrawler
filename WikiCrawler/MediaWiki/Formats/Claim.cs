@@ -27,5 +27,10 @@ namespace MediaWiki
 		{
 			return "{\"id\":\"Q2$5627445f-43cb-ed6d-3adb-760e85bd17ee\",\"type\":\"" + type + "\",\"mainsnak\":{\"snaktype\":\"value\",\"property\":\"P1\",\"datavalue\":{\"value\":\"City\",\"type\":\"string\"}}}";
 		}
+
+		public bool HasValue()
+		{
+			return mainSnak != null && mainSnak.datavalue != null;
+		}
 	}
 }

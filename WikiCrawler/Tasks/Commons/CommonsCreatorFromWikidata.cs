@@ -215,12 +215,12 @@ namespace Tasks
 			foreach (Entity entity in entities)
 			{
 				if (!entity.HasClaim(Wikidata.Prop_DateOfBirth)
-					|| !entity.GetClaimValueAsDate(Wikidata.Prop_DateOfBirth).Any(date => date.GetYear().ToString() == yearOfBirth))
+					|| !entity.GetClaimValuesAsDates(Wikidata.Prop_DateOfBirth).Any(date => date.GetYear().ToString() == yearOfBirth))
 				{
 					continue;
 				}
 				if (!entity.HasClaim(Wikidata.Prop_DateOfDeath)
-					|| !entity.GetClaimValueAsDate(Wikidata.Prop_DateOfDeath).Any(date => date.GetYear().ToString() == yearOfDeath))
+					|| !entity.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath).Any(date => date.GetYear().ToString() == yearOfDeath))
 				{
 					continue;
 				}
@@ -416,7 +416,7 @@ namespace Tasks
 				if (entity.HasClaim(MediaWiki.Wikidata.Prop_DateOfDeath))
 				{
 					//HACK: use first only
-					MediaWiki.DateTime dateData = entity.GetClaimValueAsDate(Wikidata.Prop_DateOfDeath)[0];
+					MediaWiki.DateTime dateData = entity.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath).First();
 
 					int year = dateData.GetYear();
 					/*if (year < DateTime.Now.Year)
@@ -468,7 +468,7 @@ namespace Tasks
 				if (entity.HasClaim(MediaWiki.Wikidata.Prop_DateOfBirth))
 				{
 					//HACK: use first only
-					MediaWiki.DateTime dateData = entity.GetClaimValueAsDate(MediaWiki.Wikidata.Prop_DateOfBirth)[0];
+					MediaWiki.DateTime dateData = entity.GetClaimValuesAsDates(MediaWiki.Wikidata.Prop_DateOfBirth).First();
 
 					int year = dateData.GetYear();
 

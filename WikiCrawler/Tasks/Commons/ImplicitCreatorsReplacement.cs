@@ -20,6 +20,11 @@ namespace Tasks
 	public class ImplicitCreatorsReplacement : BaseReplacement
 	{
 		/// <summary>
+		/// If set, will walk up categories to try to map creator string.
+		/// </summary>
+		public const bool SlowCategoryWalk = false;
+
+		/// <summary>
 		/// Directory where task-specific data is stored.
 		/// </summary>
 		public readonly string ProjectDataDirectory;
@@ -366,7 +371,7 @@ namespace Tasks
 				}
 
 				// go looking for matching creator templates in parent cats
-				if (creator.IsEmpty)
+				if (creator.IsEmpty && SlowCategoryWalk)
 				{
 					creator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1);
 				}
