@@ -19,7 +19,7 @@ namespace Tasks
 		/// </summary>
 		public static string ProjectDataDirectory
 		{
-			get { return Path.Combine(Configuration.DataDirectory, "pdartfixup"); }
+			get { return Path.Combine(Configuration.DataDirectory, "PdArtReplacement"); }
 		}
 
 		public static string InsidePMA70Log
@@ -141,7 +141,7 @@ PMAFail:      {7}
 OtherLicense: {8}",
 				qtySuccess, qtyProcessed,
 				qtyInfoFindFail, qtyDateParseFail, qtyNotPDUS, qtyNoCreator, qtyNoDeathYear, qtyInsufficientPMA, qtyOtherLicense);
-			File.WriteAllText(Path.Combine(ProjectDataDirectory, "pdartfixup.txt"), statsText, Encoding.UTF8);
+			File.WriteAllText(Path.Combine(ProjectDataDirectory, "stats.txt"), statsText, Encoding.UTF8);
 
 			m_dateMapping.Serialize();
 		}

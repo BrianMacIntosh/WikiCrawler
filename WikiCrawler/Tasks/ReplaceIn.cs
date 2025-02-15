@@ -74,14 +74,12 @@ namespace Tasks
 			HeartbeatEnabled = true;
 
 			m_replacement = replacement;
-
-			Directory.CreateDirectory(FileCacheDirectory);
 		}
 
 		public IEnumerable<Article> GetPagesToAffect(string startSortkey)
 		{
 #if false
-			yield return GlobalAPIs.Commons.GetPage("File:Study of a Young Girl, Pont Aven SAAM-1977.113 1.jpg", prop: "info|revisions");
+			yield return GlobalAPIs.Commons.GetPage("File:Delivering supplies in a winter landscape 2000 CSK 08692 0103 000(124850).jpg", prop: "info|revisions");
 			yield break;
 #else
 			if (UseCachedFiles)
@@ -98,13 +96,20 @@ namespace Tasks
 		public IEnumerable<Article> GetPagesToAffectCached()
 		{
 			char[] filesplitter = new char[] { '\n' };
-			foreach (string path in Directory.GetFiles(FileCacheDirectory))
+			if (Directory.Exists(FileCacheDirectory))
 			{
-				string text = File.ReadAllText(path, Encoding.UTF8);
-				string[] split = text.Split(filesplitter, 2);
-				Article article = new Article(split[0]);
-				article.revisions = new Revision[] { new Revision() { text = split[1] } };
-				yield return article;
+				foreach (string path in Directory.GetFiles(FileCacheDirectory))
+				{
+					string text = File.ReadAllText(path, Encoding.UTF8);
+					string[] split = text.Split(filesplitter, 2);
+					Article article = new Article(split[0]);
+					article.revisions = new Revision[] { new Revision() { text = split[1] } };
+					yield return article;
+				}
+			}
+			else
+			{
+				yield break;
 			}
 		}
 
