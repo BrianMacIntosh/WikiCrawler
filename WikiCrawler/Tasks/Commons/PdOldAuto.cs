@@ -133,7 +133,7 @@ namespace Tasks
 						Entity wikidata = GlobalAPIs.Wikidata.GetEntity(wdId);
 						if (!wikidata.missing && wikidata.HasClaim(Wikidata.Prop_DateOfDeath))
 						{
-							IEnumerable<MediaWiki.DateTime> deathTimes = wikidata.GetClaimValueAsDate(Wikidata.Prop_DateOfDeath)
+							IEnumerable<MediaWiki.DateTime> deathTimes = wikidata.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath)
 								.Where(date => date != null && date.Precision >= MediaWiki.DateTime.YearPrecision);
 							if (deathTimes.Any())
 							{

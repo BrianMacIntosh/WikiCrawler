@@ -253,10 +253,10 @@ namespace WikiCrawler
 					//TODO: instead, verify ALL pieces are present
 					throw new Exception();
 
-					IEnumerable<Entity> parents = place.GetClaimValuesAsEntity("P17", s_wikidataApi);
+					IEnumerable<Entity> parents = place.GetClaimValuesAsEntities("P17", s_wikidataApi);
 					if (place.HasClaim("P131"))
 					{
-						parents = parents.Concat(place.GetClaimValuesAsEntity("P131", s_wikidataApi));
+						parents = parents.Concat(place.GetClaimValuesAsEntities("P131", s_wikidataApi));
 					}
 					foreach (Entity parent in parents)
 					{
