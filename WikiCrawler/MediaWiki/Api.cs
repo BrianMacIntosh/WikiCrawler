@@ -95,7 +95,7 @@ namespace MediaWiki
 			}
 
             //Parse and read
-            Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+            Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
             Dictionary<string, object> login = (Dictionary<string, object>)deser["login"];
             if (((string)login["result"]).Equals("Success"))
             {
@@ -295,7 +295,11 @@ namespace MediaWiki
 			}
 
             //Parse and read
-            Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+			if (json.Length > s_jsonSerializer.MaxJsonLength)
+			{
+				//TODO: break up request
+			}
+            Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
             Dictionary<string, object> query = (Dictionary<string, object>)deser["query"];
             Dictionary<string, object> pages = (Dictionary<string, object>)query["pages"];
             Article[] ret = new Article[pages.Count];
@@ -406,7 +410,7 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-            Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+            Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
             if (deser.ContainsKey("error"))
             {
                 Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
@@ -447,7 +451,7 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-			Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 			if (deser.ContainsKey("error"))
 			{
 				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
@@ -488,7 +492,7 @@ namespace MediaWiki
 			}
 
 			//Parse and read
-			Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 
 			return true;
 		}
@@ -529,7 +533,7 @@ namespace MediaWiki
 					json = read.ReadToEnd();
 				}
 
-				Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+				Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 				foreach (Dictionary<string, object> page in (object[])((Dictionary<string, object>)deser["query"])["search"])
 				{
 					yield return new Article(page);
@@ -573,7 +577,7 @@ namespace MediaWiki
 			}
 
 			//Parse and read
-			Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 			object[] searchJson = (object[])deser["search"];
 			string[] results = new string[searchJson.Length];
 			for (int c = 0; c < searchJson.Length; c++)
@@ -610,7 +614,7 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-			Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 			if (deser.ContainsKey("error"))
 			{
 				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
@@ -790,7 +794,7 @@ namespace MediaWiki
 					json = read.ReadToEnd();
 				}
 
-				Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+				Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 				foreach (Dictionary<string, object> page in (object[])((Dictionary<string, object>)deser["query"])["usercontribs"])
 				{
 					yield return new Contribution(page);
@@ -841,7 +845,7 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-			Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 			if (deser.ContainsKey("error"))
 			{
 				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
@@ -923,7 +927,7 @@ namespace MediaWiki
 					{
 						string responseJson = read.ReadToEnd();
 
-						Dictionary<string, object> response = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(responseJson);
+						Dictionary<string, object> response = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(responseJson);
 						if (response.TryGetValue("error", out object errorObj))
 						{
 							Dictionary<string, object> error = (Dictionary<string, object>)errorObj;
@@ -1000,7 +1004,7 @@ namespace MediaWiki
 				} while (retry);
 			}
 
-            Dictionary<string, object> finalResponse = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(finalResponseJson);
+            Dictionary<string, object> finalResponse = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(finalResponseJson);
             if (finalResponse.ContainsKey("error"))
             {
 				Dictionary<string, object> error = (Dictionary<string, object>)finalResponse["error"];
@@ -1099,7 +1103,7 @@ namespace MediaWiki
 			}
 
             //Parse and read
-            Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+            Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
             Dictionary<string, object> query = (Dictionary<string, object>)deser["query"];
             if (query.ContainsKey("allimages"))
                 return (object[])query["allimages"];
@@ -1120,7 +1124,7 @@ namespace MediaWiki
 			}
 
             //Parse and read
-            Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+            Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 
             return (string)((Dictionary<string, object>)((Dictionary<string, object>)deser["query"])["tokens"])["csrftoken"];
 		}
@@ -1255,7 +1259,7 @@ namespace MediaWiki
 					json = read.ReadToEnd();
 				}
 
-				Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
+				Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 				foreach (Dictionary<string, object> page in (object[])((Dictionary<string, object>)deser["query"])["categorymembers"])
 				{
 					yield return new Article(page);
