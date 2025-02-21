@@ -22,7 +22,7 @@ namespace Tasks
 		/// <summary>
 		/// If set, will walk up categories to try to map creator string.
 		/// </summary>
-		public const bool SlowCategoryWalk = false;
+		public const bool SlowCategoryWalk = true;
 
 		/// <summary>
 		/// Directory where task-specific data is stored.
@@ -314,7 +314,7 @@ namespace Tasks
 
 							foreach (InterwikiLink iwlink in interwikiArticle.iwlinks)
 							{
-								if (iwlink.prefix == "d")
+								if (iwlink.prefix == "d" && iwlink.value.StartsWith("Q"))
 								{
 									qid = iwlink.value;
 									Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
@@ -688,7 +688,7 @@ namespace Tasks
 				{
 					foreach (InterwikiLink iwlink in category.iwlinks)
 					{
-						if (iwlink.prefix == "d" && iwlink.value != "main")
+						if (iwlink.prefix == "d" && iwlink.value.StartsWith("Q"))
 						{
 							string qid = iwlink.value;
 							Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
@@ -713,7 +713,7 @@ namespace Tasks
 
 				// check parent cats
 				if (remainingDepth > 0 ||
-					(remainingDepth > -3 && category.GetTitle().Contains(" by ")))
+					(remainingDepth > -2 && category.GetTitle().Contains(" by ")))
 				{
 					HashSet<string> newEntities = new HashSet<string>();
 					CacheCategoryEntities(WikiUtils.GetCategories(categoryText), remainingDepth - 1, newEntities);
