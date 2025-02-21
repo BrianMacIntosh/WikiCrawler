@@ -14,6 +14,9 @@ namespace Tasks
 
 		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
 		{
+			//HACK:
+			PdArtReplacement.SkipCached = false;
+
 			{
 				Article[] articles = GlobalAPIs.Commons.GetPages(File.ReadAllLines(PdArtReplacement.NotUsExpiredLogFile));
 				foreach (Article article in articles)

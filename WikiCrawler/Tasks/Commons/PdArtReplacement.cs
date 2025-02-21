@@ -21,7 +21,13 @@ namespace Tasks
 			public string Author;
 			public string Date;
 			public int DeathYear;
+			public string InnerLicense;
 		}
+
+		/// <summary>
+		/// If set, skips files that are already cached.
+		/// </summary>
+		public static bool SkipCached = true;
 
 		/// <summary>
 		/// Directory where task-specific data is stored.
@@ -39,6 +45,11 @@ namespace Tasks
 		public static string FileCacheDirectory
 		{
 			get { return Path.Combine(ProjectDataDirectory, "files"); }
+		}
+
+		public static string FileDoneCacheDirectory
+		{
+			get { return Path.Combine(ProjectDataDirectory, "files-done"); }
 		}
 
 		private static List<Regex> s_dateRegexes = new List<Regex>();
@@ -86,12 +97,19 @@ namespace Tasks
 			get { return Path.Combine(ProjectDataDirectory, "not-us-expired.txt"); }
 		}
 
+		public static string NoPdArtFile
+		{
+			get { return Path.Combine(ProjectDataDirectory, "no-pd-art.txt"); }
+		}
+
 		public static string DateMappingFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "date-mappings.txt"); }
 		}
 
-		private static readonly Regex s_PdArtForms = new Regex(@"{{[Pp][Dd]\-[Aa]rt\s*}}");
+		private static readonly Regex s_PdArtRaw = new Regex(@"{{[Pp][Dd]\-[Aa]rt(\-[0-9]+)?(?:\-[Tt]wo)?\s*}}");
+		private static readonly Regex s_PdArtPdOld = new Regex(@"{{[Pp][Dd]\-[Aa]rt\s*\|(?:1=)?([Pp][Dd]\-[Oo]ld\-[0-9]+)\s*}}");
+		private static readonly Regex[] s_PdArtForms = new Regex[] { s_PdArtRaw, s_PdArtPdOld };
 
 		private static readonly string[] s_supersedeLicenses = new string[]
 		{
@@ -138,6 +156,7 @@ namespace Tasks
 		{
 			Directory.CreateDirectory(ProjectDataDirectory);
 			Directory.CreateDirectory(FileCacheDirectory);
+			Directory.CreateDirectory(FileDoneCacheDirectory);
 			m_dateMapping = new ManualMapping<MappingDate>(DateMappingFile);
 		}
 
@@ -171,21 +190,49 @@ OtherLicense: {8}",
 
 			PageTitle articleTitle = PageTitle.Parse(article.title);
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
+			string cacheFilename = GetCachePath(articleTitle);
 
-			Match pdArtMatch = s_PdArtForms.Match(worksheet.Text);
-			
-			if (!pdArtMatch.Success)
+			if (SkipCached)
 			{
+				if (File.Exists(cacheFilename))
+				{
+					Console.ForegroundColor = ConsoleColor.Yellow;
+					Console.WriteLine("  Already cached.");
+					Console.ResetColor();
+					return false;
+				}
+			}
+
+			Match pdArtRawMatch = s_PdArtRaw.Match(worksheet.Text);
+			Match pdArtPdOldMatch = s_PdArtPdOld.Match(worksheet.Text);
+			
+			if (!pdArtRawMatch.Success && !pdArtPdOldMatch.Success)
+			{
+				if (worksheet.Text.Contains("{{PD-Art-YorckProject}}"))
+				{
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("  PD-Art-YorckProject");
+					Console.ResetColor();
+					return false;
+				}
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine("  Failed to find PD-Art template.");
 				Console.ResetColor();
+				FinalizeCachedFile(articleTitle);
+				File.AppendAllText(NoPdArtFile, article.title + "\n", Encoding.UTF8);
 				return false;
+			}
+
+			string innerLicense = "";
+			if (pdArtPdOldMatch.Success)
+			{
+				innerLicense = pdArtPdOldMatch.Groups[1].Value;
 			}
 
 			// 1. need author death date
 			int creatorDeathYear = 9999;
 
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear);
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, innerLicense);
 
 			// A. does wikidata item have author info?
 			if (!string.IsNullOrEmpty(worksheet.Wikidata))
@@ -271,7 +318,7 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear);
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, innerLicense);
 
 			int pmaYear = System.DateTime.Now.Year - 100;
 			if (creatorDeathYear >= pmaYear)
@@ -383,6 +430,12 @@ OtherLicense: {8}",
 				// CC licenses are fine (probably a back-up license from the photographer)
 				if (license.StartsWith("cc-", StringComparison.InvariantCultureIgnoreCase))
 				{
+					//TODO: use Licensed-PD-Art
+					continue;
+				}
+
+				if (license.Equals("PD-Art-YorckProject"))
+				{
 					continue;
 				}
 
@@ -405,14 +458,21 @@ OtherLicense: {8}",
 
 			qtySuccess++;
 
-			//TODO: handle multiple PD-arts
-			pdArtMatch = s_PdArtForms.Match(worksheet.Text);
-			Debug.Assert(pdArtMatch.Success);
-			article.revisions[0].text = worksheet.Text.SubstringRange(0, pdArtMatch.Index - 1)
-				+ newLicense
-				+ worksheet.Text.SubstringRange(pdArtMatch.Index + pdArtMatch.Length, worksheet.Text.Length - 1);
-			article.Dirty = true;
-			article.Changes.Add("replacing PD-art with a more accurate license based on file data");
+			//TODO: handle multiple PD-arts of same form
+			foreach (Regex pdArtRegex in s_PdArtForms)
+			{
+				Match match = pdArtRegex.Match(worksheet.Text);
+				if (match.Success)
+				{
+					worksheet.Text = worksheet.Text.SubstringRange(0, match.Index - 1)
+						+ newLicense
+						+ worksheet.Text.SubstringRange(match.Index + match.Length, worksheet.Text.Length - 1);
+					article.Dirty = true;
+					article.Changes.Add("replacing PD-art with a more accurate license based on file data");
+				}
+			}
+
+			FinalizeCachedFile(articleTitle);
 
 			// remove date mapping
 			if (mappedDate != null)
@@ -424,22 +484,53 @@ OtherLicense: {8}",
 			return true;
 		}
 
-		private void CacheFile(PageTitle title, string author, string date, int deathyear)
+		private static string GetCacheFilename(PageTitle title)
+		{
+			return string.Concat(title.ToString().Split(Path.GetInvalidFileNameChars())) + ".txt";
+		}
+
+		public static string GetCachePath(PageTitle title)
+		{
+			string filename = Path.Combine(FileCacheDirectory, GetCacheFilename(title));
+			if (filename.Length > 250)
+			{
+				filename = filename.Substring(0, 250);
+			}
+			return filename;
+		}
+
+		private static string GetCacheDonePath(PageTitle title)
+		{
+			string filename = Path.Combine(FileDoneCacheDirectory, GetCacheFilename(title));
+			if (filename.Length > 250)
+			{
+				filename = filename.Substring(0, 250);
+			}
+			return filename;
+		}
+
+		private void CacheFile(PageTitle title, string author, string date, int deathyear, string innerLicense)
 		{
 			CachedFile cache;
 			cache.Title = title.ToString();
 			cache.Author = author;
 			cache.Date = date;
 			cache.DeathYear = deathyear;
+			cache.InnerLicense = innerLicense;
 
-			string filename = Path.Combine(FileCacheDirectory, string.Concat(cache.Title.Split(Path.GetInvalidFileNameChars())));
-			if (filename.Length > 250)
-			{
-				filename = filename.Substring(0, 250);
-			}
-			filename = filename + ".txt";
-
+			string filename = GetCachePath(title);
 			File.WriteAllText(filename, Newtonsoft.Json.JsonConvert.SerializeObject(cache), Encoding.UTF8);
+		}
+
+		private void FinalizeCachedFile(PageTitle title)
+		{
+			string filename1 = GetCachePath(title);
+			string filename2 = GetCacheDonePath(title);
+			if (File.Exists(filename1))
+			{
+				File.Delete(filename2);
+				File.Move(filename1, filename2);
+			}
 		}
 
 		private static bool IsAllowedOtherDateClass(string dateClass)
