@@ -45,6 +45,11 @@ namespace Tasks
 		/// </summary>
 		private static HashSet<PageTitle> s_VisitedCats = new HashSet<PageTitle>();
 
+		/// <summary>
+		/// Set of pages that are known to exist.
+		/// </summary>
+		private static HashSet<PageTitle> s_ExtantPages = new HashSet<PageTitle>();
+
 		private ManualMapping<MappingCreator> m_creatorMappings;
 
 		public string CreatorMappingFile
@@ -211,7 +216,7 @@ namespace Tasks
 			}
 			else if (CreatorUtility.TryGetCreatorTemplate(worksheet.Author, out PageTitle creatorTemplate))
 			{
-				if (!Article.IsNullOrMissing(GlobalAPIs.Commons.GetPage(creatorTemplate)))
+				if (GetPageExists(creatorTemplate))
 				{
 					// already a creator - do nothing
 					Console.ForegroundColor = ConsoleColor.DarkGreen;
@@ -488,6 +493,23 @@ namespace Tasks
 			}
 
 			return false;
+		}
+
+		private bool GetPageExists(PageTitle pageTitle)
+		{
+			if (s_ExtantPages.Contains(pageTitle))
+			{
+				return true;
+			}
+			else
+			{
+				bool bExists = !Article.IsNullOrMissing(GlobalAPIs.Commons.GetPage(pageTitle));
+				if (bExists)
+				{
+					s_ExtantPages.Add(pageTitle);
+				}
+				return bExists;
+			}
 		}
 
 		private Article GetInterwikiPage(string wiki, string page)
