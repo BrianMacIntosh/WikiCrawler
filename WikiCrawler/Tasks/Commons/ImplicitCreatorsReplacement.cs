@@ -688,6 +688,7 @@ namespace Tasks
 						string qid = GetEntityIdForCreator(creator);
 						if (!string.IsNullOrEmpty(qid))
 						{
+							qid = Qidify(qid);
 							Console.WriteLine("  Creator Wikidata '{0}'.", qid);
 							AddCategoryEntity(categoryTitle, qid);
 							outNewEntities.Add(qid);
@@ -698,6 +699,7 @@ namespace Tasks
 						string qid = WikiUtils.GetTemplateParameter("wikidata", creatorTemplate);
 						if (!string.IsNullOrEmpty(qid))
 						{
+							qid = Qidify(qid);
 							Console.WriteLine("  Creator Wikidata '{0}'.", qid);
 							AddCategoryEntity(categoryTitle, qid);
 							outNewEntities.Add(qid);
@@ -727,6 +729,7 @@ namespace Tasks
 					string qid = WikiUtils.GetTemplateParameter("qid", infoboxTemplate);
 					if (!string.IsNullOrEmpty(qid))
 					{
+						qid = Qidify(qid);
 						Console.WriteLine("  Explicit Wikidata '{0}'.", qid);
 						AddCategoryEntity(categoryTitle, qid);
 						outNewEntities.Add(qid);
@@ -748,6 +751,18 @@ namespace Tasks
 
 					outNewEntities.AddRange(newEntities);
 				}
+			}
+		}
+
+		private static string Qidify(string qid)
+		{
+			if (qid.StartsWith("Q"))
+			{
+				return qid;
+			}
+			else
+			{
+				return "Q" + qid;
 			}
 		}
 
