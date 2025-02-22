@@ -1,6 +1,6 @@
 ﻿using MediaWiki;
 using System.Collections.Generic;
-using System.IO;
+using System.Data.SQLite;
 using System.Linq;
 
 namespace Tasks
@@ -28,8 +28,9 @@ namespace Tasks
 		{
 			if (PdArtReplacement.SkipCached)
 			{
+				SQLiteConnection connection = PdArtReplacement.ConnectFilesDatabase(false);
 				return base.GetPagesToAffectUncached(startSortkey)
-					.Where(article => !File.Exists(PdArtReplacement.GetCachePath(PageTitle.Parse(article.title))));
+					.Where(article => !PdArtReplacement.IsFileCached(connection, PageTitle.Parse(article.title)));
 			}
 			else
 			{

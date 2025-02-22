@@ -1,6 +1,7 @@
 ﻿using MediaWiki;
 using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -15,15 +16,6 @@ namespace Tasks
 	/// </summary>
 	public class PdArtReplacement : BaseReplacement
 	{
-		private struct CachedFile
-		{
-			public string Title;
-			public string Author;
-			public string Date;
-			public int DeathYear;
-			public string InnerLicense;
-		}
-
 		/// <summary>
 		/// If set, skips files that are already cached.
 		/// </summary>
@@ -37,20 +29,15 @@ namespace Tasks
 			get { return Path.Combine(Configuration.DataDirectory, "PdArtReplacement"); }
 		}
 
-		public static string InsidePMA70Log
+		public static string FilesDatabaseFile
 		{
-			get { return Path.Combine(ProjectDataDirectory, "inside-pma-70.txt"); }
+			get { return Path.Combine(ProjectDataDirectory, "files.db"); }
 		}
 
-		public static string FileCacheDirectory
-		{
-			get { return Path.Combine(ProjectDataDirectory, "files"); }
-		}
-
-		public static string FileDoneCacheDirectory
-		{
-			get { return Path.Combine(ProjectDataDirectory, "files-done"); }
-		}
+		/// <summary>
+		/// Database caching information about files that have been examined so far.
+		/// </summary>
+		private SQLiteConnection m_filesDatabase;
 
 		private static List<Regex> s_dateRegexes = new List<Regex>();
 		private static List<Regex> s_centuryRegexes = new List<Regex>();
@@ -90,11 +77,6 @@ namespace Tasks
 		public static string DuplicateLicensesLogFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "duplicate-licenses.txt"); }
-		}
-
-		public static string NotUsExpiredLogFile
-		{
-			get { return Path.Combine(ProjectDataDirectory, "not-us-expired.txt"); }
 		}
 
 		public static string NoPdArtFile
@@ -155,9 +137,21 @@ namespace Tasks
 		public PdArtReplacement()
 		{
 			Directory.CreateDirectory(ProjectDataDirectory);
-			Directory.CreateDirectory(FileCacheDirectory);
-			Directory.CreateDirectory(FileDoneCacheDirectory);
 			m_dateMapping = new ManualMapping<MappingDate>(DateMappingFile);
+
+			m_filesDatabase = ConnectFilesDatabase(true);
+		}
+
+		public static SQLiteConnection ConnectFilesDatabase(bool bWantsWrite)
+		{
+			SQLiteConnectionStringBuilder connectionString = new SQLiteConnectionStringBuilder
+			{
+				{ "Data Source", FilesDatabaseFile },
+				{ "Mode", bWantsWrite ? "ReadWrite" : "ReadOnly" }
+			};
+			SQLiteConnection connection = new SQLiteConnection(connectionString.ConnectionString);
+			connection.Open();
+			return connection;
 		}
 
 		public override void SaveOut()
@@ -190,22 +184,29 @@ OtherLicense: {8}",
 
 			PageTitle articleTitle = PageTitle.Parse(article.title);
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
-			string cacheFilename = GetCachePath(articleTitle);
 
-			if (SkipCached)
+			if (SkipCached && IsFileCached(m_filesDatabase, articleTitle))
 			{
-				if (File.Exists(cacheFilename))
-				{
-					Console.ForegroundColor = ConsoleColor.Yellow;
-					Console.WriteLine("  Already cached.");
-					Console.ResetColor();
-					return false;
-				}
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("  Already cached.");
+				Console.ResetColor();
+				return false;
 			}
 
 			Match pdArtRawMatch = s_PdArtRaw.Match(worksheet.Text);
 			Match pdArtPdOldMatch = s_PdArtPdOld.Match(worksheet.Text);
-			
+
+			string pdArtLicense = "";
+			if (pdArtPdOldMatch.Success)
+			{
+				pdArtLicense = pdArtPdOldMatch.Groups[0].Value;
+			}
+
+			// 1. need author death date
+			int creatorDeathYear = 9999;
+
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, pdArtLicense);
+
 			if (!pdArtRawMatch.Success && !pdArtPdOldMatch.Success)
 			{
 				if (worksheet.Text.Contains("{{PD-Art-YorckProject}}"))
@@ -218,21 +219,10 @@ OtherLicense: {8}",
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine("  Failed to find PD-Art template.");
 				Console.ResetColor();
-				FinalizeCachedFile(articleTitle);
+				SetLicenseReplaced(articleTitle, 2);
 				File.AppendAllText(NoPdArtFile, article.title + "\n", Encoding.UTF8);
 				return false;
 			}
-
-			string innerLicense = "";
-			if (pdArtPdOldMatch.Success)
-			{
-				innerLicense = pdArtPdOldMatch.Groups[1].Value;
-			}
-
-			// 1. need author death date
-			int creatorDeathYear = 9999;
-
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, innerLicense);
 
 			// A. does wikidata item have author info?
 			if (!string.IsNullOrEmpty(worksheet.Wikidata))
@@ -318,17 +308,11 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, innerLicense);
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, pdArtLicense);
 
 			int pmaYear = System.DateTime.Now.Year - 100;
 			if (creatorDeathYear >= pmaYear)
 			{
-				// report PMAs that are likely to be invalid
-				if (System.DateTime.Now.Year - creatorDeathYear <= 70)
-				{
-					File.AppendAllText(InsidePMA70Log, article.title + "\n", Encoding.UTF8);
-				}
-
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine("  Death year {0} is inside max PMA.", creatorDeathYear);
 				Console.ResetColor();
@@ -407,7 +391,6 @@ OtherLicense: {8}",
 				Console.WriteLine("  Date {0} is after the US expired threshold.", latestYear);
 				Console.ResetColor();
 				qtyNotPDUS++;
-				File.AppendAllText(NotUsExpiredLogFile, article.title + "\n");
 				return false;
 			}
 
@@ -472,7 +455,7 @@ OtherLicense: {8}",
 				}
 			}
 
-			FinalizeCachedFile(articleTitle);
+			SetLicenseReplaced(articleTitle, 1);
 
 			// remove date mapping
 			if (mappedDate != null)
@@ -484,53 +467,45 @@ OtherLicense: {8}",
 			return true;
 		}
 
-		private static string GetCacheFilename(PageTitle title)
+		private void CacheFile(PageTitle title, string author, string date, int deathyear, string pdArtLicense)
 		{
-			return string.Concat(title.ToString().Split(Path.GetInvalidFileNameChars())) + ".txt";
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, authorDeathYear, pdArtLicense) "
+				+ "VALUES ($pageTitle, $authorString, $dateString, $authorDeathYear, $pdArtLicense) "
+				+ "ON CONFLICT (pageTitle) DO UPDATE "
+				+ "SET authorString=$authorString, dateString=$dateString, authorDeathYear=$authorDeathYear, pdArtLicense=$pdArtLicense";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("authorString", author);
+			command.Parameters.AddWithValue("dateString", date);
+			command.Parameters.AddWithValue("authorDeathYear", deathyear);
+			command.Parameters.AddWithValue("pdArtLicense", pdArtLicense);
+			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
-		public static string GetCachePath(PageTitle title)
+		public static bool IsFileCached(SQLiteConnection connection, PageTitle title)
 		{
-			string filename = Path.Combine(FileCacheDirectory, GetCacheFilename(title));
-			if (filename.Length > 250)
+			SQLiteCommand command = connection.CreateCommand();
+			command.CommandText = "SELECT COUNT(*) FROM files WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			using (var reader = command.ExecuteReader())
 			{
-				filename = filename.Substring(0, 250);
+				reader.Read();
+				return reader.GetInt32(0) > 0;
 			}
-			return filename;
 		}
 
-		private static string GetCacheDonePath(PageTitle title)
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="title"></param>
+		/// <param name="state">0 = not replaced, 1 = PD-Art replaced, 2 = PD-Art not found, 3 = either 1 or 2 (unknown)</param>
+		private void SetLicenseReplaced(PageTitle title, int state)
 		{
-			string filename = Path.Combine(FileDoneCacheDirectory, GetCacheFilename(title));
-			if (filename.Length > 250)
-			{
-				filename = filename.Substring(0, 250);
-			}
-			return filename;
-		}
-
-		private void CacheFile(PageTitle title, string author, string date, int deathyear, string innerLicense)
-		{
-			CachedFile cache;
-			cache.Title = title.ToString();
-			cache.Author = author;
-			cache.Date = date;
-			cache.DeathYear = deathyear;
-			cache.InnerLicense = innerLicense;
-
-			string filename = GetCachePath(title);
-			File.WriteAllText(filename, Newtonsoft.Json.JsonConvert.SerializeObject(cache), Encoding.UTF8);
-		}
-
-		private void FinalizeCachedFile(PageTitle title)
-		{
-			string filename1 = GetCachePath(title);
-			string filename2 = GetCacheDonePath(title);
-			if (File.Exists(filename1))
-			{
-				File.Delete(filename2);
-				File.Move(filename1, filename2);
-			}
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET bLicenseReplaced=$state WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("state", state);
+			command.ExecuteNonQuery();
 		}
 
 		private static bool IsAllowedOtherDateClass(string dateClass)
