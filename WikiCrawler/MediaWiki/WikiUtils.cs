@@ -652,8 +652,13 @@ namespace MediaWiki
 		/// </summary>\
 		public static bool HasTemplate(string text, string template)
 		{
+			string escapeTemplate = Regex.Escape(template);
+
 			// template names are case-insensitive on the first letter
-			return text.Contains("{{" + template.ToLowerFirst()) || text.Contains("{{" + template.ToUpperFirst());
+			escapeTemplate = "[" + char.ToUpper(escapeTemplate[0]) + char.ToLower(escapeTemplate[0]) + "]" + escapeTemplate.Substring(1);
+
+			Regex regex = new Regex(@"{{\s*" + escapeTemplate + @"\s*[\|}]"); //TODO: check for double braces only
+			return regex.IsMatch(text);
 		}
 
 		/// <summary>
