@@ -500,7 +500,8 @@ namespace MediaWiki
 		/// <summary>
 		/// Searches for pages by a search query.
 		/// </summary>
-		public IEnumerable<Article> Search(string srsearch, string srnamespace = "", int srlimit = Limit.Max)
+		/// <param name="srnamespace">Build with <see cref="Api.BuildNamespaceList(Namespace[])"/></param>
+		public IEnumerable<Article> Search(string srsearch, string srnamespace = "", int srlimit = Limit.Max, string srwhat = "")
 		{
 			//TODO: test me
 
@@ -517,10 +518,13 @@ namespace MediaWiki
 			{
 				baseQuery += "&srlimit=" + GetLimitParameter(srlimit);
 			}
+			if (!string.IsNullOrEmpty(srwhat))
+			{
+				baseQuery += "&srwhat=" + UrlEncode(srwhat);
+			}
 			string query = baseQuery + "&continue=";
 
-			bool doContinue = false;
-
+			bool doContinue;
 			do
 			{
 				HttpWebRequest request = CreateApiRequest();
@@ -546,7 +550,7 @@ namespace MediaWiki
 					query = baseQuery;
 					foreach (KeyValuePair<string, object> kv in continueData)
 					{
-						query += "&" + kv.Key + "=" + (string)kv.Value;
+						query += "&" + kv.Key + "=" + kv.Value.ToString();
 					}
 				}
 			}
