@@ -67,7 +67,6 @@ namespace Tasks
 			}
 			try
 			{
-				HttpWebRequest request = (HttpWebRequest)WebRequest.Create(m_heartbeatEndpoint);
 				string serialized;
 				lock (m_heartbeatData)
 				{
@@ -75,7 +74,7 @@ namespace Tasks
 					serialized = JsonConvert.SerializeObject(m_heartbeatData);
 				}
 				string dataString = "d=" + System.Web.HttpUtility.UrlEncode(serialized);
-				Stream response = EasyWeb.Post(request, dataString);
+				Stream response = EasyWeb.Post(CreateHeartbeatRequest, dataString);
 				response.Dispose();
 
 				// edits are additive
@@ -85,6 +84,11 @@ namespace Tasks
 			{
 				Console.WriteLine(e.ToString());
 			}
+		}
+
+		private HttpWebRequest CreateHeartbeatRequest()
+		{
+			return (HttpWebRequest)WebRequest.Create(m_heartbeatEndpoint);
 		}
 	}
 }

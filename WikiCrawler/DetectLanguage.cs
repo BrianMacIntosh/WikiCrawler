@@ -16,12 +16,15 @@ namespace WikiCrawler
 		private const string API_URL = "http://ws.detectlanguage.com/0.2/detect";
 		private const string API_KEY = "b7703c92d08d1d73a8582b6d044a85de";
 
+		private static HttpWebRequest CreateRequest()
+		{
+			return (HttpWebRequest)WebRequest.Create(API_URL);
+		}
+
 		public static string Detect(string text)
 		{
-			HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(API_URL);
-
 			using (StreamReader reader = new StreamReader(
-				EasyWeb.Post(request, "q=" + HttpUtility.UrlEncode(text) + "&key=" + API_KEY)))
+				EasyWeb.Post(CreateRequest, "q=" + HttpUtility.UrlEncode(text) + "&key=" + API_KEY)))
 			{
 				string json = reader.ReadToEnd();
 				Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
@@ -34,8 +37,6 @@ namespace WikiCrawler
 
 		public static string[] Detect(string[] text)
 		{
-			HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(API_URL);
-
 			string q = "";
 			for (int c = 0; c < text.Length; c++)
 			{
@@ -44,7 +45,7 @@ namespace WikiCrawler
 
 			using (StreamReader reader = new StreamReader(
 				//new FileStream("lang_response.json", FileMode.Open)))
-				EasyWeb.Post(request, q + "key=" + API_KEY)))
+				EasyWeb.Post(CreateRequest, q + "key=" + API_KEY)))
 			{
 				string json = reader.ReadToEnd();
 				/*using (StreamWriter writer = new StreamWriter(new FileStream("lang_response.json", FileMode.Create)))

@@ -68,7 +68,7 @@ class EasyWeb
 		}
 	}
 
-	public static Stream Post(HttpWebRequest request, Dictionary<string, string> data)
+	public static Stream Post(Func<HttpWebRequest> requestFactory, Dictionary<string, string> data)
 	{
 		string dataString = "";
 		foreach (KeyValuePair<string, string> pair in data)
@@ -79,23 +79,42 @@ class EasyWeb
 			}
 			dataString += pair.Key + "=" + System.Web.HttpUtility.UrlEncode(pair.Value);
 		}
-		return Post(request, dataString);
+		return Post(requestFactory, dataString);
 	}
 
-	public static Stream Post(HttpWebRequest request, string data)
+	public static Stream Post(Func<HttpWebRequest> requestFactory, string data)
 	{
 		byte[] datainflate = Encoding.UTF8.GetBytes(data);
+	retry:
+		HttpWebRequest request = requestFactory();
 		request.Method = "POST";
 		request.ContentType = "application/x-www-form-urlencoded";
-		//request.ContentLength = datainflate.Length;
 
 		WaitForDelay(request.RequestUri);
+
+		int retryCount = 0;
 
 		using (Stream newStream = request.GetRequestStream())
 		{
 			newStream.Write(datainflate, 0, datainflate.Length);
 		}
-		return request.GetResponse().GetResponseStream();
+
+		try
+		{
+			return request.GetResponse().GetResponseStream();
+		}
+		catch (WebException e)
+		{
+			HttpStatusCode statusCode = ((HttpWebResponse)e.Response).StatusCode;
+			if (retryCount < 5
+				&& (statusCode == HttpStatusCode.BadGateway || statusCode == HttpStatusCode.ServiceUnavailable))
+			{
+				Thread.Sleep(retryCount * 1000);
+				retryCount++;
+				goto retry;
+			}
+			throw;
+		}
 	}
 
 	public static Stream Upload(HttpWebRequest request, Dictionary<string, string> data,
