@@ -422,7 +422,7 @@ OtherLicense: {8}",
 					continue;
 				}
 
-				if (WikiUtils.GetTemplateStart(worksheet.Text, license) >= 0)
+				if (WikiUtils.HasTemplate(worksheet.Text, license))
 				{
 					Console.ForegroundColor = ConsoleColor.Red;
 					Console.WriteLine("  Contains other license '{0}'.", license);
