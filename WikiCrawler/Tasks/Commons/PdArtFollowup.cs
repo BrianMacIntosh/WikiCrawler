@@ -10,10 +10,14 @@ namespace Tasks
 		public PdArtFollowup()
 			: base(PdArtFixup.CreateReplacement())
 		{
+			HeartbeatEnabled = true;
 		}
 
 		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
 		{
+			PdArtReplacement.SkipCached = false;
+			ImplicitCreatorsReplacement.SlowCategoryWalk = false;
+
 			ManualMapping<MappingDate> dateMapping = new ManualMapping<MappingDate>(PdArtReplacement.DateMappingFile);
 			foreach (var kv in dateMapping)
 			{

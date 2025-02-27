@@ -71,8 +71,6 @@ namespace Tasks
 
 		public ReplaceIn(BaseReplacement replacement)
 		{
-			HeartbeatEnabled = true;
-
 			m_replacement = replacement;
 
 			Directory.CreateDirectory(ProjectDataDirectory);
