@@ -22,7 +22,7 @@ namespace Tasks
 		/// <summary>
 		/// If set, will walk up categories to try to map creator string.
 		/// </summary>
-		public const bool SlowCategoryWalk = true;
+		public static bool SlowCategoryWalk = true;
 
 		/// <summary>
 		/// Directory where task-specific data is stored.
