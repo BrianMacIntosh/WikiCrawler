@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Web;
-using System.IO;
 using System.Web.Script.Serialization;
 
 namespace WikiCrawler
@@ -14,7 +11,20 @@ namespace WikiCrawler
 		//free limit is 5000/day
 
 		private const string API_URL = "http://ws.detectlanguage.com/0.2/detect";
-		private const string API_KEY = "b7703c92d08d1d73a8582b6d044a85de";
+		private static readonly string API_KEY;
+
+		/// <summary>
+		/// Directory where task-specific data is stored.
+		/// </summary>
+		public static string ApiKeyFile
+		{
+			get { return Path.Combine(Configuration.DataDirectory, "key-detectlanguage.txt"); }
+		}
+
+		static DetectLanguage()
+		{
+			API_KEY = File.ReadAllText(ApiKeyFile).Trim();
+		}
 
 		private static HttpWebRequest CreateRequest()
 		{
