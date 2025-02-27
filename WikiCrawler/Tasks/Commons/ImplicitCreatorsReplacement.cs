@@ -595,6 +595,8 @@ namespace Tasks
 			// go searching through cats that haven't been visited yet
 			CacheCategoryEntities(categories, remainingDepth, outNewEntities);
 
+			outNewEntities.Remove("Q000");
+
 			// fetch any new entities
 			foreach (Entity newEntity in GlobalAPIs.Wikidata.GetEntities(outNewEntities.ToList()))
 			{
