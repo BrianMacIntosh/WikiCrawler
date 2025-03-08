@@ -201,16 +201,23 @@ OtherLicense: {8}",
 			Match pdArtRawMatch = s_PdArtRaw.Match(worksheet.Text);
 			Match pdArtPdOldMatch = s_PdArtPdOld.Match(worksheet.Text);
 
-			string pdArtLicense = "";
+			string pdArtLicense = null;
+			string innerLicense = null;
 			if (pdArtPdOldMatch.Success)
 			{
 				pdArtLicense = pdArtPdOldMatch.Groups[0].Value;
+				innerLicense = pdArtPdOldMatch.Groups[1].Value;
+			}
+			else if (pdArtRawMatch.Success)
+			{
+				pdArtLicense = pdArtRawMatch.Groups[0].Value;
+				innerLicense = "";
 			}
 
 			// 1. need author death date
 			int creatorDeathYear = 9999;
 
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, pdArtLicense);
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, pdArtLicense, innerLicense);
 
 			if (!pdArtRawMatch.Success && !pdArtPdOldMatch.Success)
 			{
@@ -323,7 +330,7 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, pdArtLicense);
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, pdArtLicense, innerLicense);
 
 			int pmaYear = System.DateTime.Now.Year - 100;
 			if (creatorDeathYear >= pmaYear)
@@ -482,18 +489,32 @@ OtherLicense: {8}",
 			return true;
 		}
 
-		private void CacheFile(PageTitle title, string author, string date, int deathyear, string pdArtLicense)
+		private void CacheFile(PageTitle title, string author, string date, int deathyear, string pdArtLicense, string innerLicense)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
-			command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, authorDeathYear, pdArtLicense) "
-				+ "VALUES ($pageTitle, $authorString, $dateString, $authorDeathYear, $pdArtLicense) "
-				+ "ON CONFLICT (pageTitle) DO UPDATE "
-				+ "SET authorString=$authorString, dateString=$dateString, authorDeathYear=$authorDeathYear, pdArtLicense=$pdArtLicense";
+
+			// do not replace a cached author deathyear with a junk one
+			if (deathyear == 9999)
+			{
+				command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, authorDeathYear, pdArtLicense, innerLicense) "
+					+ "VALUES ($pageTitle, $authorString, $dateString, $authorDeathYear, $pdArtLicense, $innerLicense) "
+					+ "ON CONFLICT (pageTitle) DO UPDATE "
+					+ "SET authorString=$authorString, dateString=$dateString, pdArtLicense=$pdArtLicense, innerLicense=$innerLicense";
+			}
+			else
+			{
+				command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, authorDeathYear, pdArtLicense, innerLicense) "
+					+ "VALUES ($pageTitle, $authorString, $dateString, $authorDeathYear, $pdArtLicense, $innerLicense) "
+					+ "ON CONFLICT (pageTitle) DO UPDATE "
+					+ "SET authorString=$authorString, dateString=$dateString, authorDeathYear=$authorDeathYear, pdArtLicense=$pdArtLicense, innerLicense=$innerLicense";
+			}
+			
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("authorString", author);
 			command.Parameters.AddWithValue("dateString", date);
 			command.Parameters.AddWithValue("authorDeathYear", deathyear);
 			command.Parameters.AddWithValue("pdArtLicense", pdArtLicense);
+			command.Parameters.AddWithValue("innerLicense", innerLicense);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
