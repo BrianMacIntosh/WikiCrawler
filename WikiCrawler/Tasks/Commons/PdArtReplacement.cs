@@ -22,6 +22,11 @@ namespace Tasks
 		public static bool SkipCached = true;
 
 		/// <summary>
+		/// If set, skips any attempts to look up author deathyears with extra queries.
+		/// </summary>
+		public static bool SkipAuthorLookup = false;
+
+		/// <summary>
 		/// Directory where task-specific data is stored.
 		/// </summary>
 		public static string ProjectDataDirectory
@@ -225,28 +230,38 @@ OtherLicense: {8}",
 			}
 
 			// A. does wikidata item have author info?
-			if (!string.IsNullOrEmpty(worksheet.Wikidata))
+			if (!SkipAuthorLookup && !string.IsNullOrEmpty(worksheet.Wikidata))
 			{
-				Entity artworkEntity = GlobalAPIs.Wikidata.GetEntity(worksheet.Wikidata);
-				if (artworkEntity != null)
+				try
 				{
-					var artistEntities = artworkEntity.GetClaimValuesAsEntities(Wikidata.Prop_Creator, GlobalAPIs.Wikidata);
-					if (artistEntities.Any())
+					Entity artworkEntity = GlobalAPIs.Wikidata.GetEntity(worksheet.Wikidata);
+					if (artworkEntity != null)
 					{
-						creatorDeathYear = artistEntities
-							.Select(e =>
-							{
-								IEnumerable<MediaWiki.DateTime> deathTimes = e.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath)
-									.Where(date => date != null && date.Precision >= MediaWiki.DateTime.YearPrecision);
-								if (deathTimes.Any())
+						var artistEntities = artworkEntity.GetClaimValuesAsEntities(Wikidata.Prop_Creator, GlobalAPIs.Wikidata);
+						if (artistEntities.Any())
+						{
+							creatorDeathYear = artistEntities
+								.Select(e =>
 								{
-									return deathTimes.Max(date => date.GetYear());
-								}
-								else
-								{
-									return 9999;
-								}
-							}).Max();
+									IEnumerable<MediaWiki.DateTime> deathTimes = e.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath)
+										.Where(date => date != null && date.Precision >= MediaWiki.DateTime.YearPrecision);
+									if (deathTimes.Any())
+									{
+										return deathTimes.Max(date => date.GetYear());
+									}
+									else
+									{
+										return 9999;
+									}
+								}).Max();
+						}
+					}
+				}
+				catch (WikimediaCodeException e)
+				{
+					if (e.Code != "no-such-entity")
+					{
+						throw;
 					}
 				}
 			}
