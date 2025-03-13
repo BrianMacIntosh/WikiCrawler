@@ -16,6 +16,14 @@ namespace Tasks
 	/// </summary>
 	public class PdArtReplacement : BaseReplacement
 	{
+		public enum ReplacementStatus
+		{
+			NotReplaced = 0,
+			Replaced = 1,
+			NotFound = 2,
+			Unknown = 3 // but processed at least once
+		}
+
 		/// <summary>
 		/// If set, skips files that are already cached.
 		/// </summary>
@@ -82,11 +90,6 @@ namespace Tasks
 		public static string DuplicateLicensesLogFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "duplicate-licenses.txt"); }
-		}
-
-		public static string NoPdArtFile
-		{
-			get { return Path.Combine(ProjectDataDirectory, "no-pd-art.txt"); }
 		}
 
 		public static string DateMappingFile
@@ -214,10 +217,12 @@ OtherLicense: {8}",
 				innerLicense = "";
 			}
 
+			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
+
 			// 1. need author death date
 			int creatorDeathYear = 9999;
 
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, pdArtLicense, innerLicense);
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, pdArtLicense, innerLicense);
 
 			if (!pdArtRawMatch.Success && !pdArtPdOldMatch.Success)
 			{
@@ -231,8 +236,7 @@ OtherLicense: {8}",
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine("  Failed to find PD-Art template.");
 				Console.ResetColor();
-				SetLicenseReplaced(articleTitle, 2);
-				File.AppendAllText(NoPdArtFile, article.title + "\n", Encoding.UTF8);
+				SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound);
 				return false;
 			}
 
@@ -330,7 +334,7 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, creatorDeathYear, pdArtLicense, innerLicense);
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, pdArtLicense, innerLicense);
 
 			int pmaYear = System.DateTime.Now.Year - 100;
 			if (creatorDeathYear >= pmaYear)
@@ -345,7 +349,6 @@ OtherLicense: {8}",
 			MappingDate mappedDate = null;
 
 			// 2. try to parse file/pub date
-			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
 			int latestYear;
 			if (string.IsNullOrEmpty(worksheet.Date))
 			{
@@ -477,7 +480,7 @@ OtherLicense: {8}",
 				}
 			}
 
-			SetLicenseReplaced(articleTitle, 1);
+			SetLicenseReplaced(articleTitle, ReplacementStatus.Replaced);
 
 			// remove date mapping
 			if (mappedDate != null)
@@ -489,29 +492,30 @@ OtherLicense: {8}",
 			return true;
 		}
 
-		private void CacheFile(PageTitle title, string author, string date, int deathyear, string pdArtLicense, string innerLicense)
+		private void CacheFile(PageTitle title, string author, string date, int? latestYear, int deathyear, string pdArtLicense, string innerLicense)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 
 			// do not replace a cached author deathyear with a junk one
 			if (deathyear == 9999)
 			{
-				command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, authorDeathYear, pdArtLicense, innerLicense) "
-					+ "VALUES ($pageTitle, $authorString, $dateString, $authorDeathYear, $pdArtLicense, $innerLicense) "
+				command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, latestYear, authorDeathYear, pdArtLicense, innerLicense) "
+					+ "VALUES ($pageTitle, $authorString, $dateString, $latestYear, $authorDeathYear, $pdArtLicense, $innerLicense) "
 					+ "ON CONFLICT (pageTitle) DO UPDATE "
 					+ "SET authorString=$authorString, dateString=$dateString, pdArtLicense=$pdArtLicense, innerLicense=$innerLicense";
 			}
 			else
 			{
-				command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, authorDeathYear, pdArtLicense, innerLicense) "
-					+ "VALUES ($pageTitle, $authorString, $dateString, $authorDeathYear, $pdArtLicense, $innerLicense) "
+				command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, latestYear, authorDeathYear, pdArtLicense, innerLicense) "
+					+ "VALUES ($pageTitle, $authorString, $dateString, $latestYear, $authorDeathYear, $pdArtLicense, $innerLicense) "
 					+ "ON CONFLICT (pageTitle) DO UPDATE "
-					+ "SET authorString=$authorString, dateString=$dateString, authorDeathYear=$authorDeathYear, pdArtLicense=$pdArtLicense, innerLicense=$innerLicense";
+					+ "SET authorString=$authorString, dateString=$dateString, latestYear=$latestYear, authorDeathYear=$authorDeathYear, pdArtLicense=$pdArtLicense, innerLicense=$innerLicense";
 			}
 			
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("authorString", author);
 			command.Parameters.AddWithValue("dateString", date);
+			command.Parameters.AddWithValue("latestYear", latestYear);
 			command.Parameters.AddWithValue("authorDeathYear", deathyear);
 			command.Parameters.AddWithValue("pdArtLicense", pdArtLicense);
 			command.Parameters.AddWithValue("innerLicense", innerLicense);
@@ -534,13 +538,12 @@ OtherLicense: {8}",
 		/// 
 		/// </summary>
 		/// <param name="title"></param>
-		/// <param name="state">0 = not replaced, 1 = PD-Art replaced, 2 = PD-Art not found, 3 = either 1 or 2 (unknown)</param>
-		private void SetLicenseReplaced(PageTitle title, int state)
+		private void SetLicenseReplaced(PageTitle title, ReplacementStatus state)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET bLicenseReplaced=$state WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
-			command.Parameters.AddWithValue("state", state);
+			command.Parameters.AddWithValue("state", (int)state);
 			command.ExecuteNonQuery();
 		}
 
