@@ -71,7 +71,8 @@ namespace Tasks
 				|| string.Equals(author, "sconosciuto", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "non noto", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "non identifié", StringComparison.InvariantCultureIgnoreCase)
-				|| string.Equals(author, "author unknown", StringComparison.InvariantCultureIgnoreCase);
+				|| string.Equals(author, "author unknown", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "{{unknown}}", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		private static bool IsConvertibleUnknownArtist(string author)
@@ -714,7 +715,7 @@ namespace Tasks
 				{
 					foreach (InterwikiLink iwlink in category.iwlinks)
 					{
-						if (iwlink.prefix == "d" && iwlink.value.StartsWith("Q"))
+						if (s_qidRegex.IsMatch(iwlink.value))
 						{
 							string qid = iwlink.value;
 							Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
@@ -755,6 +756,8 @@ namespace Tasks
 				}
 			}
 		}
+
+		private static Regex s_qidRegex = new Regex("^Q[0-9]+$");
 
 		private static string Qidify(string qid)
 		{
