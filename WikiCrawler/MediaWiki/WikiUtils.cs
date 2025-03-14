@@ -268,8 +268,9 @@ namespace MediaWiki
 		public static int GetTemplateStart(string text, string templateName)
 		{
 			//TODO: proper case-sensitivity
-			//TODO: does not check that template name ends on a boundary
-			return text.IndexOf("{{" + templateName, StringComparison.InvariantCultureIgnoreCase);
+			Regex regex = new Regex(@"{{\s*:?\s*(?:Template:)?\s*" + Regex.Escape(templateName) + @"\s*[\|}]", RegexOptions.IgnoreCase);
+			Match match = regex.Match(text);
+			return match.Success ? match.Index : -1;
 		}
 
 		public static readonly string[] PrimaryInfoTemplates = new string[]
