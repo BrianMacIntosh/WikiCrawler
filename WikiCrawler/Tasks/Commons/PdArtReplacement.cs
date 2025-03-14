@@ -21,7 +21,6 @@ namespace Tasks
 			NotReplaced = 0,
 			Replaced = 1,
 			NotFound = 2,
-			Unknown = 3 // but processed at least once
 		}
 
 		/// <summary>
@@ -97,9 +96,23 @@ namespace Tasks
 			get { return Path.Combine(ProjectDataDirectory, "date-mappings.txt"); }
 		}
 
-		private static readonly Regex s_PdArtRaw = new Regex(@"{{[Pp][Dd]\-[Aa]rt(\-[0-9]+)?(?:\-[Tt]wo)?\s*}}");
-		private static readonly Regex s_PdArtPdOld = new Regex(@"{{[Pp][Dd]\-[Aa]rt\s*\|(?:1=)?([Pp][Dd]\-[Oo]ld\-[0-9]+)\s*}}");
-		private static readonly Regex[] s_PdArtForms = new Regex[] { s_PdArtRaw, s_PdArtPdOld };
+		private static readonly string[] s_pdArtTemplates = new string[]
+		{
+			"pd-art",
+			"dp-art",
+			"pd-art/en",
+			"pd-art/pt-br",
+			"pd-art-70",
+			"pd-art-old-70",
+			"pd-art-life-70",
+			"pd-art-100",
+			//"pd-art-old-100-expired",
+			"pd-art-us",
+			"pd-art-two",
+			"licensed-pd-art",
+			"licensed pd-art",
+			"licensed-pd-art-two",
+		};
 
 		private static readonly string[] s_supersedeLicenses = new string[]
 		{
@@ -119,6 +132,7 @@ namespace Tasks
 			"PD-old-70-1964",
 			"PD-old-70-1996",
 			"PD-old-70-expired",
+			"PD-old-70-1923",
 			"PD-old-75",
 			"PD-old-75-1964",
 			"PD-old-75-1996",
@@ -140,6 +154,39 @@ namespace Tasks
 			"PD-old-auto-1996",
 			"PD-old-auto-expired",
 			"PD-US",
+			"PD-US-expired",
+			"PD-US-not renewed",
+			"PD-US-no notice",
+			"PD-1923",
+			"PD-1924",
+			"PD-1925",
+			"PD-1926",
+			"PD-1927",
+			"PD-1928",
+			"PD-1929",
+			"PD-1930",
+			"PD-1996",
+			"Unclear-PD-US-old-70",
+		};
+
+		private static readonly Regex s_goodPdArtRegex = new Regex(@"{{pd-art\|pd-old-auto-expired\|deathyear=[0-9]+}}", RegexOptions.IgnoreCase);
+
+		//TODO: add more
+		//TODO: implement me
+		private static readonly string[] s_removeCats = new string[]
+		{
+			"[[Category:PD-Art (PD-old)]]",
+			"[[Category:PD-Art (PD-old default)]]",
+			"[[Category:PD Old]]",
+			"[[Category:PD-Art (PD-old-100)]]",
+			"[[Category:PD-Art (PD-old-50)]]",
+			"[[Category:PD-Art (PD-old-70)]]",
+			"[[Category:PD-Art (PD-old-75)]]",
+			"[[Category:PD-Art (PD-old-80)]]",
+			"[[Category:PD-Art (PD-old-90)]]",
+			"[[Category:PD-Art (PD-old-95)]]",
+			"[[Category:PD-Art (PD-old default)]]",
+			"[[Category:PD-Art (PD-old-60-expired)]]",
 		};
 
 		public PdArtReplacement()
@@ -190,6 +237,12 @@ OtherLicense: {8}",
 		{
 			qtyProcessed++;
 
+			if (article.missing)
+			{
+				RemoveFromCache(article.title);
+				return false;
+			}
+
 			PageTitle articleTitle = PageTitle.Parse(article.title);
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
@@ -201,20 +254,48 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			Match pdArtRawMatch = s_PdArtRaw.Match(worksheet.Text);
-			Match pdArtPdOldMatch = s_PdArtPdOld.Match(worksheet.Text);
+			//TODO: check pd-art is already acceptably replaced
 
+			// locate pd-art template
 			string pdArtLicense = null;
-			string innerLicense = null;
-			if (pdArtPdOldMatch.Success)
+			bool bMultiplePdArts = false;
+			foreach (string template in s_pdArtTemplates)
 			{
-				pdArtLicense = pdArtPdOldMatch.Groups[0].Value;
-				innerLicense = pdArtPdOldMatch.Groups[1].Value;
+				string workingText = worksheet.Text;
+				do
+				{
+					string content = WikiUtils.ExtractTemplate(workingText, template);
+					if (string.IsNullOrEmpty(content))
+					{
+						break;
+					}
+
+					if (!string.IsNullOrEmpty(pdArtLicense))
+					{
+						bMultiplePdArts = true;
+						break;
+					}
+					else
+					{
+						pdArtLicense = content;
+					}
+
+					//HACK:
+					workingText = workingText.Substring(workingText.IndexOf(content) + content.Length);
+				} while (true);
 			}
-			else if (pdArtRawMatch.Success)
+
+			string innerLicense = null;
+			string[] pdArtComponents = null;
+			if (!string.IsNullOrEmpty(pdArtLicense))
 			{
-				pdArtLicense = pdArtRawMatch.Groups[0].Value;
-				innerLicense = "";
+				// break pd-art template params
+				pdArtComponents = pdArtLicense.Split('|').Select(component => component.Trim()).ToArray();
+				if (pdArtComponents.Length >= 2)
+				{
+					innerLicense = pdArtComponents[1];
+				}
+				pdArtLicense = "{{" + pdArtLicense + "}}";
 			}
 
 			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
@@ -224,20 +305,51 @@ OtherLicense: {8}",
 
 			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, pdArtLicense, innerLicense);
 
-			if (!pdArtRawMatch.Success && !pdArtPdOldMatch.Success)
+			if (string.IsNullOrEmpty(pdArtLicense))
 			{
-				if (worksheet.Text.Contains("{{PD-Art-YorckProject}}"))
-				{
-					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine("  PD-Art-YorckProject");
-					Console.ResetColor();
-					return false;
-				}
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine("  Failed to find PD-Art template.");
 				Console.ResetColor();
 				SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound);
 				return false;
+			}
+
+			if (bMultiplePdArts)
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("  Multiple PD-Art templates.");
+				Console.ResetColor();
+				SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound); //TODO: log instead
+				return false;
+			}
+
+			// does it already have exactly one good pd-art template?
+			if (s_goodPdArtRegex.IsMatch(pdArtLicense))
+			{
+				Console.ForegroundColor = ConsoleColor.DarkGreen;
+				Console.WriteLine("  PD-Art is already replaced.");
+				Console.ResetColor();
+				SetLicenseReplaced(articleTitle, ReplacementStatus.Replaced);
+				return false;
+			}
+
+			// make sure we can dismiss all the parameters
+			for (int componentIndex = 1; componentIndex < pdArtComponents.Length; componentIndex++)
+			{
+				string component = pdArtComponents[componentIndex];
+				if (component.StartsWith("1="))
+					component = component.Substring(2).Trim();
+
+				if (!string.IsNullOrEmpty(component)
+					&& !s_supersedeLicenses.Contains(component, StringComparer.InvariantCultureIgnoreCase)
+					&& !component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase))
+				{
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("  Unrecognized PD-Art parameter '{0}'.", component);
+					Console.ResetColor();
+					SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound); //TODO: log instead
+					return false;
+				}
 			}
 
 			// A. does wikidata item have author info?
@@ -363,7 +475,7 @@ OtherLicense: {8}",
 			{
 				// unparseable date
 				mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle);
-                if (!string.IsNullOrEmpty(mappedDate.ReplaceDate))
+				if (!string.IsNullOrEmpty(mappedDate.ReplaceDate))
 				{
 					// make the date replacement
 					{
@@ -427,7 +539,7 @@ OtherLicense: {8}",
 				if (!string.IsNullOrEmpty(removedTemplate))
 				{
 					Console.ForegroundColor = ConsoleColor.Green;
-					Console.WriteLine("  Removed '{0}'.", removedTemplate);
+					Console.WriteLine("  Removed '{0}'.", removedTemplate.Trim());
 					Console.ResetColor();
 				}
 			}
@@ -436,14 +548,10 @@ OtherLicense: {8}",
 			foreach (string license in LicenseUtility.PrimaryLicenseTemplates)
 			{
 				// CC licenses are fine (probably a back-up license from the photographer)
+				//TODO: convert to Licensed-PD-Art?
 				if (license.StartsWith("cc-", StringComparison.InvariantCultureIgnoreCase))
 				{
 					//TODO: use Licensed-PD-Art
-					continue;
-				}
-
-				if (license.Equals("PD-Art-YorckProject"))
-				{
 					continue;
 				}
 
@@ -466,19 +574,9 @@ OtherLicense: {8}",
 
 			qtySuccess++;
 
-			//TODO: handle multiple PD-arts of same form
-			foreach (Regex pdArtRegex in s_PdArtForms)
-			{
-				Match match = pdArtRegex.Match(worksheet.Text);
-				if (match.Success)
-				{
-					worksheet.Text = worksheet.Text.SubstringRange(0, match.Index - 1)
-						+ newLicense
-						+ worksheet.Text.SubstringRange(match.Index + match.Length, worksheet.Text.Length - 1);
-					article.Dirty = true;
-					article.Changes.Add("replacing PD-art with a more accurate license based on file data");
-				}
-			}
+			worksheet.Text = worksheet.Text.Replace(pdArtLicense, newLicense);
+			article.Dirty = true;
+			article.Changes.Add("replacing PD-art with a more accurate license based on file data");
 
 			SetLicenseReplaced(articleTitle, ReplacementStatus.Replaced);
 
@@ -519,6 +617,14 @@ OtherLicense: {8}",
 			command.Parameters.AddWithValue("authorDeathYear", deathyear);
 			command.Parameters.AddWithValue("pdArtLicense", pdArtLicense);
 			command.Parameters.AddWithValue("innerLicense", innerLicense);
+			Debug.Assert(command.ExecuteNonQuery() == 1);
+		}
+
+		public void RemoveFromCache(string title)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "DELETE FROM files WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
