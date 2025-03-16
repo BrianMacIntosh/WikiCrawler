@@ -318,16 +318,27 @@ OtherLicense: {8}",
 				return false;
 			}
 
+			string licensedPdArtOtherLicense = null;
+
 			// make sure we can dismiss all the parameters
 			for (int componentIndex = 1; componentIndex < pdArtComponents.Length; componentIndex++)
 			{
 				string component = pdArtComponents[componentIndex];
-				if (component.StartsWith("1="))
+				if (component.StartsWith("1=") || component.StartsWith("2="))
 					component = component.Substring(2).Trim();
+
+				if (componentIndex == 2 && pdArtComponents[0].Equals("licensed-pd-art", StringComparison.InvariantCultureIgnoreCase))
+				{
+					// the last license of {{licensed-pd-art}} can be anything, we will retain it
+					licensedPdArtOtherLicense = pdArtComponents[componentIndex];
+					continue;
+				}
 
 				if (!string.IsNullOrEmpty(component)
 					&& !s_supersedeLicenses.Contains(component, StringComparer.InvariantCultureIgnoreCase)
-					&& !component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase))
+					&& !component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase)
+					&& !component.StartsWith("deathdate=", StringComparison.InvariantCultureIgnoreCase)
+					&& !component.Equals("country=", StringComparison.InvariantCultureIgnoreCase))
 				{
 					Console.ForegroundColor = ConsoleColor.Red;
 					Console.WriteLine("  Unrecognized PD-Art parameter '{0}'.", component);
@@ -336,6 +347,8 @@ OtherLicense: {8}",
 					return false;
 				}
 			}
+
+			SetLicenseReplaced(articleTitle, ReplacementStatus.NotReplaced);
 
 			// A. does wikidata item have author info?
 			if (!SkipAuthorLookup && !string.IsNullOrEmpty(worksheet.Wikidata))
@@ -551,7 +564,15 @@ OtherLicense: {8}",
 				}
 			}
 
-			string newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
+			string newLicense;
+			if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
+			{
+				newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear, licensedPdArtOtherLicense);
+			}
+			else
+			{
+				newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
+			}
 
 			Console.ForegroundColor = ConsoleColor.Green;
 			Console.WriteLine("  Replacing PD-Art with '{0}'.", newLicense);
