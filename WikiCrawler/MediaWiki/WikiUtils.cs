@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -232,9 +233,9 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns the indices of the start and end of the inner content of the first instance of the specified template.
 		/// </summary>
-		public static void GetTemplateLocation(string text, string templateName, out int startIndex, out int endIndex)
+		public static void GetTemplateLocation(string text, string templateName, out int startIndex, out int endIndex, int startAt = 0)
 		{
-			startIndex = GetTemplateStart(text, templateName);
+			startIndex = GetTemplateStart(text, templateName, startAt);
 			if (startIndex >= 0)
 			{
 				endIndex = GetTemplateEnd(text, startIndex);
@@ -249,9 +250,9 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns the inner contents of the first instance of the specified template.
 		/// </summary>
-		public static string ExtractTemplate(string text, string templateName)
+		public static string ExtractTemplate(string text, string templateName, int startAt = 0)
 		{
-			GetTemplateLocation(text, templateName, out int startIndex, out int endIndex);
+			GetTemplateLocation(text, templateName, out int startIndex, out int endIndex, startAt);
 			if (startIndex >= 0 && endIndex >= 0)
 			{
 				return text.SubstringRange(startIndex, endIndex);
@@ -265,12 +266,40 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns the index of the {{ at the start of the first instance of the specified template.
 		/// </summary>
-		public static int GetTemplateStart(string text, string templateName)
+		public static int GetTemplateStart(string text, string templateName, int startAt = 0)
 		{
 			//TODO: proper case-sensitivity
 			Regex regex = new Regex(@"{{\s*:?\s*(?:Template:)?\s*" + Regex.Escape(templateName) + @"\s*[\|}]", RegexOptions.IgnoreCase);
-			Match match = regex.Match(text);
-			return match.Success ? match.Index : -1;
+			foreach (Match match in regex.Matches(text, startAt))
+			{
+				if (match.Success && !IsInNowiki(text, match.Index))
+				{
+					return match.Index;
+				}
+			}
+			return -1;
+		}
+
+		/// <summary>
+		/// Returns true if the specified index in the text is inside a nowiki region.
+		/// </summary>
+		/// <remarks>Does not consider any part of the tags themselves inside.</remarks>
+		public static bool IsInNowiki(string text, int index)
+		{
+			int openTags = 0;
+			for (int i = 0; i < Math.Min(index, text.Length); ++i)
+			{
+				if (text.MatchAt("<nowiki>", i, true))
+				{
+					openTags++;
+				}
+				else if (text.MatchAt("</nowiki>", i, true))
+				{
+					openTags = Math.Max(0, openTags - 1);
+				}
+			}
+
+			return openTags > 0;
 		}
 
 		public static readonly string[] PrimaryInfoTemplates = new string[]

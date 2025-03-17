@@ -123,6 +123,7 @@ namespace Tasks
 			"PD-old-100-1923",
 			"PD-old-50",
 			"PD-old-50-expired",
+			"PD-old-50-1923",
 			"PD-old-60-expired",
 			"PD-old-70",
 			"PD-old-70-expired",
@@ -247,9 +248,10 @@ OtherLicense: {8}",
 			foreach (string template in s_pdArtTemplates)
 			{
 				string workingText = worksheet.Text;
+				int workingIndex = 0;
 				do
 				{
-					string content = WikiUtils.ExtractTemplate(workingText, template);
+					string content = WikiUtils.ExtractTemplate(workingText, template, workingIndex);
 					if (string.IsNullOrEmpty(content))
 					{
 						break;
@@ -265,8 +267,7 @@ OtherLicense: {8}",
 						pdArtLicense = content;
 					}
 
-					//HACK:
-					workingText = workingText.Substring(workingText.IndexOf(content) + content.Length);
+					workingIndex = workingText.IndexOf(content) + content.Length;
 				} while (true);
 			}
 
