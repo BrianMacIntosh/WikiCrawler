@@ -58,6 +58,8 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TakenOnTemplateTest.cs" />
+    <Compile Include="TemplateLocationTests.cs" />
+    <Compile Include="WikiUtilsTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\WikiCrawler\WikiCrawler.csproj">
