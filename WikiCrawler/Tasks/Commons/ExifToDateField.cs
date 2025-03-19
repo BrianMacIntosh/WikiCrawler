@@ -36,56 +36,35 @@ namespace Tasks
 				Console.WriteLine(file.title);
 
 				Article fileGot = commonsApi.GetPage(file, prop: "info|revisions|imageinfo", iiprop: "metadata|url");
-				string pageText = fileGot.revisions[0].text;
+				CommonsFileWorksheet worksheet = new CommonsFileWorksheet(fileGot);
 
-				int infoStart = pageText.IndexOf("{{Information");
-				if (infoStart >= 0)
+				string date = worksheet.Date;
+				if (string.IsNullOrWhiteSpace(date))
 				{
-					int infoEnd = WikiUtils.GetTemplateEnd(pageText, infoStart);
-					if (infoEnd >= 0)
+					if (fileGot.imageinfo[0].metadata.TryGetValue("DateTimeOriginal", out string exifDate))
 					{
-						string informationText = pageText.Substring(infoStart + 2, infoEnd - infoStart - 2);
-
-						int dateLocation;
-						string date = WikiUtils.GetTemplateParameter("Date", informationText, out dateLocation);
-						dateLocation += infoStart + 2;
-						if (string.IsNullOrWhiteSpace(date))
+						string[] dateTime = exifDate.Split(' ');
+						if (dateTime.Length == 2 && dateTime[0].Length == 10)
 						{
-							if (fileGot.imageinfo[0].metadata.TryGetValue("DateTimeOriginal", out string exifDate))
-							{
-								string[] dateTime = exifDate.Split(' ');
-								if (dateTime.Length == 2 && dateTime[0].Length == 10)
-								{
-									string dateTag = "{{According to Exif data|" + dateTime[0].Replace(':', '-') + "}}";
-									pageText = pageText.Substring(0, dateLocation) + dateTag + pageText.Substring(dateLocation + date.Length);
-									fileGot.revisions[0].text = pageText;
-									commonsApi.SetPage(fileGot, "adding date from EXIF data");
+							string dateTag = "{{According to Exif data|" + dateTime[0].Replace(':', '-') + "}}";
+							worksheet.Date = dateTag;
+							commonsApi.SetPage(fileGot, "adding date from EXIF data");
 
-									maxEdits--;
-								}
-								else
-								{
-									Log(logWriter, "ERROR: malformed EXIF date");
-								}
-							}
-							else
-							{
-								Log(logWriter, "ERROR: no EXIF date");
-							}
+							maxEdits--;
 						}
 						else
 						{
-							Log(logWriter, "WARNING: already has a Date");
+							Log(logWriter, "ERROR: malformed EXIF date");
 						}
 					}
 					else
 					{
-						Log(logWriter, "ERROR: unclosed Information template");
+						Log(logWriter, "ERROR: no EXIF date");
 					}
 				}
 				else
 				{
-					Log(logWriter, "ERROR: no Information template");
+					Log(logWriter, "WARNING: already has a Date or nowhere to put Date");
 				}
 			}
 		}

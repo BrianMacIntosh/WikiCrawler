@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -15,7 +15,7 @@ namespace MediaWiki
 	/// <summary>
 	/// Contains helper methods for manipulating wikitext.
 	/// </summary>
-	static class WikiUtils
+	public static class WikiUtils
 	{
 		/// <summary>
 		/// Removes the specified category from the text if it exists.
@@ -231,31 +231,36 @@ namespace MediaWiki
 		private static string s_wikilinkEnd = "]]";
 
 		/// <summary>
-		/// Returns the indices of the start and end of the inner content of the first instance of the specified template.
+		/// Returns the indices of the start and end of the first instance of the specified template, including {{ and }}.
 		/// </summary>
-		public static void GetTemplateLocation(string text, string templateName, out int startIndex, out int endIndex, int startAt = 0)
+		/// <param name="text">The page text to search.</param>
+		/// <param name="templateName">The name of the template to search for.</param>
+		/// <param name="startAt">Optionally, the index in the <paramref name="text"/> to start searching at.</param>
+		/// <returns>The indices of the template, from the first { to the last }.</returns>
+		public static StringSpan GetTemplateLocation(string text, string templateName, int startAt = 0)
 		{
-			startIndex = GetTemplateStart(text, templateName, startAt);
+			int startIndex = GetTemplateStart(text, templateName, startAt);
 			if (startIndex >= 0)
 			{
-				endIndex = GetTemplateEnd(text, startIndex);
-				startIndex += s_templateStart.Length;
+				int endIndex = GetTemplateEnd(text, startIndex);
+				if (endIndex >= 0)
+				{
+					return new StringSpan(startIndex, endIndex);
+				}
 			}
-			else
-			{
-				endIndex = -1;
-			}
+			
+			return StringSpan.Empty;
 		}
 
 		/// <summary>
-		/// Returns the inner contents of the first instance of the specified template.
+		/// Returns the text of the first instance of the specified template, including {{}}.
 		/// </summary>
 		public static string ExtractTemplate(string text, string templateName, int startAt = 0)
 		{
-			GetTemplateLocation(text, templateName, out int startIndex, out int endIndex, startAt);
-			if (startIndex >= 0 && endIndex >= 0)
+			StringSpan span = GetTemplateLocation(text, templateName, startAt);
+			if (span.IsValid)
 			{
-				return text.SubstringRange(startIndex, endIndex);
+				return text.Substring(span);
 			}
 			else
 			{
@@ -272,7 +277,9 @@ namespace MediaWiki
 			Regex regex = new Regex(@"{{\s*:?\s*(?:Template:)?\s*" + Regex.Escape(templateName) + @"\s*[\|}]", RegexOptions.IgnoreCase);
 			foreach (Match match in regex.Matches(text, startAt))
 			{
-				if (match.Success && !IsInNowiki(text, match.Index))
+				if (match.Success
+					&& !IsInNowiki(text, match.Index)
+					&& !IsInComment(text, match.Index))
 				{
 					return match.Index;
 				}
@@ -294,6 +301,28 @@ namespace MediaWiki
 					openTags++;
 				}
 				else if (text.MatchAt("</nowiki>", i, true))
+				{
+					openTags = Math.Max(0, openTags - 1);
+				}
+			}
+
+			return openTags > 0;
+		}
+
+		/// <summary>
+		/// Returns true if the specified index in the text is inside a commented region.
+		/// </summary>
+		/// <remarks>Does not consider any part of the tags themselves inside.</remarks>
+		public static bool IsInComment(string text, int index)
+		{
+			int openTags = 0;
+			for (int i = 0; i < Math.Min(index, text.Length); ++i)
+			{
+				if (text.MatchAt("<!--", i, true))
+				{
+					openTags++;
+				}
+				else if (text.MatchAt("-->", i, true))
 				{
 					openTags = Math.Max(0, openTags - 1);
 				}
@@ -335,7 +364,7 @@ namespace MediaWiki
 			string earliestTemplate = "";
 			foreach (string template in PrimaryInfoTemplates)
 			{
-				int startIndex = text.IndexOf("{{" + template);
+				int startIndex = GetTemplateStart(text, template);
 				if (startIndex >= 0 && startIndex < earliestStartIndex)
 				{
 					earliestTemplate = template;
@@ -346,6 +375,24 @@ namespace MediaWiki
 		}
 
 		/// <summary>
+		/// Returns the indices of the start and end of the primary Information-like template, including {{ and }}.
+		/// </summary>
+		/// <param name="text">The page text to search.</param>
+		public static StringSpan GetPrimaryInfoTemplateLocation(string text)
+		{
+			int startIndex = GetPrimaryInfoTemplateStart(text);
+			if (startIndex >= 0)
+			{
+				int endIndex = GetTemplateEnd(text, startIndex);
+				if (endIndex >= 0)
+				{
+					return new StringSpan(startIndex, endIndex);
+				}
+			}
+			return StringSpan.Empty;
+		}
+
+		/// <summary>
 		/// Returns the index of the {{ at the start of the primary info template;
 		/// </summary>
 		public static int GetPrimaryInfoTemplateStart(string text)
@@ -353,7 +400,7 @@ namespace MediaWiki
 			int? earliestStartIndex = null;
 			foreach (string template in PrimaryInfoTemplates)
 			{
-				int startIndex = text.IndexOf("{{" + template);
+				int startIndex = GetTemplateStart(text, template);
 				if (startIndex >= 0)
 				{
 					if (startIndex < earliestStartIndex || !earliestStartIndex.HasValue)
@@ -366,7 +413,7 @@ namespace MediaWiki
 		}
 
 		/// <summary>
-		/// Returns the index of the last character before the }} at the end of this template.
+		/// Returns the index of the last } at the end of this template.
 		/// </summary>
 		/// <param name="templateStart">The index of the {{ at the start of the template.</param>
 		public static int GetTemplateEnd(string text, int templateStart)
@@ -389,7 +436,7 @@ namespace MediaWiki
 					templatesOpen--;
 					if (templatesOpen == 0)
 					{
-						return index - 1;
+						return index -1 + s_templateEnd.Length;
 					}
 					else if (templatesOpen < 0)
 					{
@@ -406,9 +453,26 @@ namespace MediaWiki
 		}
 
 		/// <summary>
+		/// Trims {{}} and whitespace from the template.
+		/// </summary>
+		public static string TrimTemplate(string template)
+		{
+			if (string.IsNullOrEmpty(template))
+			{
+				return string.Empty;
+			}
+			else
+			{
+				Debug.Assert(template.StartsWith("{{"));
+				Debug.Assert(template.EndsWith("}}"));
+				return template.Substring(2, template.Length - 4).Trim();
+			}
+		}
+
+		/// <summary>
 		/// 
 		/// </summary>
-		/// <param name="text">Only the text of the template (with no enclosing {{}}).</param>
+		/// <param name="text">The content of the template (with or without {{}}).</param>
 		/// <returns></returns>
 		public static string GetTemplateParameter(int param, string text)
 		{
@@ -419,10 +483,14 @@ namespace MediaWiki
 		/// <summary>
 		/// 
 		/// </summary>
-		/// <param name="text">Only the text of the template (with no enclosing {{}}).</param>
+		/// <param name="text">The content of the template (with or without {{}}).</param>
 		/// <returns></returns>
 		public static string GetTemplateParameter(int param, string text, out int paramValueLocation)
 		{
+			// check if this is a whole template
+			bool bWholeTemplate = text.StartsWith("{{");
+			int rootStackHeight = bWholeTemplate ? 1 : 0;
+
 			// check for explicit numbered param
 			string explicitParam = GetTemplateParameter(param.ToString(), text, out paramValueLocation);
 			if (paramValueLocation >= 0)
@@ -440,7 +508,7 @@ namespace MediaWiki
 				if (paramStartIndex >= 0)
 				{
 					// checking for named parameters
-					if (nestedTemplates <= 0 && text[c] == '=')
+					if (nestedTemplates == rootStackHeight && text[c] == '=')
 					{
 						// presence of a named parameter excludes anonymous parameters (TODO: DOES IT?)
 						return "";
@@ -462,7 +530,7 @@ namespace MediaWiki
 				}
 
 				// pipe resets any time
-				if (nestedTemplates <= 0 && text[c] == '|')
+				if (nestedTemplates == rootStackHeight && text[c] == '|')
 				{
 					if (paramNumber == param)
 					{
@@ -487,7 +555,7 @@ namespace MediaWiki
 		/// <summary>
 		/// 
 		/// </summary>
-		/// <param name="text">Only the text of the template (with no enclosing {{}}).</param>
+		/// <param name="text">The content of the template (with or without {{}}).</param>
 		/// <returns></returns>
 		public static string GetTemplateParameter(string param, string text)
 		{
@@ -498,10 +566,14 @@ namespace MediaWiki
 		/// <summary>
 		/// 
 		/// </summary>
-		/// <param name="text">Only the text of the template (with no enclosing {{}}).</param>
+		/// <param name="text">The content of the template (with or without {{}}).</param>
 		/// <returns></returns>
 		public static string GetTemplateParameter(string param, string text, out int paramValueLocation)
 		{
+			// check if this is a whole template
+			bool bWholeTemplate = text.StartsWith("{{");
+			int rootStackHeight = bWholeTemplate ? 1 : 0;
+
 			int state = 0;
 			Stack<WikitextNestingType> nestingStack = new Stack<WikitextNestingType>();
 			paramValueLocation = -1;
@@ -510,7 +582,7 @@ namespace MediaWiki
 				if (state == 1)
 				{
 					//parameter name
-					if (nestingStack.Count <= 0)
+					if (nestingStack.Count == rootStackHeight)
 					{
 						if (text.MatchAt(param, c, true))
 						{
@@ -543,6 +615,40 @@ namespace MediaWiki
 						state = 4;
 						paramValueLocation = c;
 					}
+				}
+
+				if (state == 4)
+				{
+					//read param content
+					bool templateEnd = c >= text.Length - 1;
+
+					bool paramEnd = nestingStack.Count == rootStackHeight && (text[c] == '|' || text[c] == '}');
+					if (paramEnd)
+					{
+						// do not include any trailing line returns
+						for (int d = c - 1; d >= 0; d--)
+						{
+							if (text[d] != '\n')
+							{
+								c = d + 1;
+								paramValueLocation = Math.Min(paramValueLocation, c);
+								break;
+							}
+						}
+					}
+
+					if (paramEnd || templateEnd)
+					{
+						return text.Substring(paramValueLocation, c - paramValueLocation).Trim();
+					}
+				}
+
+				//pipe resets any time
+				if (nestingStack.Count == rootStackHeight && text[c] == '|')
+				{
+					state = 1;
+					c++;
+					continue;
 				}
 
 				// template nesting
@@ -593,40 +699,6 @@ namespace MediaWiki
 					continue;
 				}
 
-				if (state == 4)
-				{
-					//read param content
-					bool templateEnd = c >= text.Length - 1;
-
-					bool paramEnd = nestingStack.Count <= 0 && text[c] == '|';
-					if (paramEnd)
-					{
-						// do not include any trailing line returns
-						for (int d = c - 1; d >= 0; d--)
-						{
-							if (text[d] != '\n')
-							{
-								c = d + 1;
-								paramValueLocation = Math.Min(paramValueLocation, c);
-								break;
-							}
-						}
-					}
-
-					if (paramEnd || templateEnd)
-					{
-						return text.Substring(paramValueLocation, c - paramValueLocation).Trim();
-					}
-				}
-
-				//pipe resets any time
-				if (nestingStack.Count <= 0 && text[c] == '|')
-				{
-					state = 1;
-					c++;
-					continue;
-				}
-
 				c++;
 			}
 			return "";
@@ -648,27 +720,10 @@ namespace MediaWiki
 		/// <returns>The new text.</returns>
 		public static string RemoveTemplate(string templateName, string text, out string template)
 		{
-			//TOOD: support nested templates
-			int templateStart = GetTemplateStart(text, templateName);
-			if (templateStart >= 0)
+			StringSpan span = GetTemplateLocation(text, templateName);
+			if (span.IsValid)
 			{
-				int templateEnd = GetTemplateEnd(text, templateStart) + 2;
-
-				// if the next character is a line return, get that too
-				if (templateEnd + 1 < text.Length && text[templateEnd + 1] == '\n')
-				{
-					templateEnd++;
-				}
-
-				template = text.Substring(templateStart, templateEnd - templateStart + 1);
-				if (templateEnd == text.Length - 1)
-				{
-					return text.Substring(0, templateStart);
-				}
-				else
-				{
-					return text.Substring(0, templateStart) + text.Substring(templateEnd + 1);
-				}
+				return RemoveTemplate(text, span, out template);
 			}
 			else
 			{
@@ -678,17 +733,58 @@ namespace MediaWiki
 		}
 
 		/// <summary>
+		/// Removes the template at the specified span from the text. ASSUMES it is a template.
+		/// </summary>
+		/// <returns>The new text.</returns>
+		public static string RemoveTemplate(string text, StringSpan span)
+		{
+			return RemoveTemplate(text, span, out string template);
+		}
+
+		/// <summary>
+		/// Removes the template at the specified span from the text. ASSUMES it is a template.
+		/// </summary>
+		/// <returns>The new text.</returns>
+		public static string RemoveTemplate(string text, StringSpan span, out string template)
+		{
+			if (!span.IsValid)
+			{
+				throw new ArgumentException("'span' must be valid.");
+			}
+
+			// if the next character is a line return, get that too
+			if (span.end + 1 < text.Length && text[span.end + 1] == '\n')
+			{
+				// ...unless it's in a parameter list
+				int readIndex = span.end + 2;
+				while (readIndex < text.Length && char.IsWhiteSpace(text[readIndex]))
+				{
+					readIndex++;
+				}
+				if (readIndex >= text.Length || readIndex != '|')
+				{
+					span.end++;
+				}
+			}
+
+			template = text.Substring(span);
+
+			if (span.end == text.Length - 1)
+			{
+				return text.Substring(0, span.start);
+			}
+			else
+			{
+				return text.Substring(0, span.start) + text.Substring(span.end + 1);
+			}
+		}
+
+		/// <summary>
 		/// Returns true if the specified page text contains the specified template.
 		/// </summary>\
 		public static bool HasTemplate(string text, string template)
 		{
-			string escapeTemplate = Regex.Escape(template);
-
-			// template names are case-insensitive on the first letter
-			escapeTemplate = "[" + char.ToUpper(escapeTemplate[0]) + char.ToLower(escapeTemplate[0]) + "]" + escapeTemplate.Substring(1);
-
-			Regex regex = new Regex(@"{{\s*" + escapeTemplate + @"\s*[\|}]"); //TODO: check for double braces only
-			return regex.IsMatch(text);
+			return GetTemplateLocation(text, template).IsValid;
 		}
 
 		/// <summary>
@@ -731,7 +827,7 @@ namespace MediaWiki
 			if (!Article.IsNullOrEmpty(article))
 			{
 				//HACK: relies on ExtractTemplate allowing prefixes
-				string defaultSort = ExtractTemplate(article.revisions[0].text, "DEFAULTSORT:");
+				string defaultSort = TrimTemplate(ExtractTemplate(article.revisions[0].text, "DEFAULTSORT:"));
 				if (!string.IsNullOrEmpty(defaultSort))
 				{
 					return defaultSort.Substring("DEFAULTSORT:".Length);

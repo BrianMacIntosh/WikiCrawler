@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Net;
 using System.Text;
 
@@ -19,6 +16,11 @@ public static class StringUtility
 	public static string SubstringRange(this string str, int start, int end)
 	{
 		return str.Substring(start, end - start + 1);
+	}
+
+	public static string Substring(this string str, StringSpan span)
+	{
+		return SubstringRange(str, span.start, span.end);
 	}
 
 	/// <summary>

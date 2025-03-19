@@ -10,12 +10,10 @@ public class TemplateLocationTests
 		string text = "This is a page with a {{TemplateName}} inside it.";
 		string templateName = "TemplateName";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(22, startIndex);
-		Assert.AreEqual(37, endIndex);
+		Assert.AreEqual(22, span.start);
+		Assert.AreEqual(37, span.end);
 	}
 
 	[TestMethod]
@@ -24,12 +22,10 @@ public class TemplateLocationTests
 		string text = "This is a page with no template.";
 		string templateName = "TemplateName";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(-1, startIndex);
-		Assert.AreEqual(-1, endIndex);
+		Assert.AreEqual(-1, span.start);
+		Assert.AreEqual(-1, span.end);
 	}
 
 	[TestMethod]
@@ -38,12 +34,10 @@ public class TemplateLocationTests
 		string text = "{{TemplateName}} is at the start of the page.";
 		string templateName = "TemplateName";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(0, startIndex);
-		Assert.AreEqual(15, endIndex);
+		Assert.AreEqual(0, span.start);
+		Assert.AreEqual(15, span.end);
 	}
 
 	[TestMethod]
@@ -52,12 +46,10 @@ public class TemplateLocationTests
 		string text = "The page ends with {{TemplateName}}.";
 		string templateName = "TemplateName";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(19, startIndex);
-		Assert.AreEqual(34, endIndex);
+		Assert.AreEqual(19, span.start);
+		Assert.AreEqual(34, span.end);
 	}
 
 	[TestMethod]
@@ -66,12 +58,10 @@ public class TemplateLocationTests
 		string text = "This is a page with a {{ TemplateName }} inside it.";
 		string templateName = "TemplateName";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(22, startIndex);
-		Assert.AreEqual(39, endIndex);
+		Assert.AreEqual(22, span.start);
+		Assert.AreEqual(39, span.end);
 	}
 
 	[TestMethod]
@@ -80,12 +70,10 @@ public class TemplateLocationTests
 		string text = "First {{TemplateName}} and then {{TemplateName}} again.";
 		string templateName = "TemplateName";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(6, startIndex);
-		Assert.AreEqual(21, endIndex);
+		Assert.AreEqual(6, span.start);
+		Assert.AreEqual(21, span.end);
 	}
 
 	[TestMethod]
@@ -94,12 +82,10 @@ public class TemplateLocationTests
 		string text = "First {{TemplateName}} and then {{TemplateName}} again.";
 		string templateName = "TemplateName";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName, 7);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex, 7);
-
-		Assert.AreEqual(32, startIndex);
-		Assert.AreEqual(47, endIndex);
+		Assert.AreEqual(32, span.start);
+		Assert.AreEqual(47, span.end);
 	}
 
 	[TestMethod]
@@ -108,12 +94,10 @@ public class TemplateLocationTests
 		string text = "";
 		string templateName = "TemplateName";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(-1, startIndex);
-		Assert.AreEqual(-1, endIndex);
+		Assert.AreEqual(-1, span.start);
+		Assert.AreEqual(-1, span.end);
 	}
 
 	[TestMethod]
@@ -122,12 +106,10 @@ public class TemplateLocationTests
 		string text = "This is a page with a {{Template-Name_123}} inside it.";
 		string templateName = "Template-Name_123";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(22, startIndex);
-		Assert.AreEqual(42, endIndex);
+		Assert.AreEqual(22, span.start);
+		Assert.AreEqual(42, span.end);
 	}
 
 	[TestMethod]
@@ -137,12 +119,10 @@ public class TemplateLocationTests
 		string text = "{{Information |Description=Some description |Source={{own}}}}";
 		string templateName = "Information";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(0, startIndex);
-		Assert.AreEqual(60, endIndex);
+		Assert.AreEqual(0, span.start);
+		Assert.AreEqual(60, span.end);
 	}
 
 	[TestMethod]
@@ -152,12 +132,10 @@ public class TemplateLocationTests
 		string text = "{{Information |Description=Some description |Source=PhotographerName";
 		string templateName = "Information";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(0, startIndex);
-		Assert.AreEqual(-1, endIndex);
+		Assert.AreEqual(-1, span.start);
+		Assert.AreEqual(-1, span.end);
 	}
 
 	[TestMethod]
@@ -167,12 +145,10 @@ public class TemplateLocationTests
 		string text = "Some text before the comment block <!-- {{Information |Description=This should not be found}} --> some more text.";
 		string templateName = "Information";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(-1, startIndex);
-		Assert.AreEqual(-1, endIndex);
+		Assert.AreEqual(-1, span.start);
+		Assert.AreEqual(-1, span.end);
 	}
 
 	[TestMethod]
@@ -182,12 +158,10 @@ public class TemplateLocationTests
 		string text = "Some text before the nowiki <nowiki>{{Information |Description=This should not be found}}</nowiki> some more text.";
 		string templateName = "Information";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(-1, startIndex);
-		Assert.AreEqual(-1, endIndex);
+		Assert.AreEqual(-1, span.start);
+		Assert.AreEqual(-1, span.end);
 	}
 
 	[TestMethod]
@@ -197,11 +171,9 @@ public class TemplateLocationTests
 		string text = "{{Information |Description={{A nested template}}}}";
 		string templateName = "Information";
 
-		int startIndex, endIndex;
+		StringSpan span = WikiUtils.GetTemplateLocation(text, templateName);
 
-		WikiUtils.GetTemplateLocation(text, templateName, out startIndex, out endIndex);
-
-		Assert.AreEqual(0, startIndex);
-		Assert.AreEqual(49, endIndex);
+		Assert.AreEqual(0, span.start);
+		Assert.AreEqual(49, span.end);
 	}
 }

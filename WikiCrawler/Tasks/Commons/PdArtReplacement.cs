@@ -114,6 +114,34 @@ namespace Tasks
 			"licensed-pd-art-two",
 		};
 
+		private static readonly string[] s_pmaLicenses = new string[]
+		{
+			"PD-old-50",
+			"PD-old-50-expired",
+			"PD-old-50-1923",
+			"PD-old-60",
+			"PD-old-60-expired",
+			"PD-old-60-1923",
+			"PD-old-70",
+			"PD-old-70-expired",
+			"PD-old-70-1923",
+			"PD-old-75",
+			"PD-old-75-expired",
+			"PD-old-75-1923",
+			"PD-old-80",
+			"PD-old-80-expired",
+			"PD-old-80-1923",
+			"PD-old-90",
+			"PD-old-90-expired",
+			"PD-old-90-1923",
+			"PD-old-95",
+			"PD-old-95-expired",
+			"PD-old-95-1923",
+			"PD-old-100",
+			"PD-old-100-expired",
+			"PD-old-100-1923",
+		};
+
 		private static readonly string[] s_supersedeLicenses = new string[]
 		{
 			"PD-old",
@@ -168,7 +196,7 @@ namespace Tasks
 			"Unclear-PD-US-old-70",
 		};
 
-		private static readonly Regex s_goodPdArtRegex = new Regex(@"{{pd-art\|pd-old-auto-expired\|deathyear=[0-9]+}}", RegexOptions.IgnoreCase);
+		private static readonly Regex s_goodPdArtNakedRegex = new Regex(@"^\s*pd-art\|pd-old-auto-expired\|deathyear=[0-9]+\s*$", RegexOptions.IgnoreCase);
 
 		//TODO: add more
 		//TODO: implement me
@@ -229,6 +257,76 @@ OtherLicense: {8}",
 		}
 
 		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="nakedTemplate">The template without {{}}</param>
+		/// <remarks>Assumes the text is actually a PD-Art template.</remarks>
+		public static IEnumerable<string> BreakPdArtComponent(string nakedTemplate)
+		{
+			return nakedTemplate.Split('|').Select(rawComponent =>
+			{
+				string component = rawComponent.Trim();
+				if (component.StartsWith("1=") || component.StartsWith("2="))
+				{
+					component = component.Substring(2).Trim();
+				}
+				return component;
+			});
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="nakedTemplate">The template without {{}}</param>
+		/// <remarks>Assumes the text is actually a PD-Art template.</remarks>
+		public bool IsReplaceablePdArt(string nakedTemplate)
+		{
+			IEnumerable<string> pdArtComponents = BreakPdArtComponent(nakedTemplate);
+
+			// make sure we can dismiss all the parameters
+			foreach (string component in pdArtComponents.Skip(1))
+			{
+				//TODO:
+				//if (componentIndex == 2 && pdArtComponents.First().Equals("licensed-pd-art", StringComparison.InvariantCultureIgnoreCase))
+				//{
+				//	// the last license of {{licensed-pd-art}} can be anything, we will retain it
+				//	licensedPdArtOtherLicense = pdArtComponents[componentIndex];
+				//	continue;
+				//}
+
+				if (!string.IsNullOrEmpty(component)
+					&& !s_supersedeLicenses.Contains(component, StringComparer.InvariantCultureIgnoreCase)
+					&& !component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase)
+					&& !component.StartsWith("deathdate=", StringComparison.InvariantCultureIgnoreCase)
+					&& !component.Equals("country=", StringComparison.InvariantCultureIgnoreCase)
+					&& !component.Equals("country=US", StringComparison.InvariantCultureIgnoreCase)
+					&& !component.Equals("country=United States", StringComparison.InvariantCultureIgnoreCase))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		/// <summary>
+		/// Returns true if any of the template parameters contain a PMA-bearing license.
+		/// </summary>
+		/// <param name="nakedTemplate">The template without {{}}</param>
+		public bool HasPMALicense(string nakedTemplate)
+		{
+			foreach (string component in BreakPdArtComponent(nakedTemplate))
+			{
+				if (s_pmaLicenses.Contains(component, StringComparer.InvariantCultureIgnoreCase))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/// <summary>
 		/// Determines the license that can replace PD-Art and replaces it.
 		/// </summary>
 		/// <returns>True if a replacement was made.</returns>
@@ -255,110 +353,87 @@ OtherLicense: {8}",
 
 			//TODO: check pd-art is already acceptably replaced
 
-			// locate pd-art template
-			string pdArtLicense = null;
-			bool bMultiplePdArts = false;
+			// locate pd-art template(s)
+			List<StringSpan> pdArts = new List<StringSpan>();
 			foreach (string template in s_pdArtTemplates)
 			{
-				string workingText = worksheet.Text;
 				int workingIndex = 0;
 				do
 				{
-					string content = WikiUtils.ExtractTemplate(workingText, template, workingIndex);
-					if (string.IsNullOrEmpty(content))
+					StringSpan span = WikiUtils.GetTemplateLocation(worksheet.Text, template, workingIndex);
+					if (span.IsValid)
 					{
-						break;
-					}
-
-					if (!string.IsNullOrEmpty(pdArtLicense))
-					{
-						bMultiplePdArts = true;
-						break;
+						pdArts.Add(span);
+						workingIndex = span.end + 1;
 					}
 					else
 					{
-						pdArtLicense = content;
+						break;
 					}
-
-					workingIndex = workingText.IndexOf(content) + content.Length;
 				} while (true);
 			}
 
-			string innerLicense = null;
-			string[] pdArtComponents = null;
-			if (!string.IsNullOrEmpty(pdArtLicense))
+			string logLicense = null;
+			string logInnerLicense = null;
+			string[] logComponents = null;
+			if (pdArts.Count > 0)
 			{
+				logLicense = worksheet.Text.Substring(pdArts[0].start, pdArts[0].Length);
 				// break pd-art template params
-				pdArtComponents = pdArtLicense.Split('|').Select(component => component.Trim()).ToArray();
-				if (pdArtComponents.Length >= 2)
+				logComponents = WikiUtils.TrimTemplate(logLicense).Split('|').Select(component => component.Trim()).ToArray();
+				if (logComponents.Length >= 2)
 				{
-					innerLicense = pdArtComponents[1];
+					logInnerLicense = logComponents[1];
 				}
-				pdArtLicense = "{{" + pdArtLicense + "}}";
 			}
-
-			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
 
 			// 1. need author death date
 			int creatorDeathYear = 9999;
 
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, pdArtLicense, innerLicense);
+			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
 
-			if (string.IsNullOrEmpty(pdArtLicense))
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, logLicense, logInnerLicense);
+
+			if (pdArts.Count == 0)
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Failed to find PD-Art template.");
+				Console.WriteLine("  Failed to find any PD-Art templates.");
 				Console.ResetColor();
 				SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound);
 				return false;
 			}
 
-			if (bMultiplePdArts)
-			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Multiple PD-Art templates.");
-				Console.ResetColor();
-				SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound); //TODO: log instead
-				return false;
-			}
-
-			// does it already have exactly one good pd-art template?
-			if (s_goodPdArtRegex.IsMatch(pdArtLicense))
-			{
-				Console.ForegroundColor = ConsoleColor.DarkGreen;
-				Console.WriteLine("  PD-Art is already replaced.");
-				Console.ResetColor();
-				SetLicenseReplaced(articleTitle, ReplacementStatus.Replaced);
-				return false;
-			}
-
 			string licensedPdArtOtherLicense = null;
+			bool bAlreadyHasPMA = false;
 
-			// make sure we can dismiss all the parameters
-			for (int componentIndex = 1; componentIndex < pdArtComponents.Length; componentIndex++)
+			foreach (StringSpan match in pdArts)
 			{
-				string component = pdArtComponents[componentIndex];
-				if (component.StartsWith("1=") || component.StartsWith("2="))
-					component = component.Substring(2).Trim();
-
-				if (componentIndex == 2 && pdArtComponents[0].Equals("licensed-pd-art", StringComparison.InvariantCultureIgnoreCase))
-				{
-					// the last license of {{licensed-pd-art}} can be anything, we will retain it
-					licensedPdArtOtherLicense = pdArtComponents[componentIndex];
-					continue;
-				}
-
-				if (!string.IsNullOrEmpty(component)
-					&& !s_supersedeLicenses.Contains(component, StringComparer.InvariantCultureIgnoreCase)
-					&& !component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase)
-					&& !component.StartsWith("deathdate=", StringComparison.InvariantCultureIgnoreCase)
-					&& !component.Equals("country=", StringComparison.InvariantCultureIgnoreCase))
+				// check for unreplaceable templates
+				string nakedTemplate = WikiUtils.TrimTemplate(worksheet.Text.Substring(match.start, match.Length));
+				if (!IsReplaceablePdArt(nakedTemplate))
 				{
 					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine("  Unrecognized PD-Art parameter '{0}'.", component);
+					Console.WriteLine("  Can't replace '{0}'.", nakedTemplate);
 					Console.ResetColor();
 					SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound); //TODO: log instead
 					return false;
+				}
+
+				// does it already have exactly one good pd-art template?
+				//TODO: remove extraneous templates
+				if (s_goodPdArtNakedRegex.IsMatch(nakedTemplate))
+				{
+					Console.ForegroundColor = ConsoleColor.DarkGreen;
+					Console.WriteLine("  PD-Art is already replaced.");
+					Console.ResetColor();
+					SetLicenseReplaced(articleTitle, ReplacementStatus.Replaced);
+					return false;
+				}
+
+				// is there already a PMA license in here?
+				if (!bAlreadyHasPMA)
+				{
+					bAlreadyHasPMA = HasPMALicense(nakedTemplate);
 				}
 			}
 
@@ -458,10 +533,11 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, pdArtLicense, innerLicense);
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, logLicense, logInnerLicense);
 
+			// If the license already has some kind of PMA, go ahead and replace it regardless of the duration
 			int pmaYear = System.DateTime.Now.Year - 100;
-			if (creatorDeathYear >= pmaYear)
+			if (creatorDeathYear >= pmaYear && !bAlreadyHasPMA)
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine("  Death year {0} is inside max PMA.", creatorDeathYear);
@@ -490,15 +566,16 @@ OtherLicense: {8}",
 				if (!string.IsNullOrEmpty(mappedDate.ReplaceDate))
 				{
 					// make the date replacement
-					{
-						Console.ForegroundColor = ConsoleColor.Green;
-						Console.WriteLine("  Date '{0}' is mapped to '{1}'.", worksheet.Date, mappedDate.ReplaceDate);
-						Console.ResetColor();
-
-						string textBefore = worksheet.Text.Substring(0, worksheet.DateIndex);
-						string textAfter = worksheet.Text.Substring(worksheet.DateIndex + worksheet.Date.Length);
-						worksheet.Text = textBefore + mappedDate.ReplaceDate + textAfter;
-					}
+					//TODO: not safe to modify worksheet.Text here
+					//{
+					//	Console.ForegroundColor = ConsoleColor.Green;
+					//	Console.WriteLine("  Date '{0}' is mapped to '{1}'.", worksheet.Date, mappedDate.ReplaceDate);
+					//	Console.ResetColor();
+					//
+					//	string textBefore = worksheet.Text.Substring(0, worksheet.DateIndex);
+					//	string textAfter = worksheet.Text.Substring(worksheet.DateIndex + worksheet.Date.Length);
+					//	worksheet.Text = textBefore + mappedDate.ReplaceDate + textAfter;
+					//}
 
 					dateParseMetadata = ParseDate(mappedDate.ReplaceDate);
 					if (dateParseMetadata.LatestYear != 9999)
@@ -543,7 +620,34 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			// PD licenses that will be completely expressed by the new license can be removed
+			string newLicense;
+			if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
+			{
+				newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear, licensedPdArtOtherLicense);
+			}
+			else
+			{
+				newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
+			}
+
+			Console.ForegroundColor = ConsoleColor.Green;
+			Console.WriteLine("  Replacing PD-Art with '{0}'.", newLicense);
+			Console.ResetColor();
+
+			qtySuccess++;
+
+			// replace the LAST PD-Art template
+			worksheet.Text = worksheet.Text.Substring(0, pdArts.Last().start)
+				+ newLicense
+				+ worksheet.Text.Substring(pdArts.Last().end + 1);
+
+			// remove extraneous PD-Art templates
+			for (int rangeIndex = pdArts.Count - 2; rangeIndex >= 0; --rangeIndex)
+			{
+				worksheet.Text = WikiUtils.RemoveTemplate(worksheet.Text, pdArts[rangeIndex]);
+			}
+
+			// remove PD licenses that will be completely expressed by the new license
 			foreach (string supersededLicense in s_supersedeLicenses)
 			{
 				string removedTemplate;
@@ -560,7 +664,6 @@ OtherLicense: {8}",
 			foreach (string license in LicenseUtility.PrimaryLicenseTemplates)
 			{
 				// CC licenses are fine (probably a back-up license from the photographer)
-				//TODO: convert to Licensed-PD-Art?
 				if (license.StartsWith("cc-", StringComparison.InvariantCultureIgnoreCase))
 				{
 					//TODO: use Licensed-PD-Art
@@ -578,25 +681,8 @@ OtherLicense: {8}",
 				}
 			}
 
-			string newLicense;
-			if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
-			{
-				newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear, licensedPdArtOtherLicense);
-			}
-			else
-			{
-				newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
-			}
-
-			Console.ForegroundColor = ConsoleColor.Green;
-			Console.WriteLine("  Replacing PD-Art with '{0}'.", newLicense);
-			Console.ResetColor();
-
-			qtySuccess++;
-
-			worksheet.Text = worksheet.Text.Replace(pdArtLicense, newLicense);
 			article.Dirty = true;
-			article.Changes.Add("replacing PD-art with a more accurate license based on file data");
+			article.Changes.Add("improving PD-art license with more information based on file data");
 
 			SetLicenseReplaced(articleTitle, ReplacementStatus.Replaced);
 
@@ -705,14 +791,14 @@ OtherLicense: {8}",
 			date = date.Trim();
 
 			// check for "other date" template
-			WikiUtils.GetTemplateLocation(date, "other date", out int otherDateStart, out int otherDateEnd);
-			if (otherDateStart < 0)
+			StringSpan otherDateSpan = WikiUtils.GetTemplateLocation(date, "other date");
+			if (!otherDateSpan.IsValid)
 			{
-				WikiUtils.GetTemplateLocation(date, "otherdate", out otherDateStart, out otherDateEnd);
+				otherDateSpan = WikiUtils.GetTemplateLocation(date, "otherdate");
 			}
-			if (otherDateStart >= 0)
+			if (otherDateSpan.IsValid)
 			{
-				string otherDate = date.Substring(otherDateStart, otherDateEnd - otherDateStart + 1);
+				string otherDate = date.Substring(otherDateSpan);
 				string dateClass = WikiUtils.GetTemplateParameter(1, otherDate);
 				if (IsAllowedOtherDateClass(dateClass))
 				{
@@ -752,10 +838,10 @@ OtherLicense: {8}",
 
 			// check for "circa" template
 			{
-				WikiUtils.GetTemplateLocation(date, "circa", out int circaStart, out int circaEnd);
-				if (circaStart >= 0)
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "circa");
+				if (span.IsValid)
 				{
-					string circa = date.Substring(circaStart, circaEnd - circaStart + 1);
+					string circa = date.Substring(span);
 					string circaDate = WikiUtils.GetTemplateParameter(1, circa);
 					return ParseDate(circaDate);
 				}
@@ -763,10 +849,10 @@ OtherLicense: {8}",
 
 			// check for "between" template
 			{
-				WikiUtils.GetTemplateLocation(date, "between", out int betweenStart, out int betweenEnd);
-				if (betweenStart >= 0)
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "between");
+				if (span.IsValid)
 				{
-					string between = date.Substring(betweenStart, betweenEnd - betweenStart + 1);
+					string between = date.Substring(span);
 					string date1 = WikiUtils.GetTemplateParameter(1, between);
 					string date2 = WikiUtils.GetTemplateParameter(2, between);
 					return DateParseMetadata.Combine(ParseDate(date1), ParseDate(date2));
@@ -775,10 +861,10 @@ OtherLicense: {8}",
 
 			// check for "before" template
 			{
-				WikiUtils.GetTemplateLocation(date, "before", out int beforeStart, out int beforeEnd);
-				if (beforeStart >= 0)
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "before");
+				if (span.IsValid)
 				{
-					string before = date.Substring(beforeStart, beforeEnd - beforeStart + 1);
+					string before = date.Substring(span);
 					string date1 = WikiUtils.GetTemplateParameter(1, before);
 					return ParseDate(date1);
 				}
@@ -786,10 +872,10 @@ OtherLicense: {8}",
 
 			// check for "date" template
 			{
-				WikiUtils.GetTemplateLocation(date, "date", out int dateStart, out int dateEnd);
-				if (dateStart >= 0)
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "date");
+				if (span.IsValid)
 				{
-					string dateTemplate = date.Substring(dateStart, dateEnd - dateStart + 1);
+					string dateTemplate = date.Substring(span);
 					string date1 = WikiUtils.GetTemplateParameter(1, dateTemplate);
 					return ParseDate(date1);
 				}
@@ -797,10 +883,10 @@ OtherLicense: {8}",
 
 			// check for "year" template
 			{
-				WikiUtils.GetTemplateLocation(date, "year", out int yearStart, out int yearEnd);
-				if (yearStart >= 0)
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "year");
+				if (span.IsValid)
 				{
-					string yearTemplate = date.Substring(yearStart, yearEnd - yearStart + 1);
+					string yearTemplate = date.Substring(span);
 					string year1 = WikiUtils.GetTemplateParameter(1, yearTemplate);
 					return ParseDate(year1);
 				}
@@ -808,10 +894,10 @@ OtherLicense: {8}",
 
 			// check for "original upload date" template
 			{
-				WikiUtils.GetTemplateLocation(date, "original upload date", out int dateStart, out int dateEnd);
-				if (dateStart >= 0)
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "original upload date");
+				if (span.IsValid)
 				{
-					string dateTemplate = date.Substring(dateStart, dateEnd - dateStart + 1);
+					string dateTemplate = date.Substring(span);
 					string date1 = WikiUtils.GetTemplateParameter(1, dateTemplate);
 					return ParseDate(date1);
 				}
@@ -819,10 +905,10 @@ OtherLicense: {8}",
 
 			// check for "date context" template
 			{
-				WikiUtils.GetTemplateLocation(date, "date context", out int dateStart, out int dateEnd);
-				if (dateStart >= 0)
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "date context");
+				if (span.IsValid)
 				{
-					string dateTemplate = date.Substring(dateStart, dateEnd - dateStart + 1);
+					string dateTemplate = date.Substring(span);
 					string context = WikiUtils.GetTemplateParameter(1, dateTemplate);
 					string date1 = WikiUtils.GetTemplateParameter(2, dateTemplate);
 					if (context == "created" || context == "published")

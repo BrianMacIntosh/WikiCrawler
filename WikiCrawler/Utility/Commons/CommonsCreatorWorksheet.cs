@@ -55,12 +55,9 @@ public class CommonsCreatorWorksheet : CommonsWorksheet
 	/// </summary>
 	private string GetInfoParam(string[] paramNames, out int index)
 	{
-		int templateStart = WikiUtils.GetTemplateStart(Text, "Creator");
-		if (templateStart >= 0)
+		string templateText = WikiUtils.ExtractTemplate(Text, "Creator");
+		if (!string.IsNullOrEmpty(templateText))
 		{
-			int templateEnd = WikiUtils.GetTemplateEnd(Text, templateStart);
-			string templateText = Text.SubstringRange(templateStart + 2, templateEnd);
-
 			foreach (string paramName in paramNames)
 			{
 				string paramContent = WikiUtils.GetTemplateParameter(paramName, templateText, out index);
@@ -69,14 +66,9 @@ public class CommonsCreatorWorksheet : CommonsWorksheet
 					return paramContent;
 				}
 			}
+		}
 
-			index = -1;
-			return "";
-		}
-		else
-		{
-			index = -1;
-			return "";
-		}
+		index = -1;
+		return "";
 	}
 }

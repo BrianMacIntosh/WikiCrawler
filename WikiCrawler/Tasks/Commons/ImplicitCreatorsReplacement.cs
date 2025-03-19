@@ -682,7 +682,7 @@ namespace Tasks
 				s_VisitedCats.Add(categoryTitle);
 
 				// embedded creator
-				string creatorTemplate = WikiUtils.ExtractTemplate(categoryText, "Creator");
+				string creatorTemplate = WikiUtils.TrimTemplate(WikiUtils.ExtractTemplate(categoryText, "Creator"));
 				if (!string.IsNullOrEmpty(creatorTemplate))
 				{
 					PageTitle creator = PageTitle.TryParse(creatorTemplate);

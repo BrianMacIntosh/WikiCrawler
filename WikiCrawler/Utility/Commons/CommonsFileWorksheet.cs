@@ -88,6 +88,10 @@ public class CommonsFileWorksheet : CommonsWorksheet
 			}
 			return date;
 		}
+		set
+		{
+			Text = Text.Substring(0, dateIndex) + value + Text.Substring(dateIndex + date.Length);
+		}
 	}
 
 	/// <summary>
@@ -128,24 +132,20 @@ public class CommonsFileWorksheet : CommonsWorksheet
 	/// </summary>
 	private string GetInfoParam(string[] paramNames, out string outParam, out int index)
 	{
-		int templateStart = WikiUtils.GetPrimaryInfoTemplateStart(Text);
-		if (templateStart >= 0)
+		StringSpan templateSpan = WikiUtils.GetPrimaryInfoTemplateLocation(Text);
+		if (templateSpan.IsValid)
 		{
-			int templateEnd = WikiUtils.GetTemplateEnd(Text, templateStart);
-			if (templateEnd >= 0)
-			{
-				templateStart += 2;
-				string templateText = Text.SubstringRange(templateStart, templateEnd);
+			string templateText = Text.Substring(templateSpan);
 
-				foreach (string paramName in paramNames)
+			foreach (string paramName in paramNames)
+			{
+				int localIndex;
+				string paramContent = WikiUtils.GetTemplateParameter(paramName, templateText, out localIndex);
+				if (!string.IsNullOrEmpty(paramContent))
 				{
-					string paramContent = WikiUtils.GetTemplateParameter(paramName, templateText, out index);
-					if (!string.IsNullOrEmpty(paramContent))
-					{
-						index += templateStart;
-						outParam = paramName;
-						return paramContent;
-					}
+					index = localIndex + templateSpan.start;
+					outParam = paramName;
+					return paramContent;
 				}
 			}
 		}
