@@ -1,10 +1,8 @@
-﻿using MediaWiki;
-using System.Collections.Generic;
-using System.Data.SQLite;
-using System.Linq;
-
-namespace Tasks.Commons
+﻿namespace Tasks.Commons
 {
+	/// <summary>
+	/// Refreshes the PD-Art files cache for all files in a specified category.
+	/// </summary>
 	public class PdArtRefreshCache : ReplaceInCategory
 	{
 		public PdArtRefreshCache()

@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Net;
 
+/// <summary>
+/// Contains utility functions for interacting with the Wayback Machine.
+/// </summary>
 public static class Wayback
 {
 	private const string QueryUrl = "https://archive.org/wayback/available?url={0}";
@@ -24,7 +22,7 @@ public static class Wayback
 
 	public static string GetWaybackTemplate(string url, string text, string timestamp)
 	{
-		//TODO: escape
+		//TODO: escape pipes and =?
 		return string.Format("{{Wayback|{0}|{1}|date={2}}}", url, text, timestamp);
 	}
 }

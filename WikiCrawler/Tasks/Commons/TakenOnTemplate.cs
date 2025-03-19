@@ -9,7 +9,7 @@ using MediaWiki;
 namespace WikiCrawler
 {
 	/// <summary>
-	/// Adds "Template:Taken on" to the dates of appropriate files in specified categories.
+	/// Adds "Template:Taken on" to the date fields of appropriate files in specified categories.
 	/// </summary>
 	public class TakenOnTemplate
 	{

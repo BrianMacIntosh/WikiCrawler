@@ -5,6 +5,9 @@ using WikiCrawler;
 
 namespace Tasks
 {
+	/// <summary>
+	/// Writes a list of pages in a specified category to a file.
+	/// </summary>
 	public class DownloadCategoryList : BaseTask
 	{
 		public override void Execute()

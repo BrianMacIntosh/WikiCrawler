@@ -1,11 +1,15 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.IO;
 using System.Net;
 using System.Text;
 
 namespace Tasks
 {
-	public class SingleUpload : BaseTask
+	/// <summary>
+	/// Uploads a simple list of files.
+	/// </summary>
+	public class SimpleUpload : BaseTask
 	{
 		public override void Execute()
 		{
@@ -18,7 +22,7 @@ namespace Tasks
 			string[] files = Directory.GetFiles("queue");
 
 			Console.WriteLine("Logging in...");
-			MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
+			Api Api = GlobalAPIs.Commons;
 			Api.AutoLogIn();
 
 			while (files.Length > 0)
@@ -44,10 +48,10 @@ namespace Tasks
 
 				//Upload
 				Console.WriteLine(path);
-				MediaWiki.Article art = new MediaWiki.Article();
+				Article art = new Article();
 				art.title = title;
-				art.revisions = new MediaWiki.Revision[1];
-				art.revisions[0] = new MediaWiki.Revision();
+				art.revisions = new Revision[1];
+				art.revisions[0] = new Revision();
 				art.revisions[0].text = content;
 				Api.UploadFromLocal(art, path, "", false);
 

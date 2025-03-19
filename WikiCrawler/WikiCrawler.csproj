@@ -122,7 +122,9 @@
     <Compile Include="MediaWiki\PageTitle.cs" />
     <Compile Include="Tasks\BaseReplacement.cs" />
     <Compile Include="Tasks\BaseTask.cs" />
+    <Compile Include="Tasks\Commons\AddCheckCategory.cs" />
     <Compile Include="Tasks\Commons\CreatorPossible.cs" />
+    <Compile Include="Tasks\Commons\NullEditLinks.cs" />
     <Compile Include="Tasks\Commons\PdArtDatabaseRerun.cs" />
     <Compile Include="Tasks\Commons\PdArtFollowup.cs" />
     <Compile Include="Tasks\Commons\PdArtRefreshCache.cs" />
@@ -155,7 +157,7 @@
     <Compile Include="Configuration.cs" />
     <Compile Include="Credentials.cs" />
     <Compile Include="Tasks\Commons\FindCategoryCreators.cs" />
-    <Compile Include="Tasks\Commons\SimpleTasks.cs" />
+    <Compile Include="Tasks\Commons\RevertContribs.cs" />
     <Compile Include="Tasks\MassDownloader.cs" />
     <Compile Include="Utility\CommonsUtility.cs" />
     <Compile Include="Utility\CreatorUtility.cs" />
@@ -198,7 +200,7 @@
     <Compile Include="Tasks\Commons\PdOldAuto.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Tasks\Commons\SingleUpload.cs" />
+    <Compile Include="Tasks\Commons\SimpleUpload.cs" />
     <Compile Include="Tasks\Commons\TakenOnTemplate.cs" />
     <Compile Include="Tasks\Commons\TaxonCategoryUpdate.cs" />
     <Compile Include="UploadFromWeb.cs" />

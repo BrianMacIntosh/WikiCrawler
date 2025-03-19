@@ -6,6 +6,9 @@ using WikiCrawler;
 
 namespace Tasks
 {
+	/// <summary>
+	/// Reruns the PdArtReplacement on files from creator and date mappings that have been mapped.
+	/// </summary>
 	public class PdArtFollowup : ReplaceIn
 	{
 		public PdArtFollowup()

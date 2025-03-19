@@ -6,6 +6,9 @@ using System.Text;
 
 namespace Tasks
 {
+	/// <summary>
+	/// Propagates data from Commons Creator pages to Wikidata.
+	/// </summary>
 	public class WikidataCreatorPropagation : BaseTask
 	{
 		public override void Execute()
@@ -31,7 +34,7 @@ namespace Tasks
 					continue;
 				}
 
-				MediaWiki.Article creatorArticle = GlobalAPIs.Commons.GetPage(creatorPage);
+				Article creatorArticle = GlobalAPIs.Commons.GetPage(creatorPage);
 
 				if (creatorArticle == null || creatorArticle.missing)
 				{
@@ -44,15 +47,15 @@ namespace Tasks
 				List<string> articleLines = new List<string>();
 				articleLines.AddRange(articleText.Split('\n'));
 
-				string wikidataId = MediaWiki.WikiUtils.GetTemplateParameter("wikidata", articleText);
+				string wikidataId = WikiUtils.GetTemplateParameter("wikidata", articleText);
 
 				//got it?
 				if (!string.IsNullOrEmpty(wikidataId) && wikidataId[0] == 'Q')
 				{
-					MediaWiki.Entity entity = GlobalAPIs.Wikidata.GetEntity(wikidataId);
+					Entity entity = GlobalAPIs.Wikidata.GetEntity(wikidataId);
 					if (entity != null && !entity.missing)
 					{
-						string homecat = MediaWiki.WikiUtils.GetTemplateParameter("homecat", articleText);
+						string homecat = WikiUtils.GetTemplateParameter("homecat", articleText);
 						if (!string.IsNullOrEmpty(homecat) && !entity.HasClaim("P373"))
 						{
 							//propagate homecat
@@ -66,7 +69,7 @@ namespace Tasks
 						}
 
 						// populate creator authority
-						string authority = MediaWiki.Wikidata.GetAuthorityControlTemplate(entity, "bare=1", null);
+						string authority = Wikidata.GetAuthorityControlTemplate(entity, "bare=1", null);
 						if (!string.IsNullOrEmpty(authority))
 						{
 							// look for existing authority

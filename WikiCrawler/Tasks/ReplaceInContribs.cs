@@ -4,6 +4,9 @@ using System.Linq;
 
 namespace Tasks
 {
+	/// <summary>
+	/// Performs a replacement operation on files from a particular user's contributions.
+	/// </summary>
 	public class ReplaceInContribs : ReplaceIn
 	{
 		public readonly string User;

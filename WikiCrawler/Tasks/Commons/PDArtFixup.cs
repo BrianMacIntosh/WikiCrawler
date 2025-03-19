@@ -5,6 +5,9 @@ using System.Linq;
 
 namespace Tasks
 {
+	/// <summary>
+	/// Replaces PD-Art tags with imprecise licenses with a more specific license, if one can be determined.
+	/// </summary>
 	public class PdArtFixup : ReplaceInCategory
 	{
 		public static BaseReplacement CreateReplacement()

@@ -4,6 +4,9 @@ using System.Data.SQLite;
 
 namespace Tasks.Commons
 {
+	/// <summary>
+	/// Reruns the <see cref="PdArtReplacement"/> on files from a SQLite query.
+	/// </summary>
 	public class PdArtDatabaseRerun : ReplaceIn
 	{
 		public PdArtDatabaseRerun()

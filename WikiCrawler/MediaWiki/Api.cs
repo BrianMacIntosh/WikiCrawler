@@ -18,8 +18,8 @@ namespace MediaWiki
     {
         public static string UserAgent = "BMacZeroBot (brianamacintosh@gmail.com)";
 
-		private readonly Uri Domain;
-		private readonly Uri UrlApi;
+		public readonly Uri Domain;
+		public readonly Uri UrlApi;
 
         private CookieContainer m_cookies;
 

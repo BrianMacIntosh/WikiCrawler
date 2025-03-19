@@ -170,7 +170,6 @@ public static class StringUtility
 	/// <summary>
 	/// Returns true if the specified substring occurs at the specified index.
 	/// </summary>
-	/// <param name="str"></param>
 	/// <param name="substring"></param>
 	/// <param name="index"></param>
 	public static bool MatchAt(this string str, string substring, int index, bool ignoreCase = false)

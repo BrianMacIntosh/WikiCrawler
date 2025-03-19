@@ -12,7 +12,7 @@ using WikiCrawler;
 namespace Tasks
 {
 	/// <summary>
-	/// Replaces naked PD-Art with a more specific license, if one can be determined.
+	/// Replaces PD-Art tags with imprecise licenses with a more specific license, if one can be determined.
 	/// </summary>
 	public class PdArtReplacement : BaseReplacement
 	{
