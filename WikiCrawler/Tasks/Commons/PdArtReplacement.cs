@@ -345,9 +345,7 @@ OtherLicense: {8}",
 
 			if (SkipCached && IsFileCached(m_filesDatabase, articleTitle))
 			{
-				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine("  Already cached.");
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Already cached.");
 				return false;
 			}
 
@@ -396,9 +394,7 @@ OtherLicense: {8}",
 
 			if (pdArts.Count == 0)
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Failed to find any PD-Art templates.");
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to find any PD-Art templates.");
 				SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound);
 				return false;
 			}
@@ -412,9 +408,7 @@ OtherLicense: {8}",
 				string nakedTemplate = WikiUtils.TrimTemplate(worksheet.Text.Substring(match.start, match.Length));
 				if (!IsReplaceablePdArt(nakedTemplate))
 				{
-					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine("  Can't replace '{0}'.", nakedTemplate);
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Can't replace '{0}'.", nakedTemplate);
 					SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound); //TODO: log instead
 					return false;
 				}
@@ -423,8 +417,7 @@ OtherLicense: {8}",
 				//TODO: remove extraneous templates
 				if (s_goodPdArtNakedRegex.IsMatch(nakedTemplate))
 				{
-					Console.ForegroundColor = ConsoleColor.DarkGreen;
-					Console.WriteLine("  PD-Art is already replaced.");
+					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
 					Console.ResetColor();
 					SetLicenseReplaced(articleTitle, ReplacementStatus.Replaced);
 					return false;
@@ -480,18 +473,14 @@ OtherLicense: {8}",
 			{
 				if (string.IsNullOrEmpty(worksheet.Author))
 				{
-					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine("  Failed to find author.");
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to find author.");
 					return false;
 				}
 
 				if (ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author)
 					|| ImplicitCreatorsReplacement.IsAnonymousAuthor(worksheet.Author))
 				{
-					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine("  Anonymous/unknown author.");
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Anonymous/unknown author.");
 					qtyInfoFindFail++;
 					return false;
 				}
@@ -526,9 +515,7 @@ OtherLicense: {8}",
 
 			if (creatorDeathYear == 9999)
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Can't determine death year for creator '{0}'.", worksheet.Author);
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Can't determine death year for creator '{0}'.", worksheet.Author);
 				qtyNoDeathYear++;
 				return false;
 			}
@@ -539,9 +526,7 @@ OtherLicense: {8}",
 			int pmaYear = System.DateTime.Now.Year - 100;
 			if (creatorDeathYear >= pmaYear && !bAlreadyHasPMA)
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Death year {0} is inside max PMA.", creatorDeathYear);
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Death year {0} is inside max PMA.", creatorDeathYear);
 				qtyInsufficientPMA++;
 				return false;
 			}
@@ -588,9 +573,7 @@ OtherLicense: {8}",
 					}
 					else
 					{
-						Console.ForegroundColor = ConsoleColor.Red;
-						Console.WriteLine("  Failed to parse mapped date '{0}'.", worksheet.Date);
-						Console.ResetColor();
+						ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to parse mapped date '{0}'.", worksheet.Date);
 						qtyDateParseFail++;
 						return false;
 					}
@@ -601,9 +584,7 @@ OtherLicense: {8}",
 				}
 				else
 				{
-					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine("  Failed to parse date '{0}'.", worksheet.Date);
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to parse date '{0}'.", worksheet.Date);
 					qtyDateParseFail++;
 					return false;
 				}
@@ -613,9 +594,7 @@ OtherLicense: {8}",
 			// Exception: post-2004 dates are very likely to be upload dates instead of pub dates, especially given that the author died at least 100 years ago.
 			if (latestYear >= System.DateTime.Now.Year - 95 && latestYear < 2004)
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Date {0} is after the US expired threshold.", latestYear);
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Date {0} is after the US expired threshold.", latestYear);
 				qtyNotPDUS++;
 				return false;
 			}
@@ -630,9 +609,7 @@ OtherLicense: {8}",
 				newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
 			}
 
-			Console.ForegroundColor = ConsoleColor.Green;
-			Console.WriteLine("  Replacing PD-Art with '{0}'.", newLicense);
-			Console.ResetColor();
+			ConsoleUtility.WriteLine(ConsoleColor.Green, "  Replacing PD-Art with '{0}'.", newLicense);
 
 			qtySuccess++;
 
@@ -654,9 +631,7 @@ OtherLicense: {8}",
 				worksheet.Text = WikiUtils.RemoveTemplate(supersededLicense, worksheet.Text, out removedTemplate);
 				if (!string.IsNullOrEmpty(removedTemplate))
 				{
-					Console.ForegroundColor = ConsoleColor.Green;
-					Console.WriteLine("  Removed '{0}'.", removedTemplate.Trim());
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Green, "  Removed '{0}'.", removedTemplate.Trim());
 				}
 			}
 
@@ -672,9 +647,7 @@ OtherLicense: {8}",
 
 				if (WikiUtils.HasTemplate(worksheet.Text, license))
 				{
-					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine("  Contains other license '{0}'.", license);
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Contains other license '{0}'.", license);
 					qtyOtherLicense++;
 					File.AppendAllText(DuplicateLicensesLogFile, article.title + "\n");
 					return false;

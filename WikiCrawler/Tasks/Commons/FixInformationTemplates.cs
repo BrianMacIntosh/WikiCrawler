@@ -43,9 +43,7 @@ namespace Tasks
 		{
 			if (Article.IsNullOrEmpty(article))
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Article missing");
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Article missing");
 				return false;
 			}
 

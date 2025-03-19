@@ -573,17 +573,13 @@ namespace Tasks
 
 			if (!entity.labels.ContainsKey("en"))
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Entity {0} has no English label.", entity.id);
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Entity {0} has no English label.", entity.id);
 				creatorPage = PageTitle.Empty;
 				return false;
 			}
 			if (!entity.HasClaim(Wikidata.Prop_InstanceOf) || entity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) != Wikidata.Entity_Human)
 			{
-				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine("  Entity '{0}' is not a person.", entity.labels["en"]);
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Entity '{0}' is not a person.", entity.labels["en"]);
 				creatorPage = PageTitle.Empty;
 				return false;
 			}
@@ -591,9 +587,7 @@ namespace Tasks
 			// already has creator?
 			if (entity.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] creator))
 			{
-				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine("  Entity '{0}' has creator.", creator[0]);
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Entity '{0}' has creator.", creator[0]);
 				creatorPage = new PageTitle("Creator", creator[0]);
 				return true;
 			}
@@ -601,13 +595,12 @@ namespace Tasks
 			string name = entity.labels["en"];
 			PageTitle commonsArticle = new PageTitle("Creator", name);
 
+
 			// Check that it does not already exist on commons
 			Article existing = GlobalAPIs.Commons.GetPage(commonsArticle.ToString());
 			if (!Article.IsNullOrMissing(existing))
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Creator page '{0}' already exists.", existing.title);
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Creator page '{0}' already exists.", existing.title);
 				creatorPage = PageTitle.Empty;
 				return false;
 			}
@@ -633,19 +626,13 @@ namespace Tasks
 
 			if (GlobalAPIs.Commons.CreatePage(creatorArt, "creating Creator template from Wikidata"))
 			{
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.WriteLine("  Created page '{0}'.", creatorArt.title);
-				Console.ResetColor();
-
+				ConsoleUtility.WriteLine(ConsoleColor.Green, "  Created page '{0}'.", creatorArt.title);
 				creatorPage = commonsArticle;
 				return true;
 			}
 			else
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Failed to create '{0}'.", creatorArt.title);
-				Console.ResetColor();
-
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to create '{0}'.", creatorArt.title);
 				creatorPage = PageTitle.Empty;
 				return false;
 			}

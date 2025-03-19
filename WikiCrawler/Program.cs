@@ -40,8 +40,7 @@ namespace WikiCrawler
 
 				if (taskType == null)
 				{
-					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine("Could not find a class for that task.");
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "Could not find a class for that task.");
 					Console.ResetColor();
 				}
 				else
@@ -71,9 +70,7 @@ namespace WikiCrawler
 				WindowsUtility.SetThreadExecutionState(WindowsUtility.EXECUTION_STATE.ES_CONTINUOUS);
 			}
 
-			Console.ForegroundColor = ConsoleColor.Cyan;
-			Console.WriteLine("DONE.");
-			Console.ResetColor();
+			ConsoleUtility.WriteLine(ConsoleColor.Cyan, "DONE.");
 
 			WindowsUtility.FlashWindowEx(Process.GetCurrentProcess().MainWindowHandle);
 

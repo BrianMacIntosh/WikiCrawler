@@ -37,9 +37,7 @@ namespace Tasks
 		{
 			File.AppendAllText(ReportFile, message, Encoding.UTF8);
 
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine("  " + message);
-			Console.ResetColor();
+			ConsoleUtility.WriteLine(ConsoleColor.Red, "  " + message);
 		}
 
 		public override bool DoReplacement(Article article)

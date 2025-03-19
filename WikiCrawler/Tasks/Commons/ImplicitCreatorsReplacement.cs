@@ -154,9 +154,7 @@ namespace Tasks
 
 			if (string.IsNullOrEmpty(worksheet.Author))
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Failed to find author.");
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to find author.");
 				return false;
 			}
 
@@ -170,17 +168,13 @@ namespace Tasks
 				string suggestedLabel = suggestedCreator.labels["en"];
 				if (AuthorIs(worksheet.Author, suggestedCreator))
 				{
-					Console.ForegroundColor = ConsoleColor.Green;
-					Console.WriteLine("  Suggested creator '{0}' is a match.", suggestedLabel);
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Green, "  Suggested creator '{0}' is a match.", suggestedLabel);
 
 					newAuthor = "{{Creator:" + suggestedCreator.GetClaimValueAsString(Wikidata.Prop_CommonsCreator) + "}}";
 				}
 				else
 				{
-					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine("  Suggested creator '{0}' is not a match.", suggestedLabel);
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Suggested creator '{0}' is not a match.", suggestedLabel);
 					return false;
 				}
 			}
@@ -210,9 +204,7 @@ namespace Tasks
 			else if (IsUnknownAuthor(worksheet.Author) || IsAnonymousAuthor(worksheet.Author))
 			{
 				// already a template - do nothing
-				Console.ForegroundColor = ConsoleColor.DarkGreen;
-				Console.WriteLine("  Already a template");
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  Already a template");
 				return false;
 			}
 			else if (CreatorUtility.TryGetCreatorTemplate(worksheet.Author, out PageTitle creatorTemplate))
@@ -220,9 +212,7 @@ namespace Tasks
 				if (GetPageExists(creatorTemplate))
 				{
 					// already a creator - do nothing
-					Console.ForegroundColor = ConsoleColor.DarkGreen;
-					Console.WriteLine("  Already a creator");
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  Already a creator");
 
 					//HACK: make sure this file is not still in the creator mappings
 					foreach (var kv in m_creatorMappings)
@@ -236,9 +226,7 @@ namespace Tasks
 				else
 				{
 					// already a creator, but a missing one
-					Console.ForegroundColor = ConsoleColor.Yellow;
-					Console.WriteLine("  Author is redlink creator '{0}'", creatorTemplate);
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Author is redlink creator '{0}'", creatorTemplate);
 				}
 			}
 			else if (CreatorUtility.InlineCreatorTemplateRegex.MatchOut(worksheet.Author, out Match inlineCreatorMatch))
@@ -339,9 +327,7 @@ namespace Tasks
 										else
 										{
 											string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
-											Console.ForegroundColor = ConsoleColor.Yellow;
-											Console.WriteLine("  Can't match '{0}' to '{1}'.", authorString, entityStr);
-											Console.ResetColor();
+											ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Can't match '{0}' to '{1}'.", authorString, entityStr);
 										}
 									}
 								}
@@ -415,9 +401,7 @@ namespace Tasks
 			// do not make case-only changes
 			if (!string.IsNullOrEmpty(newAuthor) && !string.Equals(newAuthor, worksheet.Author, StringComparison.InvariantCultureIgnoreCase))
 			{
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.WriteLine("  FixImplicitCreators inserting '{0}'.", newAuthor);
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Green, "  FixImplicitCreators inserting '{0}'.", newAuthor);
 
 				string textBefore = worksheet.Text.Substring(0, worksheet.AuthorIndex);
 				string textAfter = worksheet.Text.Substring(worksheet.AuthorIndex + worksheet.Author.Length);
@@ -429,9 +413,7 @@ namespace Tasks
 			}
 			else
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  Failed to replace author '{0}'.", worksheet.Author);
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to replace author '{0}'.", worksheet.Author);
 				return false;
 			}
 		}
@@ -640,9 +622,7 @@ namespace Tasks
 							else
 							{
 								string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
-								Console.ForegroundColor = ConsoleColor.Yellow;
-								Console.WriteLine("  Can't match '{0}' to '{1}'.", authorString, entityStr);
-								Console.ResetColor();
+								ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Can't match '{0}' to '{1}'.", authorString, entityStr);
 							}
 						}
 					}

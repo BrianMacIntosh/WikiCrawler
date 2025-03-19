@@ -136,9 +136,7 @@ namespace Tasks
 						replacementString = replacementString.Replace("$" + i, match.Groups[i].Value);
 					}
 
-					Console.ForegroundColor = ConsoleColor.Green;
-					Console.WriteLine("  LocalizeDateReplacement '{0}'->'{1}'", worksheet.Date, replacementString);
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Green, "  LocalizeDateReplacement '{0}'->'{1}'", worksheet.Date, replacementString);
 
 					// replace date
 					string oldText = worksheet.Text;

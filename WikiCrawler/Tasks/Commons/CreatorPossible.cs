@@ -41,16 +41,12 @@ namespace Tasks.Commons
 			PageTitle creator = ImplicitCreatorsReplacement.GetCreatorFromCommonsPage(null, PageTitle.Parse(article.title));
 			if (creator.IsEmpty)
 			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("  No creator.");
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  No creator.");
 				return false;
 			}
 			else
 			{
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.WriteLine("  Found creator, removing template.");
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.Green, "  Found creator, removing template.");
 
 				string entityId = ImplicitCreatorsReplacement.GetEntityIdForCreator(creator);
 				Entity entity = GlobalAPIs.Wikidata.GetEntity(entityId);
@@ -61,10 +57,7 @@ namespace Tasks.Commons
 					IEnumerable<Article> subArticles = GlobalAPIs.Commons.GetCategoryEntriesRecursive(article.title, 4, cmtype: CMType.file);
 					foreach (Article subArticle in GlobalAPIs.Commons.FetchArticles(subArticles))
 					{
-						Console.ForegroundColor = ConsoleColor.White;
-						Console.Write("  ");
-						Console.WriteLine(subArticle.title);
-						Console.ResetColor();
+						ConsoleUtility.WriteLine(ConsoleColor.White, "  {0}", subArticle.title);
 
 						if (m_implicitCreators.DoReplacement(subArticle, entity))
 						{

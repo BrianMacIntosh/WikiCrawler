@@ -150,12 +150,9 @@ namespace Tasks
 				}
 				saveOutCounter++;
 
-				Console.ForegroundColor = ConsoleColor.White;
 				Console.WriteLine();
-				Console.WriteLine("{0} on '{1}'", m_replacement.GetType().Name, file.title);
-				Console.ForegroundColor = ConsoleColor.DarkGray;
-				Console.WriteLine("Read {0}/{1}, Edit {2}/{3}", readCount, FormatInt(s_MaxReads), editCount, FormatInt(s_MaxEdits));
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.White, "{0} on '{1}'", m_replacement.GetType().Name, file.title);
+				ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "Read {0}/{1}, Edit {2}/{3}", readCount, FormatInt(s_MaxReads), editCount, FormatInt(s_MaxEdits));
 
 				m_replacement.DoReplacement(file);
 

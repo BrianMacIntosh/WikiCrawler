@@ -21,9 +21,7 @@ namespace Tasks
 
 			foreach (BaseReplacement task in m_tasks)
 			{
-				Console.ForegroundColor = ConsoleColor.White;
-				Console.WriteLine("{0} on '{1}'", task.GetType().Name, article.title);
-				Console.ResetColor();
+				ConsoleUtility.WriteLine(ConsoleColor.White, "{0} on '{1}'", task.GetType().Name, article.title);
 
 				bool bChange = task.DoReplacement(article);
 				bAnyChange = bAnyChange || bChange;

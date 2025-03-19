@@ -1281,16 +1281,12 @@ namespace MediaWiki
 
 		private void LogApiRequest(string endpoint)
 		{
-			Console.ForegroundColor = ConsoleColor.DarkGray;
-			Console.WriteLine("    API request '{0}' ({1})", endpoint, UrlApi);
-			Console.ResetColor();
+			ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "    API request '{0}' ({1})", endpoint, UrlApi);
 		}
 
 		private void LogApiRequest(string endpoint, string param)
 		{
-			Console.ForegroundColor = ConsoleColor.DarkGray;
-			Console.WriteLine("    API request '{0}' ({1}): {2}", endpoint, UrlApi, param);
-			Console.ResetColor();
+			ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "    API request '{0}' ({1}): {2}", endpoint, UrlApi, param);
 		}
 
 		private static string GetOneOrMany(IEnumerable<string> strings)
