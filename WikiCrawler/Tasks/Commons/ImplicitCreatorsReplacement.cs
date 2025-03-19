@@ -12,6 +12,7 @@ namespace Tasks
 	{
 		public string MappedValue;
 		public string MappedQID;
+		public int MappedDeathyear = 9999;
 	}
 
 	/// <summary>

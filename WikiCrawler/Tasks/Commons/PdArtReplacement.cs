@@ -85,6 +85,7 @@ namespace Tasks
 		private int qtySuccess = 0;
 
 		private ManualMapping<MappingDate> m_dateMapping;
+		private ManualMapping<MappingCreator> m_creatorMappings;
 
 		public static string DuplicateLicensesLogFile
 		{
@@ -220,6 +221,7 @@ namespace Tasks
 		{
 			Directory.CreateDirectory(ProjectDataDirectory);
 			m_dateMapping = new ManualMapping<MappingDate>(DateMappingFile);
+			m_creatorMappings = new ManualMapping<MappingCreator>(ImplicitCreatorsReplacement.GetCreatorMappingFile(ProjectDataDirectory));
 
 			m_filesDatabase = ConnectFilesDatabase(true);
 		}
@@ -510,6 +512,16 @@ OtherLicense: {8}",
 				if (match.Success)
 				{
 					creatorDeathYear = int.Parse(match.Groups[3].Value);
+				}
+			}
+
+			if (creatorDeathYear == 9999)
+			{
+				// E. is death year manually mapped?
+				MappingCreator mapping = m_creatorMappings.TryMapValue(worksheet.Author, articleTitle);
+				if (mapping.MappedDeathyear != 9999)
+				{
+					creatorDeathYear = mapping.MappedDeathyear;
 				}
 			}
 
