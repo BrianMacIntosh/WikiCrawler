@@ -123,9 +123,9 @@
     <Compile Include="Tasks\BaseReplacement.cs" />
     <Compile Include="Tasks\BaseTask.cs" />
     <Compile Include="Tasks\Commons\CreatorPossible.cs" />
+    <Compile Include="Tasks\Commons\PdArtDatabaseRerun.cs" />
     <Compile Include="Tasks\Commons\PdArtFollowup.cs" />
     <Compile Include="Tasks\Commons\PdArtRefreshCache.cs" />
-    <Compile Include="Tasks\Commons\PdArtYorckProjectUsage.cs" />
     <Compile Include="Tasks\Commons\ReportMalformedContribs.cs" />
     <Compile Include="Tasks\Commons\ReportMalformedPages.cs" />
     <Compile Include="Tasks\DownloadCategoryList.cs" />
