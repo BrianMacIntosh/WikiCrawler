@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Text;
 
 namespace WikiCrawler
@@ -18,6 +20,10 @@ namespace WikiCrawler
 			{
 				credentials = Newtonsoft.Json.JsonConvert.DeserializeObject<Credentials>(
 					File.ReadAllText(authFile, Encoding.UTF8));
+			}
+			else
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "Failed to load credentials from '{0}'.", authFile);
 			}
 			return credentials;
 		}
