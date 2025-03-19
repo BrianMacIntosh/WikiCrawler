@@ -145,34 +145,34 @@ namespace Tasks
 					}
 
 					// try deathdate from Commons creator
-					string deathyear = WikiUtils.GetTemplateParameter("Deathyear", creatorInsides);
-					if (string.IsNullOrEmpty(deathyear))
-					{
-						deathyear = WikiUtils.GetTemplateParameter("Deathdate", creatorInsides);
-					}
-					if (!string.IsNullOrEmpty(deathyear))
-					{
-						string[] datesplit = deathyear.Split('-');
-						string yearStr = datesplit[0];
-						if (yearStr.Length == 4 && int.TryParse(yearStr, out int yearInt))
-						{
-							s_CreatorToDeathYear[creator] = yearInt;
-							return yearInt;
-						}
-						else
-						{
-							Console.WriteLine("Creator '" + creator + "' date '" + deathyear + "' malformed.");
-							/*string cat = "Category:Creator templates with non-machine-readable birth/death dates";
-							if (!Wikimedia.WikiUtils.HasCategory(cat, article.revisions[0].text))
-							{
-								article.revisions[0].text += "<noinclude>[[" + cat + "]]</noinclude>";
-								commonsApi.SetPage(article, "(BOT) couldn't read deathdate", true, true);
-							}*/
-							s_CreatorToDeathYear[creator] = 9999;
-							return 9999;
-						}
-					}
-					else
+					//string deathyear = WikiUtils.GetTemplateParameter("Deathyear", creatorInsides);
+					//if (string.IsNullOrEmpty(deathyear))
+					//{
+					//	deathyear = WikiUtils.GetTemplateParameter("Deathdate", creatorInsides);
+					//}
+					//if (!string.IsNullOrEmpty(deathyear))
+					//{
+					//	string[] datesplit = deathyear.Split('-');
+					//	string yearStr = datesplit[0];
+					//	if (yearStr.Length == 4 && int.TryParse(yearStr, out int yearInt))
+					//	{
+					//		s_CreatorToDeathYear[creator] = yearInt;
+					//		return yearInt;
+					//	}
+					//	else
+					//	{
+					//		Console.WriteLine("Creator '" + creator + "' date '" + deathyear + "' malformed.");
+					//		/*string cat = "Category:Creator templates with non-machine-readable birth/death dates";
+					//		if (!Wikimedia.WikiUtils.HasCategory(cat, article.revisions[0].text))
+					//		{
+					//			article.revisions[0].text += "<noinclude>[[" + cat + "]]</noinclude>";
+					//			commonsApi.SetPage(article, "(BOT) couldn't read deathdate", true, true);
+					//		}*/
+					//		s_CreatorToDeathYear[creator] = 9999;
+					//		return 9999;
+					//	}
+					//}
+					//else
 					{
 						Console.WriteLine("Creator '" + creator + "' has no deathdate.");
 						s_CreatorToDeathYear[creator] = 9999;
@@ -217,7 +217,7 @@ namespace Tasks
 			if (worksheet.Author.StartsWith("{{Creator:"))
 			{
 				int creatorEnd = WikiUtils.GetTemplateEnd(worksheet.Author, 0);
-				string creatorInner = worksheet.Author.SubstringRange(2, creatorEnd);
+				string creatorInner = WikiUtils.TrimTemplate(worksheet.Author.SubstringRange(0, creatorEnd));
 				deathyear = GetCreatorDeathYear(PageTitle.Parse(creatorInner));
 			}
 
