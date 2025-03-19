@@ -21,10 +21,18 @@ namespace Tasks
 
 		protected Dictionary<string, object> m_heartbeatData = new Dictionary<string, object>();
 
+		private static string HeartbeatEndpointPath
+		{
+			get { return Path.Combine(Configuration.DataDirectory, "heartbeat_endpoint.txt"); }
+		}
+
 		public BaseTask()
 		{
-			m_heartbeatEndpoint = new Uri(File.ReadAllText(Path.Combine(Configuration.DataDirectory, "heartbeat_endpoint.txt")));
-			EasyWeb.SetDelayForDomain(m_heartbeatEndpoint, 0f);
+			if (File.Exists(HeartbeatEndpointPath))
+			{
+				m_heartbeatEndpoint = new Uri(File.ReadAllText(HeartbeatEndpointPath));
+				EasyWeb.SetDelayForDomain(m_heartbeatEndpoint, 0f);
+			}
 
 			m_heartbeatData["taskKey"] = GetType().Name;
 			m_heartbeatData["nEdits"] = 0;
@@ -38,7 +46,7 @@ namespace Tasks
 
 		protected void StartHeartbeat()
 		{
-			if (HeartbeatEnabled)
+			if (HeartbeatEnabled && !string.IsNullOrEmpty(m_heartbeatEndpoint.OriginalString))
 			{
 				m_heartbeatThread = new Thread(HeartbeatThread);
 				m_heartbeatThread.Start();
@@ -47,19 +55,12 @@ namespace Tasks
 
 		private void HeartbeatThread()
 		{
-			while (HeartbeatEnabled)
-			{
-				SendHeartbeat(false);
-				Thread.Sleep(HeartbeatInterval);
-			}
+			SendHeartbeat(false);
+			Thread.Sleep(HeartbeatInterval);
 		}
 
 		protected void SendHeartbeat(bool terminate)
 		{
-			if (!HeartbeatEnabled)
-			{
-				return;
-			}
 			if (terminate && m_heartbeatThread != null)
 			{
 				m_heartbeatThread.Abort();
