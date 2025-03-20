@@ -546,7 +546,15 @@ namespace MediaWiki
 			if (paramNumber == param)
 			{
 				paramValueLocation = paramStartIndex;
-				return text.SubstringRange(paramStartIndex, text.Length - 1);
+				string paramText = text.SubstringRange(paramStartIndex, text.Length - 1);
+				if (bWholeTemplate && paramText.EndsWith(s_templateEnd))
+				{
+					return paramText.Substring(0, paramText.Length - s_templateEnd.Length).Trim();
+				}
+				else
+				{
+					return paramText;
+				}
 			}
 
 			return "";
