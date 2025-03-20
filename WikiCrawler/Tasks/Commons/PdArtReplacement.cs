@@ -482,14 +482,9 @@ OtherLicense: {8}",
 				if (ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author)
 					|| ImplicitCreatorsReplacement.IsAnonymousAuthor(worksheet.Author))
 				{
-					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Anonymous/unknown author.");
-					qtyInfoFindFail++;
-					return false;
+					// skip all the expensive searching
 				}
-
-				// B. is author a creator?
-				PageTitle literalCreator = CreatorUtility.GetCreatorTemplate(worksheet.Author);
-				if (!literalCreator.IsEmpty)
+				else if (CreatorUtility.TryGetCreatorTemplate(worksheet.Author, out PageTitle literalCreator))
 				{
 					Creator creator = CreatorUtility.GetCreator("{{" + literalCreator + "}}");
 					creator.Usage++;
@@ -523,24 +518,6 @@ OtherLicense: {8}",
 				{
 					creatorDeathYear = mapping.MappedDeathyear;
 				}
-			}
-
-			if (creatorDeathYear == 9999)
-			{
-				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Can't determine death year for creator '{0}'.", worksheet.Author);
-				qtyNoDeathYear++;
-				return false;
-			}
-
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, logLicense, logInnerLicense);
-
-			// If the license already has some kind of PMA, go ahead and replace it regardless of the duration
-			int pmaYear = System.DateTime.Now.Year - 100;
-			if (creatorDeathYear >= pmaYear && !bAlreadyHasPMA)
-			{
-				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Death year {0} is inside max PMA.", creatorDeathYear);
-				qtyInsufficientPMA++;
-				return false;
 			}
 
 			MappingDate mappedDate = null;
@@ -602,6 +579,35 @@ OtherLicense: {8}",
 				}
 			}
 
+			// is pub date old enough to assume 100 PMA?
+			bool bIsDateReallyOld = false;
+
+			if (creatorDeathYear == 9999)
+			{
+				if (ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175)
+				{
+					bIsDateReallyOld = true;
+				}
+			}
+
+			if (!bIsDateReallyOld && creatorDeathYear == 9999)
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Can't determine death year for creator '{0}'.", worksheet.Author);
+				qtyNoDeathYear++;
+				return false;
+			}
+
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, logLicense, logInnerLicense);
+
+			// If the license already has some kind of PMA, go ahead and replace it regardless of the duration
+			int pmaYear = System.DateTime.Now.Year - 100;
+			if (!bIsDateReallyOld && creatorDeathYear >= pmaYear && !bAlreadyHasPMA)
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Death year {0} is inside max PMA.", creatorDeathYear);
+				qtyInsufficientPMA++;
+				return false;
+			}
+
 			// Is file/pub date expired in the US?
 			// Exception: post-2004 dates are very likely to be upload dates instead of pub dates, especially given that the author died at least 100 years ago.
 			if (latestYear >= System.DateTime.Now.Year - 95 && latestYear < 2004)
@@ -611,40 +617,59 @@ OtherLicense: {8}",
 				return false;
 			}
 
+			string changeText;
 			string newLicense;
-			if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
+			if (bIsDateReallyOld)
+			{
+				newLicense = string.Format("{{{{PD-Art|PD-old-100-expired}}}}");
+				changeText = "improving PD-art license: date older than 175 yrs and author unknown";
+			}
+			else if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
 			{
 				newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear, licensedPdArtOtherLicense);
+				changeText = "improving PD-art license with more information based on file data";
 			}
 			else
 			{
 				newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
+				changeText = "improving PD-art license with more information based on file data";
 			}
 
 			ConsoleUtility.WriteLine(ConsoleColor.Green, "  Replacing PD-Art with '{0}'.", newLicense);
 
 			qtySuccess++;
 
-			// replace the LAST PD-Art template
-			worksheet.Text = worksheet.Text.Substring(0, pdArts.Last().start)
-				+ newLicense
-				+ worksheet.Text.Substring(pdArts.Last().end + 1);
-
-			// remove extraneous PD-Art templates
-			for (int rangeIndex = pdArts.Count - 2; rangeIndex >= 0; --rangeIndex)
-			{
-				worksheet.Text = WikiUtils.RemoveTemplate(worksheet.Text, pdArts[rangeIndex]);
-			}
-
-			// remove PD licenses that will be completely expressed by the new license
+			List<StringSpan> allReplaceableLicenses = new List<StringSpan>();
+			allReplaceableLicenses.AddRange(pdArts);
 			foreach (string supersededLicense in s_supersedeLicenses)
 			{
-				string removedTemplate;
-				worksheet.Text = WikiUtils.RemoveTemplate(supersededLicense, worksheet.Text, out removedTemplate);
-				if (!string.IsNullOrEmpty(removedTemplate))
+				int currentLocation = 0;
+				while (true)
 				{
-					ConsoleUtility.WriteLine(ConsoleColor.Green, "  Removed '{0}'.", removedTemplate.Trim());
+					StringSpan span = WikiUtils.GetTemplateLocation(worksheet.Text, supersededLicense, currentLocation);
+					if (span.IsValid)
+					{
+						allReplaceableLicenses.Add(span);
+						currentLocation = span.end + 1;
+					}
+					else
+					{
+						break;
+					}
 				}
+			}
+
+			// replace the LAST license template
+			worksheet.Text = worksheet.Text.Substring(0, allReplaceableLicenses.Last().start)
+				+ newLicense
+				+ worksheet.Text.Substring(allReplaceableLicenses.Last().end + 1);
+
+			// remove extraneous license templates
+			for (int rangeIndex = allReplaceableLicenses.Count - 2; rangeIndex >= 0; --rangeIndex)
+			{
+				string template = worksheet.Text.Substring(allReplaceableLicenses[rangeIndex]);
+				worksheet.Text = WikiUtils.RemoveTemplate(worksheet.Text, allReplaceableLicenses[rangeIndex]);
+				ConsoleUtility.WriteLine(ConsoleColor.Green, "  Removed '{0}'.", template.Trim());
 			}
 
 			// Other licenses will be reported as conflicts
@@ -667,7 +692,7 @@ OtherLicense: {8}",
 			}
 
 			article.Dirty = true;
-			article.Changes.Add("improving PD-art license with more information based on file data");
+			article.Changes.Add(changeText);
 
 			SetLicenseReplaced(articleTitle, ReplacementStatus.Replaced);
 
