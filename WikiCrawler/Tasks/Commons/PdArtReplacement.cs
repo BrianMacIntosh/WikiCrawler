@@ -658,6 +658,7 @@ OtherLicense: {8}",
 					}
 				}
 			}
+			allReplaceableLicenses.Sort((a, b) => a.end - b.end);
 
 			// replace the LAST license template
 			worksheet.Text = worksheet.Text.Substring(0, allReplaceableLicenses.Last().start)
