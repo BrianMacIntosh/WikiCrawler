@@ -18,7 +18,7 @@ namespace Tasks
 		public PdArtFixup()
 			: base(CreateReplacement())
 		{
-
+			HeartbeatEnabled = true;
 		}
 
 		public override string GetCategory()

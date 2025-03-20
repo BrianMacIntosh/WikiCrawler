@@ -17,7 +17,7 @@ namespace Tasks.Commons
 			PdArtReplacement.SkipAuthorLookup = true; // already tried last time
 
 			HeartbeatEnabled = true;
-			m_heartbeatData["taskKey"] = "PdArtFollowup";
+			m_heartbeatData["taskKey"] = "PdArtFixup";
 		}
 
 		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
