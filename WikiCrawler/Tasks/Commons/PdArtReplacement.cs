@@ -795,7 +795,7 @@ OtherLicense: {8}",
 
 		public static DateParseMetadata ParseDate(string date)
 		{
-			date = date.Trim();
+			date = date.Trim().TrimEnd('.');
 
 			// check for "other date" template
 			StringSpan otherDateSpan = WikiUtils.GetTemplateLocation(date, "other date");
