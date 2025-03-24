@@ -218,6 +218,42 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
+	public void PdArtReplacementTests_PdOldPdArt()
+	{
+		PdArtReplacement replacement = new PdArtReplacement();
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator:August Macke}}
+|permission={{PD-old}}
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art}}
+
+[[Category:Test Category]]");
+		Assert.IsTrue(replacement.DoReplacement(article));
+		Assert.AreEqual(
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator:August Macke}}
+|permission=
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art|PD-old-auto-expired|deathyear=1914}}
+
+[[Category:Test Category]]",
+			article.revisions[0].text);
+	}
+
+	[TestMethod]
 	public void PdArtReplacementTests_DensePdOldDefault()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
