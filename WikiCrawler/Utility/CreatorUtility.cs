@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -32,6 +33,7 @@ namespace MediaWiki
 		public override void Execute()
 		{
 			CreatorUtility.TrimEmpty();
+			CreatorUtility.TrimIdentity();
 		}
 	}
 
@@ -68,8 +70,8 @@ namespace MediaWiki
 					File.ReadAllText(creatorDataFile, Encoding.UTF8));
 				foreach (Creator creator in s_creatorData.Values)
 				{
-					creator.Usage = 0;
-					creator.UploadableUsage = 0;
+					//creator.Usage = 0;
+					//creator.UploadableUsage = 0;
 				}
 			}
 			else
@@ -98,6 +100,19 @@ namespace MediaWiki
 			foreach (var kv in kvs)
 			{
 				if (kv.Value.IsEmpty)
+				{
+					s_creatorData.Remove(kv.Key);
+					s_creatorsDirty = true;
+				}
+			}
+		}
+
+		public static void TrimIdentity()
+		{
+			List<KeyValuePair<string, Creator>> kvs = s_creatorData.ToList();
+			foreach (var kv in kvs)
+			{
+				if (kv.Value.Author == kv.Key)
 				{
 					s_creatorData.Remove(kv.Key);
 					s_creatorsDirty = true;
@@ -197,12 +212,22 @@ namespace MediaWiki
 			}
 		}
 
+		/// <summary>
+		/// Gets cached information about a creator.
+		/// </summary>
+		/// <param name="key">The creator template (e.g. "{{Creator:Claude Monet}}")</param>
+		/// <returns></returns>
 		public static Creator GetCreator(string key)
 		{
 			bool eat;
 			return GetCreator(key, out eat);
 		}
 
+		/// <summary>
+		/// Gets cached information about a creator.
+		/// </summary>
+		/// <param name="key">The creator template (e.g. "{{Creator:Claude Monet}}")</param>
+		/// <returns></returns>
 		public static Creator GetCreator(string key, out bool isNew)
 		{
 			key = key.Trim();
@@ -238,7 +263,7 @@ namespace MediaWiki
 		private static Creator CreateNewCreator(string key)
 		{
 			Creator creator = new Creator();
-			
+
 			// see if the name already includes birth and death years
 			Match birthDeathMatch = AuthorLifespanRegex.Match(key);
 			if (birthDeathMatch.Success)
@@ -253,7 +278,27 @@ namespace MediaWiki
 			if (!creatorTemplate.IsEmpty)
 			{
 				creator.Author = "{{" + creatorTemplate + "}}";
-				creator.DeathYear = PdOldAuto.GetCreatorDeathYear(creatorTemplate);
+
+				// cache data
+				Article article = GlobalAPIs.Commons.GetPage(creatorTemplate.ToString());
+				if (!Article.IsNullOrEmpty(article))
+				{
+					article = GlobalAPIs.Commons.FollowRedirects(article);
+				}
+				if (!Article.IsNullOrEmpty(article))
+				{
+					CommonsCreatorWorksheet worksheet = new CommonsCreatorWorksheet(article);
+					string wdId = worksheet.Wikidata;
+					if (!string.IsNullOrEmpty(wdId))
+					{
+						Entity wikidata = GlobalAPIs.Wikidata.GetEntity(wdId);
+						if (!wikidata.missing)
+						{
+							creator.DeathYear = GetCreatorDeathYear(wikidata);
+							creator.P27 = GetCreatorP27(wikidata);
+						}
+					}
+				}
 			}
 
 			return creator;
@@ -302,6 +347,31 @@ namespace MediaWiki
 		public static void SetHomeCategory(string creator, string homeCategory)
 		{
 			s_creatorHomecats[creator] = homeCategory;
+		}
+
+		public static int GetCreatorDeathYear(Entity entity)
+		{
+			if (entity.HasClaim(Wikidata.Prop_DateOfDeath))
+			{
+				IEnumerable<DateTime> deathTimes = entity.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath)
+					.Where(date => date != null && date.Precision >= DateTime.YearPrecision);
+				if (deathTimes.Any())
+				{
+					return deathTimes.Max(date => date.GetYear());
+				}
+			}
+
+			return 9999;
+		}
+
+		public static string GetCreatorP27(Entity entity)
+		{
+			if (entity.HasClaim(Wikidata.Prop_CountryOfCitizenship))
+			{
+				return "Q" + entity.GetClaimValueAsEntityId(Wikidata.Prop_CountryOfCitizenship);
+			}
+
+			return null;
 		}
 	}
 }

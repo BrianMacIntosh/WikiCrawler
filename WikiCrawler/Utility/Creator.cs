@@ -17,6 +17,11 @@
 		public int UploadableUsage = 0;
 		public int DeathYear = 9999;
 
+		/// <summary>
+		/// "Country of citizenship" QID.
+		/// </summary>
+		public string P27 = "";
+
 		[Newtonsoft.Json.JsonIgnore]
 		public bool IsEmpty
 		{
@@ -46,6 +51,10 @@
 			if (to.DeathYear == 9999)
 			{
 				to.DeathYear = from.DeathYear;
+			}
+			if (string.IsNullOrEmpty(to.P27))
+			{
+				to.P27 = from.P27;
 			}
 		}
 	}

@@ -328,6 +328,29 @@ OtherLicense: {8}",
 			return false;
 		}
 
+		private List<StringSpan> GetPdArtTemplates(string text)
+		{
+			List<StringSpan> pdArts = new List<StringSpan>();
+			foreach (string template in s_pdArtTemplates)
+			{
+				int workingIndex = 0;
+				do
+				{
+					StringSpan span = WikiUtils.GetTemplateLocation(text, template, workingIndex);
+					if (span.IsValid)
+					{
+						pdArts.Add(span);
+						workingIndex = span.end + 1;
+					}
+					else
+					{
+						break;
+					}
+				} while (true);
+			}
+			return pdArts;
+		}
+
 		/// <summary>
 		/// Determines the license that can replace PD-Art and replaces it.
 		/// </summary>
@@ -354,24 +377,7 @@ OtherLicense: {8}",
 			//TODO: check pd-art is already acceptably replaced
 
 			// locate pd-art template(s)
-			List<StringSpan> pdArts = new List<StringSpan>();
-			foreach (string template in s_pdArtTemplates)
-			{
-				int workingIndex = 0;
-				do
-				{
-					StringSpan span = WikiUtils.GetTemplateLocation(worksheet.Text, template, workingIndex);
-					if (span.IsValid)
-					{
-						pdArts.Add(span);
-						workingIndex = span.end + 1;
-					}
-					else
-					{
-						break;
-					}
-				} while (true);
-			}
+			List<StringSpan> pdArts = GetPdArtTemplates(worksheet.Text);
 
 			string logLicense = null;
 			string logInnerLicense = null;
@@ -389,6 +395,7 @@ OtherLicense: {8}",
 
 			// 1. need author death date
 			int creatorDeathYear = 9999;
+			string creatorP27 = null;
 
 			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
 
@@ -445,20 +452,8 @@ OtherLicense: {8}",
 						var artistEntities = artworkEntity.GetClaimValuesAsEntities(Wikidata.Prop_Creator, GlobalAPIs.Wikidata);
 						if (artistEntities.Any())
 						{
-							creatorDeathYear = artistEntities
-								.Select(e =>
-								{
-									IEnumerable<MediaWiki.DateTime> deathTimes = e.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath)
-										.Where(date => date != null && date.Precision >= MediaWiki.DateTime.YearPrecision);
-									if (deathTimes.Any())
-									{
-										return deathTimes.Max(date => date.GetYear());
-									}
-									else
-									{
-										return 9999;
-									}
-								}).Max();
+							creatorDeathYear = artistEntities.Select(e => CreatorUtility.GetCreatorDeathYear(e)).Max();
+							creatorP27 = artistEntities.Select(e => CreatorUtility.GetCreatorP27(e)).FirstOrDefault();
 						}
 					}
 				}
@@ -489,6 +484,7 @@ OtherLicense: {8}",
 					Creator creator = CreatorUtility.GetCreator("{{" + literalCreator + "}}");
 					creator.Usage++;
 					creatorDeathYear = creator.DeathYear;
+					creatorP27 = creator.P27;
 				}
 				else if (ImplicitCreatorsReplacement.SlowCategoryWalk)
 				{
@@ -497,6 +493,7 @@ OtherLicense: {8}",
 					Creator creator = CreatorUtility.GetCreator("{{" + categoryCreator + "}}");
 					creator.Usage++;
 					creatorDeathYear = creator.DeathYear;
+					creatorP27 = creator.P27;
 				}
 			}
 
@@ -520,7 +517,7 @@ OtherLicense: {8}",
 				}
 			}
 
-			MappingDate mappedDate = null;
+			MappingDate mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle);
 
 			// 2. try to parse file/pub date
 			int latestYear;
@@ -536,20 +533,18 @@ OtherLicense: {8}",
 			else
 			{
 				// unparseable date
-				mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle);
 				if (!string.IsNullOrEmpty(mappedDate.ReplaceDate))
 				{
 					// make the date replacement
-					//TODO: not safe to modify worksheet.Text here
-					//{
-					//	Console.ForegroundColor = ConsoleColor.Green;
-					//	Console.WriteLine("  Date '{0}' is mapped to '{1}'.", worksheet.Date, mappedDate.ReplaceDate);
-					//	Console.ResetColor();
-					//
-					//	string textBefore = worksheet.Text.Substring(0, worksheet.DateIndex);
-					//	string textAfter = worksheet.Text.Substring(worksheet.DateIndex + worksheet.Date.Length);
-					//	worksheet.Text = textBefore + mappedDate.ReplaceDate + textAfter;
-					//}
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("  Date '{0}' is mapped to '{1}'.", worksheet.Date, mappedDate.ReplaceDate);
+						Console.ResetColor();
+					
+						string textBefore = worksheet.Text.Substring(0, worksheet.DateIndex);
+						string textAfter = worksheet.Text.Substring(worksheet.DateIndex + worksheet.Date.Length);
+						worksheet.Text = textBefore + mappedDate.ReplaceDate + textAfter;
+					}
 
 					dateParseMetadata = ParseDate(mappedDate.ReplaceDate);
 					if (dateParseMetadata.LatestYear != 9999)
@@ -599,9 +594,11 @@ OtherLicense: {8}",
 
 			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, logLicense, logInnerLicense);
 
-			// If the license already has some kind of PMA, go ahead and replace it regardless of the duration
-			int pmaYear = System.DateTime.Now.Year - 100;
-			if (!bIsDateReallyOld && creatorDeathYear >= pmaYear && !bAlreadyHasPMA)
+			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorP27);
+			ConsoleUtility.WriteLine(ConsoleColor.Gray, "  PMA DURATION: {0} ({1})", pmaDuration, creatorP27);
+			if (!bIsDateReallyOld // Date is old enough to assume author has been dead for at least 100
+				&& creatorDeathYear >= System.DateTime.Now.Year - pmaDuration
+				&& !bAlreadyHasPMA) // If the license already has some kind of PMA, go ahead and replace it regardless of the duration
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Death year {0} is inside max PMA.", creatorDeathYear);
 				qtyInsufficientPMA++;
@@ -639,8 +636,7 @@ OtherLicense: {8}",
 
 			qtySuccess++;
 
-			List<StringSpan> allReplaceableLicenses = new List<StringSpan>();
-			allReplaceableLicenses.AddRange(pdArts);
+			List<StringSpan> allReplaceableLicenses = GetPdArtTemplates(worksheet.Text);
 			foreach (string supersededLicense in s_supersedeLicenses)
 			{
 				int currentLocation = 0;

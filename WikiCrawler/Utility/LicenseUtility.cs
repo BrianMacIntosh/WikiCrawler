@@ -89,7 +89,33 @@ public static class LicenseUtility
 			case "CHE":
 				return 70;
 			default:
-				return 9999;
+				return 100;
+		}
+	}
+
+	public static int GetPMADurationByQID(string qid)
+	{
+		if (string.IsNullOrEmpty(qid))
+		{
+			return 100;
+		}
+
+		switch (qid)
+		{
+			case "Q683": // Samoa
+			case "Q774": // Guatemala
+			case "Q757": // Saint Vincent and the Grenadines
+				return 75;
+			case "Q1006": // Guinea
+			case "Q739": // Colombia
+			case "Q983": // Equatorial Guinea
+				return 80;
+			case "Q766": // Jamaica
+				return 95;
+			case "Q96": // Mexico
+				return 100;
+			default:
+				return 70; // conservative: all nations above 70 are listed above
 		}
 	}
 

@@ -5,6 +5,7 @@ namespace MediaWiki
 {
 	public static class Wikidata
 	{
+		public const string Prop_CountryOfCitizenship = "P27";
 		public const string Prop_InstanceOf = "P31";
 		public const string Prop_Creator = "P170";
 		public const string Prop_DateOfBirth = "P569";

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Web.UI.WebControls;
 
 public abstract class MappingValue
 {
@@ -37,6 +38,11 @@ public class ManualMapping<MappingType> : IEnumerable<KeyValuePair<string, Mappi
 	private bool m_isDirty = false;
 
 	public readonly string Filename;
+
+	public Dictionary<string, MappingType>.KeyCollection Keys
+	{
+		get { return m_mappings.Keys; }
+	}
 
 	public ManualMapping(string filename)
 	{
@@ -90,8 +96,18 @@ public class ManualMapping<MappingType> : IEnumerable<KeyValuePair<string, Mappi
 		}
 	}
 
+	public void Remove(string key)
+	{
+		m_mappings.Remove(key);
+	}
+
 	public MappingType TryMapValue(string input, PageTitle onPage)
 	{
+		if (string.IsNullOrEmpty(input))
+		{
+			return null;
+		}
+
 		MappingType mapping;
 		if (!m_mappings.TryGetValue(input, out mapping))
 		{
