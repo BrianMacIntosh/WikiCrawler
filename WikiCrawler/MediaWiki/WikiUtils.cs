@@ -749,6 +749,11 @@ namespace MediaWiki
 			return RemoveTemplate(text, span, out string template);
 		}
 
+		private static bool IsLineReturn(char c)
+		{
+			return c == '\n' || c == '\r';
+		}
+
 		/// <summary>
 		/// Removes the template at the specified span from the text. ASSUMES it is a template.
 		/// </summary>
@@ -761,7 +766,7 @@ namespace MediaWiki
 			}
 
 			// if the next character is a line return, get that too
-			if (span.end + 1 < text.Length && text[span.end + 1] == '\n')
+			if (span.end + 1 < text.Length && IsLineReturn(text[span.end + 1]))
 			{
 				// ...unless it's in a parameter list
 				int readIndex = span.end + 2;
@@ -769,9 +774,12 @@ namespace MediaWiki
 				{
 					readIndex++;
 				}
-				if (readIndex >= text.Length || readIndex != '|')
+				if (readIndex >= text.Length || text[readIndex] != '|')
 				{
-					span.end++;
+					while (IsLineReturn(text[span.end + 1]))
+					{
+						span.end++;
+					}
 				}
 			}
 
