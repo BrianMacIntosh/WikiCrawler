@@ -421,7 +421,7 @@ namespace MediaWiki
 		/// <summary>
 		/// Undoes the specified revision.
 		/// </summary>
-		public bool UndoRevision(int pageid, int revisionid, bool bot = true)
+		public bool UndoRevision(int pageid, int revisionid, string summary = "", bool bot = true)
 		{
 			if (string.IsNullOrEmpty(s_edittoken))
 				s_edittoken = GetCsrfToken();
@@ -430,11 +430,13 @@ namespace MediaWiki
 				+ "&action=edit"
 				+ "&pageid=" + pageid.ToString()
 				+ "&undo=" + revisionid.ToString()
+				+ "&summary=" + UrlEncode(summary)
 				+ "&nocreate"
 				+ "&token=" + UrlEncode(s_edittoken);
 			if (bot)
 			{
 				baseQuery += "&bot";
+				baseQuery += "&assert=bot";
 			}
 
 			LogApiRequest("edit-undo", pageid.ToString());
