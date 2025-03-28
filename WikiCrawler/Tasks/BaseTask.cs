@@ -26,6 +26,8 @@ namespace Tasks
 			get { return Path.Combine(Configuration.DataDirectory, "heartbeat_endpoint.txt"); }
 		}
 
+		public readonly Dictionary<string, string> Parameters = new Dictionary<string, string>();
+
 		public BaseTask()
 		{
 			if (File.Exists(HeartbeatEndpointPath))
@@ -37,6 +39,19 @@ namespace Tasks
 			m_heartbeatData["taskKey"] = GetType().Name;
 			m_heartbeatData["nEdits"] = 0;
 			m_heartbeatData["terminate"] = false;
+		}
+
+		public void ExecuteLogged()
+		{
+			TaskLogger logger = new TaskLogger(this);
+			try
+			{
+				Execute();
+			}
+			finally
+			{
+				logger.Close();
+			}
 		}
 
 		/// <summary>

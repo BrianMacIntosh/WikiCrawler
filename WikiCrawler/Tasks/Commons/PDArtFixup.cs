@@ -19,12 +19,13 @@ namespace Tasks
 			: base(CreateReplacement())
 		{
 			HeartbeatEnabled = true;
+
+			Parameters.Add("Category", "Category:PD-Art (PD-old-80)");
 		}
 
 		public override string GetCategory()
 		{
-			//return "Category:PD-Art (PD-old default)";
-			return "Category:PD-Art (PD-old-70)";
+			return Parameters["Category"];
 		}
 
 		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)

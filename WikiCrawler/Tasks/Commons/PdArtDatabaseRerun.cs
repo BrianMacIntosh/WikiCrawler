@@ -18,6 +18,10 @@ namespace Tasks.Commons
 
 			HeartbeatEnabled = true;
 			m_heartbeatData["taskKey"] = "PdArtFixup";
+
+			Parameters["Query"] = "SELECT * FROM files where bLicenseReplaced=0";
+			//Parameters["Query"] = "SELECT * FROM files where pdArtLicense LIKE \"{{pd-art}}\" AND bLicenseReplaced=0";
+			//Parameters["Query"] = "SELECT pageTitle FROM files WHERE innerLicense LIKE \"PD-old-90\" AND bLicenseReplaced != 1 AND authorDeathYear != 9999";
 		}
 
 		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
@@ -29,7 +33,7 @@ namespace Tasks.Commons
 		{
 			SQLiteConnection connection = PdArtReplacement.ConnectFilesDatabase(false);
 			SQLiteCommand query = connection.CreateCommand();
-			query.CommandText = "SELECT pageTitle FROM files WHERE bLicenseReplaced=2";
+			query.CommandText = Parameters["Query"];
 
 			List<Article> results = new List<Article>();
 			using (SQLiteDataReader reader = query.ExecuteReader())

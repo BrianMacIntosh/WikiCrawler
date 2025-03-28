@@ -48,7 +48,7 @@ namespace WikiCrawler
 					Console.WriteLine("Task class is '{0}'.", taskType.Name);
 
 					Tasks.BaseTask taskInstance = (Tasks.BaseTask)Activator.CreateInstance(taskType);
-					taskInstance.Execute();
+					taskInstance.ExecuteLogged();
 				}
 			}
 			/*catch (Exception e)
