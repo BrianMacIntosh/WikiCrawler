@@ -130,6 +130,7 @@
     <Compile Include="Tasks\Commons\PdArtRefreshCache.cs" />
     <Compile Include="Tasks\Commons\ReportMalformedContribs.cs" />
     <Compile Include="Tasks\Commons\ReportMalformedPages.cs" />
+    <Compile Include="Tasks\Commons\RevertTemp.cs" />
     <Compile Include="Tasks\DownloadCategoryList.cs" />
     <Compile Include="Tasks\Commons\FixImplicitCreators.cs" />
     <Compile Include="Tasks\Commons\FixInformationTemplates.cs" />

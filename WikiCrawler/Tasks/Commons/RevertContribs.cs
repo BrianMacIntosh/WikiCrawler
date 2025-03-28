@@ -35,7 +35,7 @@ namespace Tasks
 					{
 						Console.WriteLine(contrib.title);
 						badrevs.Add(contrib.revid);
-						Api.UndoRevision(contrib.pageid, contrib.revid, true);
+						Api.UndoRevision(contrib.pageid, contrib.revid, "", true);
 					}
 				}
 			}
