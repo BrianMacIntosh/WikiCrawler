@@ -42,7 +42,7 @@ namespace Tasks
 				else if (page.revisions[0].user == Parameters["User"])
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.Green, "Undoing.");
-					Api.UndoRevision(page.pageid, page.revisions[0].revid, "", true);
+					Api.UndoRevision((int)page.pageid, page.revisions[0].revid, "", true);
 
 					SQLiteCommand command = connection.CreateCommand();
 					command.CommandText = "UPDATE files SET bLicenseReplaced=0 WHERE pageTitle=$pageTitle";
