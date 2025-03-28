@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace MediaWiki
 {
 	public class Revision
 	{
+		public int revid;
+		public int parentid;
 		public string contentformat;
 		public string contentmodel;
 		public string user;
@@ -22,6 +20,14 @@ namespace MediaWiki
 		{
 			object value;
 
+			if (json.TryGetValue("revid", out value))
+			{
+				revid = (int)value;
+			}
+			if (json.TryGetValue("parentid", out value))
+			{
+				parentid = (int)value;
+			}
 			if (json.TryGetValue("contentformat", out value))
 			{
 				contentformat = (string)value;
