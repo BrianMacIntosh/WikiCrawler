@@ -120,6 +120,7 @@
     <Compile Include="MediaWiki\Formats\Revision.cs" />
     <Compile Include="MediaWiki\GlobalAPIs.cs" />
     <Compile Include="MediaWiki\PageTitle.cs" />
+    <Compile Include="TaskLogger.cs" />
     <Compile Include="Tasks\BaseReplacement.cs" />
     <Compile Include="Tasks\BaseTask.cs" />
     <Compile Include="Tasks\Commons\AddCheckCategory.cs" />
@@ -130,7 +131,7 @@
     <Compile Include="Tasks\Commons\PdArtRefreshCache.cs" />
     <Compile Include="Tasks\Commons\ReportMalformedContribs.cs" />
     <Compile Include="Tasks\Commons\ReportMalformedPages.cs" />
-    <Compile Include="Tasks\Commons\RevertTemp.cs" />
+    <Compile Include="Tasks\Commons\PdArtRevert.cs" />
     <Compile Include="Tasks\DownloadCategoryList.cs" />
     <Compile Include="Tasks\Commons\FixImplicitCreators.cs" />
     <Compile Include="Tasks\Commons\FixInformationTemplates.cs" />
