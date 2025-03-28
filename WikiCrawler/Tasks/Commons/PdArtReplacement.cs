@@ -374,41 +374,35 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			//TODO: check pd-art is already acceptably replaced
-
 			// locate pd-art template(s)
 			List<StringSpan> pdArts = GetPdArtTemplates(worksheet.Text);
 
-			string logLicense = null;
-			string logInnerLicense = null;
-			string[] logComponents = null;
-			if (pdArts.Count > 0)
 			{
-				logLicense = worksheet.Text.Substring(pdArts[0].start, pdArts[0].Length);
-				// break pd-art template params
-				logComponents = WikiUtils.TrimTemplate(logLicense).Split('|').Select(component => component.Trim()).ToArray();
-				if (logComponents.Length >= 2)
+				string logLicense = null;
+				string logInnerLicense = null;
+				string[] logComponents = null;
+				if (pdArts.Count > 0)
 				{
-					logInnerLicense = logComponents[1];
+					logLicense = worksheet.Text.Substring(pdArts[0].start, pdArts[0].Length);
+					// break pd-art template params
+					logComponents = WikiUtils.TrimTemplate(logLicense).Split('|').Select(component => component.Trim()).ToArray();
+					if (logComponents.Length >= 2)
+					{
+						logInnerLicense = logComponents[1];
+					}
 				}
+
+				CacheFile(articleTitle, worksheet.Author, worksheet.Date, logLicense, logInnerLicense);
 			}
-
-			// 1. need author death date
-			int creatorDeathYear = 9999;
-			string creatorP27 = null;
-
-			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
-
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, logLicense, logInnerLicense);
 
 			if (pdArts.Count == 0)
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to find any PD-Art templates.");
-				SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound);
+				CacheReplacementStatus(articleTitle, ReplacementStatus.NotFound);
 				return false;
 			}
 
-			string licensedPdArtOtherLicense = null;
+			string licensedPdArtOtherLicense = null; //TODO: reimplement me
 			bool bAlreadyHasPMA = false;
 
 			foreach (StringSpan match in pdArts)
@@ -418,28 +412,33 @@ OtherLicense: {8}",
 				if (!IsReplaceablePdArt(nakedTemplate))
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Can't replace '{0}'.", nakedTemplate);
-					SetLicenseReplaced(articleTitle, ReplacementStatus.NotFound); //TODO: log instead
+					CacheReplacementStatus(articleTitle, ReplacementStatus.NotFound); //TODO: log instead
 					return false;
 				}
 
 				// does it already have exactly one good pd-art template?
-				//TODO: remove extraneous templates
+				//TODO: still remove extraneous templates
 				if (s_goodPdArtNakedRegex.IsMatch(nakedTemplate))
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
 					Console.ResetColor();
-					SetLicenseReplaced(articleTitle, ReplacementStatus.Replaced);
+					CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
 					return false;
 				}
 
 				// is there already a PMA license in here?
+				//TODO: detect PD-Art-70 etc
 				if (!bAlreadyHasPMA)
 				{
 					bAlreadyHasPMA = HasPMALicense(nakedTemplate);
 				}
 			}
 
-			SetLicenseReplaced(articleTitle, ReplacementStatus.NotReplaced);
+			CacheReplacementStatus(articleTitle, ReplacementStatus.NotReplaced);
+
+			// 1. need author death date
+			int creatorDeathYear = 9999;
+			string creatorP27 = null;
 
 			// A. does wikidata item have author info?
 			if (!SkipAuthorLookup && !string.IsNullOrEmpty(worksheet.Wikidata))
@@ -517,14 +516,16 @@ OtherLicense: {8}",
 				}
 			}
 
+			CacheDeathyear(articleTitle, creatorDeathYear);
+
 			MappingDate mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle);
 
 			// 2. try to parse file/pub date
+			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
 			int latestYear;
 			if (string.IsNullOrEmpty(worksheet.Date))
 			{
-				// if no file/pub date, assume it is not later than the death year
-				latestYear = creatorDeathYear;
+				latestYear = 9999;
 			}
 			else if (dateParseMetadata.LatestYear != 9999)
 			{
@@ -574,60 +575,75 @@ OtherLicense: {8}",
 				}
 			}
 
+			CacheLatestYear(articleTitle, dateParseMetadata.LatestYear);
+
+			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorP27);
+			Console.WriteLine("  Date: {0}, Deathyear: {1}, PMA: {2}", latestYear, creatorDeathYear, pmaDuration);
+
 			// is pub date old enough to assume 100 PMA?
-			bool bIsDateReallyOld = false;
+			bool bReallyOldUnknownAuthor = ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175;
 
 			if (creatorDeathYear == 9999)
 			{
-				if (ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175)
+				if (bReallyOldUnknownAuthor)
 				{
-					bIsDateReallyOld = true;
+					Console.WriteLine("  Unknown author and date older than 175.");
+				}
+				else
+				{
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Can't determine death year for creator '{0}'.", worksheet.Author);
+					qtyNoDeathYear++;
+					return false;
+				}
+			}
+			else if (creatorDeathYear >= System.DateTime.Now.Year - pmaDuration) 
+			{
+				if (bAlreadyHasPMA)
+				{
+					// If the license already has some kind of PMA, go ahead and replace it regardless of the duration
+					Console.WriteLine("  PMA too short but license already has one.");
+				}
+				else
+				{
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Death year {0} is inside max PMA.", creatorDeathYear);
+					qtyInsufficientPMA++;
+					return false;
 				}
 			}
 
-			if (!bIsDateReallyOld && creatorDeathYear == 9999)
-			{
-				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Can't determine death year for creator '{0}'.", worksheet.Author);
-				qtyNoDeathYear++;
-				return false;
-			}
-
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date, dateParseMetadata.LatestYear, creatorDeathYear, logLicense, logInnerLicense);
-
-			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorP27);
-			ConsoleUtility.WriteLine(ConsoleColor.Gray, "  PMA DURATION: {0} ({1})", pmaDuration, creatorP27);
-			if (!bIsDateReallyOld // Date is old enough to assume author has been dead for at least 100
-				&& creatorDeathYear >= System.DateTime.Now.Year - pmaDuration
-				&& !bAlreadyHasPMA) // If the license already has some kind of PMA, go ahead and replace it regardless of the duration
-			{
-				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Death year {0} is inside max PMA.", creatorDeathYear);
-				qtyInsufficientPMA++;
-				return false;
-			}
-
 			// Is file/pub date expired in the US?
-			// Exception: post-2004 dates are very likely to be upload dates instead of pub dates, especially given that the author died at least 100 years ago.
-			if (latestYear >= System.DateTime.Now.Year - 95 && latestYear < 2004)
+			int usExpiredYear = System.DateTime.Now.Year - 95;
+			if (latestYear >= usExpiredYear)
 			{
-				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Date {0} is after the US expired threshold.", latestYear);
-				qtyNotPDUS++;
-				return false;
+				// Exception: post-2004 dates are very likely to be upload dates instead of pub dates
+				if (latestYear >= 2004 && creatorDeathYear < System.DateTime.Now.Year - 120)
+				{
+					Console.WriteLine("  Scan/upload date, death year older than 120.");
+				}
+				else
+				{
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Date {0} is after the US expired threshold.", latestYear);
+					qtyNotPDUS++;
+					return false;
+				}
 			}
 
 			string changeText;
 			string newLicense;
-			if (bIsDateReallyOld)
+			if (bReallyOldUnknownAuthor)
 			{
 				newLicense = string.Format("{{{{PD-Art|PD-old-100-expired}}}}");
 				changeText = "improving PD-art license: date older than 175 yrs and author unknown";
 			}
 			else if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
 			{
+				Debug.Assert(creatorDeathYear != 9999);
 				newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear, licensedPdArtOtherLicense);
 				changeText = "improving PD-art license with more information based on file data";
 			}
 			else
 			{
+				Debug.Assert(creatorDeathYear != 9999);
 				newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
 				changeText = "improving PD-art license with more information based on file data";
 			}
@@ -691,7 +707,8 @@ OtherLicense: {8}",
 			article.Dirty = true;
 			article.Changes.Add(changeText);
 
-			SetLicenseReplaced(articleTitle, ReplacementStatus.Replaced);
+			CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
+			CacheNewLicense(articleTitle, newLicense);
 
 			// remove date mapping
 			if (mappedDate != null)
@@ -703,34 +720,21 @@ OtherLicense: {8}",
 			return true;
 		}
 
-		private void CacheFile(PageTitle title, string author, string date, int? latestYear, int deathyear, string pdArtLicense, string innerLicense)
+		private void CacheFile(PageTitle title, string author, string date, string pdArtLicense, string innerLicense)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
-
-			// do not replace a cached author deathyear with a junk one
-			if (deathyear == 9999)
-			{
-				command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, latestYear, authorDeathYear, pdArtLicense, innerLicense) "
-					+ "VALUES ($pageTitle, $authorString, $dateString, $latestYear, $authorDeathYear, $pdArtLicense, $innerLicense) "
-					+ "ON CONFLICT (pageTitle) DO UPDATE "
-					+ "SET authorString=$authorString, dateString=$dateString, pdArtLicense=$pdArtLicense, innerLicense=$innerLicense";
-			}
-			else
-			{
-				command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, latestYear, authorDeathYear, pdArtLicense, innerLicense) "
-					+ "VALUES ($pageTitle, $authorString, $dateString, $latestYear, $authorDeathYear, $pdArtLicense, $innerLicense) "
-					+ "ON CONFLICT (pageTitle) DO UPDATE "
-					+ "SET authorString=$authorString, dateString=$dateString, latestYear=$latestYear, authorDeathYear=$authorDeathYear, pdArtLicense=$pdArtLicense, innerLicense=$innerLicense";
-			}
-			
+			command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, pdArtLicense, innerLicense) "
+				+ "VALUES ($pageTitle, $authorString, $dateString, $pdArtLicense, $innerLicense) "
+				+ "ON CONFLICT (pageTitle) DO UPDATE "
+				+ "SET authorString=$authorString, dateString=$dateString, pdArtLicense=$pdArtLicense, innerLicense=$innerLicense";
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("authorString", author);
 			command.Parameters.AddWithValue("dateString", date);
-			command.Parameters.AddWithValue("latestYear", latestYear);
-			command.Parameters.AddWithValue("authorDeathYear", deathyear);
 			command.Parameters.AddWithValue("pdArtLicense", pdArtLicense);
 			command.Parameters.AddWithValue("innerLicense", innerLicense);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
+
+			CacheTimestamp(title);
 		}
 
 		public void RemoveFromCache(string title)
@@ -753,16 +757,47 @@ OtherLicense: {8}",
 			}
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="title"></param>
-		private void SetLicenseReplaced(PageTitle title, ReplacementStatus state)
+		private void CacheTimestamp(PageTitle title)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET touchTimeUnix=unixepoch() WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.ExecuteNonQuery();
+		}
+
+		private void CacheReplacementStatus(PageTitle title, ReplacementStatus state)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET bLicenseReplaced=$state WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("state", (int)state);
+			command.ExecuteNonQuery();
+		}
+
+		private void CacheDeathyear(PageTitle title, int deathyear)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET authorDeathYear=$authorDeathYear WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("authorDeathYear", deathyear);
+			command.ExecuteNonQuery();
+		}
+
+		private void CacheLatestYear(PageTitle title, int latestYear)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET latestYear=$latestYear WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("latestYear", latestYear);
+			command.ExecuteNonQuery();
+		}
+
+		private void CacheNewLicense(PageTitle title, string newLicense)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET newLicense=$newLicense WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("newLicense", newLicense);
 			command.ExecuteNonQuery();
 		}
 
@@ -934,6 +969,15 @@ OtherLicense: {8}",
 			if (date.Equals("Edo Period", StringComparison.InvariantCultureIgnoreCase))
 			{
 				return new DateParseMetadata(9999, 1603, 1868);
+			}
+
+			// "before"
+			if (date.StartsWith("before ", StringComparison.InvariantCultureIgnoreCase))
+			{
+				if (int.TryParse(date.Substring("before ".Length), out int beforeInt) && beforeInt >= 100 && beforeInt <= System.DateTime.Now.Year)
+				{
+					return new DateParseMetadata(9999, 9999, beforeInt - 1);
+				}
 			}
 
 			// year regexes

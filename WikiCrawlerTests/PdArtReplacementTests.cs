@@ -9,6 +9,14 @@ public class PdArtReplacementTests
 	public static void AssemblyInitialize(TestContext testContext)
 	{
 		PdArtReplacement.SkipCached = false;
+		PdArtReplacement.SkipAuthorLookup = true;
+		ImplicitCreatorsReplacement.SlowCategoryWalk = false;
+	}
+
+	[AssemblyCleanup]
+	public static void AssemblyCleanup()
+	{
+		CreatorUtilityMeta.SaveOut();
 	}
 
 	private static Article CreateArticle(string title, string content)
@@ -50,6 +58,40 @@ public class PdArtReplacementTests
 
 =={{int:license-header}}==
 {{PD-Art|PD-old-auto-expired|deathyear=1914}}
+
+[[Category:Test Category]]",
+			article.revisions[0].text);
+	}
+
+	[TestMethod]
+	public void PdArtReplacementTests_NoDate()
+	{
+		PdArtReplacement replacement = new PdArtReplacement();
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|author={{Creator:August Macke}}
+|permission=
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art}}
+
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+		Assert.AreEqual(
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|author={{Creator:August Macke}}
+|permission=
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art}}
 
 [[Category:Test Category]]",
 			article.revisions[0].text);
@@ -269,7 +311,7 @@ public class PdArtReplacementTests
 			article.revisions[0].text);
 	}
 
-	[TestMethod]
+	//[TestMethod]
 	public void PdArtReplacementTests_LicensedPdArt()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();

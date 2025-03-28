@@ -261,6 +261,7 @@ namespace Tasks
 					else
 					{
 						// search for a creator by name/DOB/DOD
+						//TODO: cache result
 						string dob = lifespanMatch.Groups[2].Value.Trim();
 						string dod = lifespanMatch.Groups[3].Value.Trim();
 						Entity wikidata = CommonsCreatorFromWikidata.GetWikidata(authorString, dob, dod);
