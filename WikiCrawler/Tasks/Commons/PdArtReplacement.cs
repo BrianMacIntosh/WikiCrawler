@@ -616,7 +616,7 @@ OtherLicense: {8}",
 			if (latestYear >= usExpiredYear)
 			{
 				// Exception: post-2004 dates are very likely to be upload dates instead of pub dates
-				if (latestYear >= 2004 && creatorDeathYear < System.DateTime.Now.Year - 120)
+				if ((latestYear != 9999 && latestYear >= 2004) && creatorDeathYear < System.DateTime.Now.Year - 120)
 				{
 					Console.WriteLine("  Scan/upload date, death year older than 120.");
 				}
@@ -648,8 +648,6 @@ OtherLicense: {8}",
 				changeText = "improving PD-art license with more information based on file data";
 			}
 
-			ConsoleUtility.WriteLine(ConsoleColor.Green, "  Replacing PD-Art with '{0}'.", newLicense);
-
 			qtySuccess++;
 
 			List<StringSpan> allReplaceableLicenses = GetPdArtTemplates(worksheet.Text);
@@ -673,9 +671,12 @@ OtherLicense: {8}",
 			allReplaceableLicenses.Sort((a, b) => a.end - b.end);
 
 			// replace the LAST license template
+			string replacedLicense = worksheet.Text.Substring(allReplaceableLicenses.Last());
 			worksheet.Text = worksheet.Text.Substring(0, allReplaceableLicenses.Last().start)
 				+ newLicense
 				+ worksheet.Text.Substring(allReplaceableLicenses.Last().end + 1);
+
+			ConsoleUtility.WriteLine(ConsoleColor.Green, "  Replaced '{0}' with '{1}'.", replacedLicense, newLicense);
 
 			// remove extraneous license templates
 			for (int rangeIndex = allReplaceableLicenses.Count - 2; rangeIndex >= 0; --rangeIndex)
