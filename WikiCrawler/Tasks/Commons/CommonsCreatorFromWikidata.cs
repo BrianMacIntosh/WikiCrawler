@@ -118,7 +118,8 @@ namespace Tasks
 								if (!Article.IsNullOrEmpty(creatorArt))
 								{
 									Console.WriteLine("Checking Creator for wikidata id");
-									wikidataId = WikiUtils.GetTemplateParameter("wikidata", creatorArt.revisions[0].text);
+									CommonsCreatorWorksheet creatorWorksheet = new CommonsCreatorWorksheet(creatorArt);
+									wikidataId = creatorWorksheet.Wikidata;
 								}
 							}
 						}

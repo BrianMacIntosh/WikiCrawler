@@ -64,8 +64,6 @@ namespace WikiCrawler
 				//TODO: check dirty
 				CategoryTranslation.SaveOut();
 
-				CreatorUtilityMeta.SaveOut();
-
 				// allow sleep
 				WindowsUtility.SetThreadExecutionState(WindowsUtility.EXECUTION_STATE.ES_CONTINUOUS);
 			}

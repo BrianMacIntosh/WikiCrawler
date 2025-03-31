@@ -93,26 +93,26 @@ public static class LicenseUtility
 		}
 	}
 
-	public static int GetPMADurationByQID(string qid)
+	public static int GetPMADurationByQID(int? qid)
 	{
-		if (string.IsNullOrEmpty(qid))
+		if (!qid.HasValue)
 		{
 			return 100;
 		}
 
-		switch (qid)
+		switch (qid.Value)
 		{
-			case "Q683": // Samoa
-			case "Q774": // Guatemala
-			case "Q757": // Saint Vincent and the Grenadines
+			case 683: // Samoa
+			case 774: // Guatemala
+			case 757: // Saint Vincent and the Grenadines
 				return 75;
-			case "Q1006": // Guinea
-			case "Q739": // Colombia
-			case "Q983": // Equatorial Guinea
+			case 1006: // Guinea
+			case 739: // Colombia
+			case 983: // Equatorial Guinea
 				return 80;
-			case "Q766": // Jamaica
+			case 766: // Jamaica
 				return 95;
-			case "Q96": // Mexico
+			case 96: // Mexico
 				return 100;
 			default:
 				return 70; // conservative: all nations above 70 are listed above

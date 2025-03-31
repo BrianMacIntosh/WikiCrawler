@@ -452,20 +452,24 @@ namespace MediaWiki
 			return -1;
 		}
 
+		private static readonly Regex s_templateTrimRegex = new Regex(@"^\s*{{\s*(.+)\s*}}\s*$");
+
 		/// <summary>
-		/// Trims {{}} and whitespace from the template.
+		/// Trims {{}} and whitespace from the start and end of the string.
 		/// </summary>
 		public static string TrimTemplate(string template)
 		{
 			if (string.IsNullOrEmpty(template))
 			{
-				return string.Empty;
+				return template;
+			}
+			else if (s_templateTrimRegex.MatchOut(template, out Match match))
+			{
+				return match.Groups[1].Value;
 			}
 			else
 			{
-				Debug.Assert(template.StartsWith("{{"));
-				Debug.Assert(template.EndsWith("}}"));
-				return template.Substring(2, template.Length - 4).Trim();
+				return template;
 			}
 		}
 

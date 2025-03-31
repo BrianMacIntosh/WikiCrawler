@@ -438,7 +438,7 @@ OtherLicense: {8}",
 
 			// 1. need author death date
 			int creatorDeathYear = 9999;
-			string creatorP27 = null;
+			int? creatorCountryOfCitizenship = null;
 
 			// A. does wikidata item have author info?
 			if (!SkipAuthorLookup && !string.IsNullOrEmpty(worksheet.Wikidata))
@@ -451,8 +451,8 @@ OtherLicense: {8}",
 						var artistEntities = artworkEntity.GetClaimValuesAsEntities(Wikidata.Prop_Creator, GlobalAPIs.Wikidata);
 						if (artistEntities.Any())
 						{
-							creatorDeathYear = artistEntities.Select(e => CreatorUtility.GetCreatorDeathYear(e)).Max();
-							creatorP27 = artistEntities.Select(e => CreatorUtility.GetCreatorP27(e)).FirstOrDefault();
+							creatorDeathYear = artistEntities.Select(e => WikidataCache.GetCreatorDeathYear(e)).Max();
+							creatorCountryOfCitizenship = artistEntities.Select(e => WikidataCache.GetCreatorCountryOfCitizenship(e)).FirstOrDefault();
 						}
 					}
 				}
@@ -480,19 +480,24 @@ OtherLicense: {8}",
 				}
 				else if (CreatorUtility.TryGetCreatorTemplate(worksheet.Author, out PageTitle literalCreator))
 				{
-					Creator creator = CreatorUtility.GetCreator("{{" + literalCreator + "}}");
-					creator.Usage++;
-					creatorDeathYear = creator.DeathYear;
-					creatorP27 = creator.P27;
+					CreatorData creator = WikidataCache.GetCreatorData(literalCreator);
+					if (creator != null)
+					{
+						creatorDeathYear = creator.DeathYear;
+						creatorCountryOfCitizenship = creator.CountryOfCitizenship;
+					}
 				}
 				else if (ImplicitCreatorsReplacement.SlowCategoryWalk)
 				{
 					// C. can author be associated to a creator based on file categories?
+					//TODO: operate directly on QID instead
 					PageTitle categoryCreator = ImplicitCreatorsReplacement.GetCreatorFromCategories(worksheet.Author, WikiUtils.GetCategories(worksheet.Text), 1);
-					Creator creator = CreatorUtility.GetCreator("{{" + categoryCreator + "}}");
-					creator.Usage++;
-					creatorDeathYear = creator.DeathYear;
-					creatorP27 = creator.P27;
+					CreatorData creator = WikidataCache.GetCreatorData(categoryCreator);
+					if (creator != null)
+					{
+						creatorDeathYear = creator.DeathYear;
+						creatorCountryOfCitizenship = creator.CountryOfCitizenship;
+					}
 				}
 			}
 
@@ -577,7 +582,7 @@ OtherLicense: {8}",
 
 			CacheLatestYear(articleTitle, dateParseMetadata.LatestYear);
 
-			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorP27);
+			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorCountryOfCitizenship);
 			Console.WriteLine("  Date: {0}, Deathyear: {1}, PMA: {2}", latestYear, creatorDeathYear, pmaDuration);
 
 			// is pub date old enough to assume 100 PMA?

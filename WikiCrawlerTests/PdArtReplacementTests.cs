@@ -64,6 +64,43 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
+	public void PdArtReplacementTests_InlineRemoveLicense()
+	{
+		PdArtReplacement replacement = new PdArtReplacement();
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|author={{Creator:August Macke}}
+|Date=1295
+|Permission={{PD-art|1=PD-1923}}
+|other_versions={{Extracted from|1=AlixKypr.jpg}}
+}}
+
+=={{int:license-header}}==
+{{PD-old-100}}
+{{PD-1923}}
+
+[[Category:Test Category]]");
+		Assert.IsTrue(replacement.DoReplacement(article));
+		Assert.AreEqual(
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|author={{Creator:August Macke}}
+|Date=1295
+|Permission=
+|other_versions={{Extracted from|1=AlixKypr.jpg}}
+}}
+
+=={{int:license-header}}==
+{{PD-Art|PD-old-auto-expired|deathyear=1914}}
+
+[[Category:Test Category]]",
+			article.revisions[0].text);
+	}
+
+	[TestMethod]
 	public void PdArtReplacementTests_NoDate()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
@@ -307,6 +344,22 @@ public class PdArtReplacementTests
 		Assert.AreEqual(
 @"=={{int:filedesc}}==
 {{Information|description=File description|date=1800|author={{Creator:August Macke}}|permission={{PD-Art|PD-old-auto-expired|deathyear=1914}}|other versions=}}
+[[Category:Test Category]]",
+			article.revisions[0].text);
+	}
+
+	[TestMethod]
+	public void PdArtReplacementTests_DensePdOldDefaultRemoval()
+	{
+		PdArtReplacement replacement = new PdArtReplacement();
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information|description=File description|date=1800|author={{Creator:August Macke}}|permission={{PD-Art}}|other versions=}}{{PD-Art}}
+[[Category:Test Category]]");
+		Assert.IsTrue(replacement.DoReplacement(article));
+		Assert.AreEqual(
+@"=={{int:filedesc}}==
+{{Information|description=File description|date=1800|author={{Creator:August Macke}}|permission=|other versions=}}{{PD-Art|PD-old-auto-expired|deathyear=1914}}
 [[Category:Test Category]]",
 			article.revisions[0].text);
 	}

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace MediaWiki
 {
@@ -8,11 +9,30 @@ namespace MediaWiki
 		public const string Prop_CountryOfCitizenship = "P27";
 		public const string Prop_InstanceOf = "P31";
 		public const string Prop_Creator = "P170";
+		public const string Prop_CommonsCategory = "P373";
 		public const string Prop_DateOfBirth = "P569";
 		public const string Prop_DateOfDeath = "P570";
 		public const string Prop_CommonsCreator = "P1472";
 
 		public const int Entity_Human = 5;
+
+		private static readonly Regex QidRegex = new Regex("Q([0-9]+)", RegexOptions.IgnoreCase);
+
+		/// <summary>
+		/// Converts a qid like 'Q1000' into an int 1000.
+		/// </summary>
+		public static int? UnQidify(string qid)
+		{
+			Match match = QidRegex.Match(qid);
+			if (match.Success)
+			{
+				return int.Parse(match.Groups[1].Value);
+			}
+			else
+			{
+				return null;
+			}
+		}
 
 		/// <summary>
 		/// Gets the Wikidata property id for the specified parameter of Commons "Authority control".

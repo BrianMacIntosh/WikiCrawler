@@ -60,7 +60,5 @@ public abstract class BatchTask : BaseTask, IBatchTask
 	{
 		string failedFile = Path.Combine(ProjectDataDirectory, "failed.txt");
 		File.WriteAllLines(failedFile, m_failMessages);
-
-		CreatorUtilityMeta.SaveOut();
 	}
 }

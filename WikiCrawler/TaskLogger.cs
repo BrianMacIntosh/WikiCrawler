@@ -37,7 +37,7 @@ namespace WikiCrawler
 			File.AppendAllLines(LogFile, new string[]
 			{
 				string.Format("[{0}]: stopped {1}", DateTime.Now.ToString(), m_task.GetType().Name),
-				string.Format("Elapsed: {0}", (DateTime.Now - m_startTime))
+				string.Format("\tElapsed: {0}", (DateTime.Now - m_startTime))
 			});
 		}
 	}

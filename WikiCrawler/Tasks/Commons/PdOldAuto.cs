@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using WikiCrawler;
 
 namespace Tasks
 {
@@ -123,8 +124,8 @@ namespace Tasks
 			if (worksheet.Author.StartsWith("{{Creator:"))
 			{
 				int creatorEnd = WikiUtils.GetTemplateEnd(worksheet.Author, 0);
-				string creatorInner = worksheet.Author.SubstringRange(0, creatorEnd);
-				deathyear = CreatorUtility.GetCreator(creatorInner).DeathYear;
+				string creator = worksheet.Author.SubstringRange(0, creatorEnd);
+				deathyear = WikidataCache.GetCreatorData(creator).DeathYear;
 			}
 
 			if (deathyear == 9999)

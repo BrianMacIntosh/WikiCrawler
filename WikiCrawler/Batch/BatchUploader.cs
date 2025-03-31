@@ -482,7 +482,8 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		string finalResult = "";
 		foreach (string author in ParseAuthor(name))
 		{
-			Creator creator = CreatorUtility.GetCreator(author);
+			throw new NotImplementedException();
+			Creator creator = null;//TODO: WikidataCache.GetCreator(author);
 			if (creators == null)
 			{
 				creators = new List<Creator>();

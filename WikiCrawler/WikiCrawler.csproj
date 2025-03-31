@@ -151,6 +151,7 @@
     <Compile Include="Utility\ManualMapping.cs" />
     <Compile Include="Utility\StringSpan.cs" />
     <Compile Include="Utility\RegexUtility.cs" />
+    <Compile Include="Utility\WikidataCache.cs" />
     <Compile Include="UWash\SayreCategorize.cs" />
     <Compile Include="Utility\Exceptions\LicenseException.cs" />
     <Compile Include="Utility\Exceptions\RedownloadException.cs" />

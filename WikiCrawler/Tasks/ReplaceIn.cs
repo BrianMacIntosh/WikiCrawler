@@ -171,8 +171,6 @@ namespace Tasks
 				{
 					File.WriteAllText(progressFile, WikiUtils.GetSortkey(file));
 				}
-
-				CreatorUtilityMeta.SaveOut();
 			}
 
 			SendHeartbeat(true);

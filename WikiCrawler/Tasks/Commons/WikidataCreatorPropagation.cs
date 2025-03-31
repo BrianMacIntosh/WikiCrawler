@@ -28,7 +28,8 @@ namespace Tasks
 				Console.WriteLine(creatorPage);
 
 				// not creator? just output authority
-				if (!creatorPage.StartsWith("Creator:"))
+				PageTitle creatorTitle = CreatorUtility.GetCreatorTemplate(creatorPage);
+				if (creatorTitle.IsEmpty)
 				{
 					Console.WriteLine("FATAL: not a creator");
 					continue;
@@ -65,7 +66,7 @@ namespace Tasks
 						if (!entity.HasClaim("P1472"))
 						{
 							//propagate creator
-							GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P1472", creatorPage.Substring("Creator:".Length), "(BOT) propagating Commons Creator", true);
+							GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P1472", creatorTitle.Name, "(BOT) propagating Commons Creator", true);
 						}
 
 						// populate creator authority

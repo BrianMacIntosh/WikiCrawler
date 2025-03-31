@@ -333,11 +333,10 @@ namespace WikiCrawler
 			Console.WriteLine("Attempting to map person '{0}'.", input);
 
 			//If they have a creator template, use that
-			Creator creator = CreatorUtility.GetCreator(input);
-			if (!string.IsNullOrEmpty(creator.Author))
+			PageTitle creator = CreatorUtility.GetCreatorTemplate(input);
+			if (!creator.IsEmpty)
 			{
-				string creatorPage = creator.Author;
-				creatorPage = creatorPage.Trim('{').Trim('}');
+				string creatorPage = creator.ToString();
 				string homeCategory;
 				if (CreatorUtility.TryGetHomeCategory(creatorPage, out homeCategory))
 				{
