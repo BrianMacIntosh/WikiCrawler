@@ -95,6 +95,32 @@ namespace WikiCrawler
 		}
 
 		/// <summary>
+		/// Gets cached information about a person.
+		/// </summary>
+		public static CreatorData GetPersonData(int qid)
+		{
+			SQLiteCommand command = LocalDatabase.CreateCommand();
+			command.CommandText = "SELECT deathYear,countryOfCitizenship,commonsCategory FROM people WHERE qid=qid";
+			command.Parameters.AddWithValue("qid", qid);
+			using (var reader = command.ExecuteReader())
+			{
+				if (reader.Read())
+				{
+					return new CreatorData()
+					{
+						DeathYear = reader.GetInt32(0),
+						CountryOfCitizenship = reader.IsDBNull(1) ? null : (int?)reader.GetInt32(1),
+						CommonsCategory = reader.IsDBNull(2) ? null : reader.GetString(2),
+					};
+				}
+				else
+				{
+					return FetchNewPerson(qid);
+				}
+			}
+		}
+
+		/// <summary>
 		/// Caches data for a new creator template.
 		/// </summary>
 		private static CreatorData RecordNewCreator(string creatorTemplate)
@@ -162,33 +188,45 @@ namespace WikiCrawler
 					}
 
 					// person is not yet cached
-					Entity entity = GlobalAPIs.Wikidata.GetEntity(wikidata);
-					if (!entity.missing)
-					{
-						int deathYear = GetCreatorDeathYear(entity);
-						int? countryOfCitizenship = GetCreatorCountryOfCitizenship(entity);
-						string commonsCategory = GetCreatorCommonsCategory(entity);
-
-						SQLiteCommand command = LocalDatabase.CreateCommand();
-						command.CommandText = "INSERT INTO people (qid,deathYear,countryOfCitizenship,commonsCategory,timestamp) " +
-							"VALUES ($qid,$deathYear,$countryOfCitizenship,$commonsCategory,unixepoch());";
-						command.Parameters.AddWithValue("qid", qid.Value);
-						command.Parameters.AddWithValue("deathYear", deathYear);
-						command.Parameters.AddWithValue("countryOfCitizenship", countryOfCitizenship);
-						command.Parameters.AddWithValue("commonsCategory", commonsCategory);
-						command.ExecuteNonQuery();
-
-						return new CreatorData()
-						{
-							DeathYear = deathYear,
-							CountryOfCitizenship = countryOfCitizenship,
-							CommonsCategory = commonsCategory,
-						};
-					}
+					return FetchNewPerson(qid.Value);
 				}
 			}
 
 			return null;
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		private static CreatorData FetchNewPerson(int qid)
+		{
+			Entity entity = GlobalAPIs.Wikidata.GetEntity("Q" + qid);
+			if (entity.missing)
+			{
+				return null;
+			}
+			else
+			{
+				int deathYear = GetCreatorDeathYear(entity);
+				int? countryOfCitizenship = GetCreatorCountryOfCitizenship(entity);
+				string commonsCategory = GetCreatorCommonsCategory(entity);
+
+				SQLiteCommand command = LocalDatabase.CreateCommand();
+				command.CommandText = "INSERT INTO people (qid,deathYear,countryOfCitizenship,commonsCategory,timestamp) " +
+					"VALUES ($qid,$deathYear,$countryOfCitizenship,$commonsCategory,unixepoch());";
+				command.Parameters.AddWithValue("qid", qid);
+				command.Parameters.AddWithValue("deathYear", deathYear);
+				command.Parameters.AddWithValue("countryOfCitizenship", countryOfCitizenship);
+				command.Parameters.AddWithValue("commonsCategory", commonsCategory);
+				command.ExecuteNonQuery();
+
+				return new CreatorData()
+				{
+					DeathYear = deathYear,
+					CountryOfCitizenship = countryOfCitizenship,
+					CommonsCategory = commonsCategory,
+				};
+			}
 		}
 
 		public static int GetCreatorDeathYear(Entity entity)

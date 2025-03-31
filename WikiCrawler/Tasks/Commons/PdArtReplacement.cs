@@ -487,6 +487,15 @@ OtherLicense: {8}",
 						creatorCountryOfCitizenship = creator.CountryOfCitizenship;
 					}
 				}
+				else if (Wikidata.TryAuthorToQid(worksheet.Author, out int authorQid))
+				{
+					CreatorData creator = WikidataCache.GetPersonData(authorQid);
+					if (creator != null)
+					{
+						creatorDeathYear = creator.DeathYear;
+						creatorCountryOfCitizenship = creator.CountryOfCitizenship;
+					}
+				}
 				else if (ImplicitCreatorsReplacement.SlowCategoryWalk)
 				{
 					// C. can author be associated to a creator based on file categories?
@@ -940,6 +949,20 @@ OtherLicense: {8}",
 				}
 			}
 
+			// check for "date" template
+			{
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "date");
+				if (span.IsValid)
+				{
+					string dateTemplate = date.Substring(span);
+					string year = WikiUtils.GetTemplateParameter(1, dateTemplate);
+					if (int.TryParse(year, out int yearInt))
+					{
+						return new DateParseMetadata(yearInt);
+					}
+				}
+			}
+
 			// check for "original upload date" template
 			{
 				StringSpan span = WikiUtils.GetTemplateLocation(date, "original upload date");
@@ -978,6 +1001,7 @@ OtherLicense: {8}",
 			}
 
 			// "before"
+			//TODO: replace with template
 			if (date.StartsWith("before ", StringComparison.InvariantCultureIgnoreCase))
 			{
 				if (int.TryParse(date.Substring("before ".Length), out int beforeInt) && beforeInt >= 100 && beforeInt <= System.DateTime.Now.Year)

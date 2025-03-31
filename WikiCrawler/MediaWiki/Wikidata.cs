@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
+using WikiCrawler;
 
 namespace MediaWiki
 {
@@ -23,15 +25,75 @@ namespace MediaWiki
 		/// </summary>
 		public static int? UnQidify(string qid)
 		{
-			Match match = QidRegex.Match(qid);
-			if (match.Success)
+			if (TryUnQidify(qid, out int outQid))
 			{
-				return int.Parse(match.Groups[1].Value);
+				return outQid;
 			}
 			else
 			{
 				return null;
 			}
+		}
+
+		/// <summary>
+		/// Converts a qid like 'Q1000' into an int 1000.
+		/// </summary>
+		public static int UnQidifyChecked(string qid)
+		{
+			if (TryUnQidify(qid, out int outQid))
+			{
+				return outQid;
+			}
+			else
+			{
+				Debug.Assert(false, string.Format("Failed to UnQidify '{0}'."), qid);
+				return 0;
+			}
+		}
+
+		/// <summary>
+		/// Converts a qid like 'Q1000' into an int 1000.
+		/// </summary>
+		public static bool TryUnQidify(string qid, out int outQid)
+		{
+			Match match = QidRegex.Match(qid);
+			if (match.Success)
+			{
+				outQid = int.Parse(match.Groups[1].Value);
+				return true;
+			}
+			else
+			{
+				outQid = 0;
+				return false;
+			}
+		}
+
+		/// <summary>
+		/// Converts an author string to a QID.
+		/// </summary>
+		public static bool TryAuthorToQid(string author, out int outQid)
+		{
+			author = author.Trim();
+
+			//TODO: handle Creator?
+
+			string q = WikiUtils.ExtractTemplate(author, "Q");
+			if (q == author)
+			{
+				string id = WikiUtils.GetTemplateParameter(1, q);
+				if (TryUnQidify(id, out outQid))
+				{
+					return true;
+				}
+				else if (int.TryParse(id, out outQid))
+				{
+					return true;
+				}
+			}
+
+			outQid = 0;
+			return false;
 		}
 
 		/// <summary>
