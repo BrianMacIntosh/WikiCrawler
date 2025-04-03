@@ -1,11 +1,10 @@
 ﻿using MediaWiki;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using WikiCrawler;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	public class PdOldAuto : BaseTask
 	{

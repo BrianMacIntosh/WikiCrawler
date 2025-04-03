@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	/// <summary>
 	/// 
@@ -20,18 +20,13 @@ namespace Tasks
 
 		public override void Execute()
 		{
-			Uri commons = new Uri("https://commons.wikimedia.org/");
-			EasyWeb.SetDelayForDomain(commons, 0.1f);
-			Api Api = new Api(commons);
-			Api.AutoLogIn();
-
 			IEnumerable<string> files = File.ReadAllLines("E:/revert.csv", Encoding.UTF8)
 				.Select(s => s.Trim('"').Replace("\"\"", "\""))
 				.Where(s => !string.IsNullOrWhiteSpace(s));
 
 			SQLiteConnection connection = PdArtReplacement.ConnectFilesDatabase(true);
 
-			foreach (Article page in Api.GetPages(files.ToArray(), rvprop: "content|ids|user"))
+			foreach (Article page in GlobalAPIs.Commons.GetPages(files.ToArray(), rvprop: "content|ids|user"))
 			{
 				Console.WriteLine(page.title);
 
@@ -42,7 +37,7 @@ namespace Tasks
 				else if (page.revisions[0].user == Parameters["User"])
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.Green, "Undoing.");
-					Api.UndoRevision((int)page.pageid, page.revisions[0].revid, "", true);
+					GlobalAPIs.Commons.UndoRevision((int)page.pageid, page.revisions[0].revid, "", true);
 
 					SQLiteCommand command = connection.CreateCommand();
 					command.CommandText = "UPDATE files SET bLicenseReplaced=0 WHERE pageTitle=$pageTitle";

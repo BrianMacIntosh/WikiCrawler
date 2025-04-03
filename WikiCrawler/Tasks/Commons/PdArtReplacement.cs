@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using WikiCrawler;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	/// <summary>
 	/// Replaces PD-Art tags with imprecise licenses with a more specific license, if one can be determined.

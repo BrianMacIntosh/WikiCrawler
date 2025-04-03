@@ -4,10 +4,15 @@ using System.IO;
 using System.Text;
 using WikiCrawler;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	public class ExifToDateField : BaseTask
 	{
+		public ExifToDateField()
+		{
+			Parameters["Category"] = "Category:Photographs by Jiří Bubeníček";
+		}
+
 		public override void Execute()
 		{
 			using (StreamWriter logWriter = new StreamWriter(
@@ -17,16 +22,12 @@ namespace Tasks
 			}
 		}
 
-		private static void DoHelper(StreamWriter logWriter)
+		private void DoHelper(StreamWriter logWriter)
 		{
-			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org"));
-
-			Console.WriteLine("Logging in...");
-			commonsApi.AutoLogIn();
-
+			Api commonsApi = GlobalAPIs.Commons;
 			int maxEdits = int.MaxValue;
 
-			foreach (Article file in commonsApi.GetCategoryEntries("Category:Photographs by Jiří Bubeníček", CMType.file))
+			foreach (Article file in commonsApi.GetCategoryEntries(Parameters["Category"], CMType.file))
 			{
 				if (maxEdits <= 0)
 				{

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -145,20 +146,14 @@ Caption: " + @"}}
 
             string[] images = Directory.GetFiles("images");
 
-			Console.WriteLine("Logging in...");
-			MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
-			Api.AutoLogIn();
+            Api Api = GlobalAPIs.Commons;
 
             //Upload
             for (int c = 0; c < images.Length; c++)
             {
                 string title = string.Format(ftitle, c.ToString("00"));
 
-                MediaWiki.Article art = new MediaWiki.Article();
-                art.title = title;
-                art.revisions = new MediaWiki.Revision[1];
-                art.revisions[0] = new MediaWiki.Revision();
-                art.revisions[0].text = content;
+                Article art = new Article(title, content);
                 Api.UploadFromLocal(art, "C:/temp", "", false);
             }
         }

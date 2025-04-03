@@ -1,18 +1,24 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
 
-namespace WikiCrawler
+namespace Tasks
 {
-	class UploadFromZorger
-    {
-        public static void DoHarvestImageUrls(string rootUrl)
+	public class UploadFromZorger : BaseTask
+	{
+        public UploadFromZorger()
         {
-            Uri rooturi = new Uri(rootUrl);
+            Parameters["RootUrl"] = "http://www.example.com/";
+        }
+
+        public override void Execute()
+		{
+            Uri rooturi = new Uri(Parameters["RootUrl"]);
 
             //step 1: harvest image links
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(new Uri(rootUrl));
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(rooturi);
             request.UserAgent = "BMacZeroBot (wikimedia)";
 
             //Read response
@@ -64,9 +70,7 @@ namespace WikiCrawler
                 }
             }
 
-			Console.WriteLine("Logging in...");
-			MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
-			Api.AutoLogIn();
+			Api Api = GlobalAPIs.Commons;
 
             //fetch images urls from those pages
             int count = 0;
@@ -103,11 +107,11 @@ namespace WikiCrawler
                             string[] components = page.Split('/');
                             components[components.Length-1] = img;
                             img = string.Join("/", components);
-                            
-                            MediaWiki.Article article = new MediaWiki.Article();
+
+							Article article = new Article();
                             article.title = "Last Enemy illustration " + count.ToString("00") + Path.GetExtension(img);
-                            article.revisions = new MediaWiki.Revision[1];
-                            article.revisions[0] = new MediaWiki.Revision();
+                            article.revisions = new Revision[1];
+                            article.revisions[0] = new Revision();
                             article.revisions[0].text = @"=={{int:filedesc}}==
 {{Information
 |description={{en|1=An illustration in the book ''Last Enemy'' by H. Beam Piper, illustrated by Miller.}}
@@ -136,5 +140,5 @@ namespace WikiCrawler
                 }
             }
         }
-    }
+	}
 }

@@ -4,7 +4,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	/// <summary>
 	/// Uploads a simple list of files.
@@ -21,9 +21,7 @@ namespace Tasks
 
 			string[] files = Directory.GetFiles("queue");
 
-			Console.WriteLine("Logging in...");
 			Api Api = GlobalAPIs.Commons;
-			Api.AutoLogIn();
 
 			while (files.Length > 0)
 			{

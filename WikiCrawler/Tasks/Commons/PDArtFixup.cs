@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Linq;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	/// <summary>
 	/// Replaces PD-Art tags with imprecise licenses with a more specific license, if one can be determined.
@@ -20,7 +20,7 @@ namespace Tasks
 		{
 			HeartbeatEnabled = true;
 
-			Parameters.Add("Category", "Category:PD-Art (PD-old-80)");
+			Parameters.Add("Category", "Category:PD-Art (PD-old-auto)");
 		}
 
 		public override string GetCategory()

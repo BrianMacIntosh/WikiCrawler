@@ -1,17 +1,17 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	/// <summary>
 	/// Updates page text for images extracted from NSRW after extracting them with CropTool.
 	/// </summary>
 	public class NsrwFollowup : BaseTask
 	{
-		private static MediaWiki.Api Api;
+		private static Api Api;
 
 		public override void Execute()
 		{
@@ -53,9 +53,7 @@ namespace Tasks
 
 			try
 			{
-				Console.WriteLine("Logging in...");
-				Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
-				Api.AutoLogIn();
+				Api = GlobalAPIs.Commons;
 
 				for (int c = queue.Count - 1; c >= 0; c--)
 				{
@@ -71,7 +69,7 @@ namespace Tasks
 
 					Console.WriteLine(file);
 
-					MediaWiki.Article article = Api.GetPage(file);
+					Article article = Api.GetPage(file);
 					string text = article.revisions.First().text;
 
 					//Find source article
@@ -100,11 +98,9 @@ namespace Tasks
 					text = text.Replace("{{ExtractImage}}", "");
 					text = text.Replace("{{LA2-NSRW}}", nsrwDerivedInfobox);
 
-					if (MediaWiki.WikiUtils.HasNoCategories(text))
+					if (WikiUtils.HasNoCategories(text))
 					{
-						string month = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(DateTime.Now.Month);
-						text = text.TrimEnd() + "\n{{Uncategorized|year=" + DateTime.Now.Year +
-							"|month=" + month + "|day=" + DateTime.Now.Day + "}}";
+						text = text.TrimEnd() + "\n" + CommonsTemplates.MakeUncategorizedTemplate();
 					}
 
 					//Establish source
@@ -161,7 +157,7 @@ namespace Tasks
 		{
 			sourceFile = sourceFile.Replace("Image:", "");
 
-			MediaWiki.Article sourceArticle = Api.GetPage(sourceFile);
+			Article sourceArticle = Api.GetPage(sourceFile);
 
 			string sourceText = sourceArticle.revisions.First().text;
 			string files = string.Join("|", destinationFiles.ToArray());

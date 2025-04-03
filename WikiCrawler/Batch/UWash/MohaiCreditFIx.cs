@@ -10,19 +10,17 @@ namespace UWash
 {
 	public class MohaiCreditFix : BatchTaskKeyed<int>
 	{
-		protected Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
-
 		public MohaiCreditFix(string key)
 			: base(key)
 		{
-			Api.AutoLogIn();
+			Parameters["Category"] = "Category:Images from the Museum of History and Industry";
 		}
 
 		public override void Execute()
 		{
 			bool skipping = true;
 
-			foreach (Article article in Api.GetCategoryEntries("Category:Images from the Museum of History and Industry", CMType.file))
+			foreach (Article article in GlobalAPIs.Commons.GetCategoryEntries(Parameters["Category"], CMType.file))
 			{
 				if (skipping)
 				{
@@ -48,7 +46,7 @@ namespace UWash
 				if (metadata.TryGetValue("Credit Line", out creditLineValue)
 					&& (creditLineValue.Contains("[image number") || creditLineValue.Contains("[ID number")))
 				{
-					Article popArticle = Api.GetPage(article);
+					Article popArticle = GlobalAPIs.Commons.GetPage(article);
 					string articleText = popArticle.revisions[0].text;
 
 					string imageNumber;
@@ -72,7 +70,7 @@ namespace UWash
 					if (popArticle.revisions[0].text != articleText)
 					{
 						popArticle.revisions[0].text = articleText;
-						Debug.Assert(Api.EditPage(popArticle, "update Credit Line"));
+						Debug.Assert(GlobalAPIs.Commons.EditPage(popArticle, "update Credit Line"));
 					}
 				}
 			}

@@ -25,9 +25,6 @@ namespace Tasks
 			string rawPath = Path.Combine(Configuration.DataDirectory, "npsunits.json");
 			RawData[] rawData = JsonConvert.DeserializeObject<RawData[]>(File.ReadAllText(rawPath, Encoding.UTF8));
 
-			Api wikidata = new Api(new Uri("https://www.wikidata.org/"));
-			wikidata.AutoLogIn();
-
 			List<string> entityIds = new List<string>();
 			foreach (RawData raw in rawData)
 			{
@@ -41,7 +38,7 @@ namespace Tasks
 			// maps locations to their immediate parents along P131
 			Dictionary<string, List<string>> locationParents = new Dictionary<string, List<string>>();
 
-			Entity[] entities = wikidata.GetEntities(entityIds, props: Api.BuildParameterList(WBProp.info, WBProp.claims));
+			Entity[] entities = GlobalAPIs.Wikidata.GetEntities(entityIds, props: Api.BuildParameterList(WBProp.info, WBProp.claims));
 
 			while (entities != null && entities.Length > 0)
 			{
@@ -79,7 +76,7 @@ namespace Tasks
 					}
 				}
 				
-				entities = wikidata.GetEntities(entityIds, props: Api.BuildParameterList(WBProp.info, WBProp.claims));
+				entities = GlobalAPIs.Wikidata.GetEntities(entityIds, props: Api.BuildParameterList(WBProp.info, WBProp.claims));
 			}
 
 			// for each NPS unit, collect all of its parent commons cats

@@ -11,12 +11,14 @@
 			PdArtReplacement.SkipCached = false;
 			ImplicitCreatorsReplacement.SlowCategoryWalk = false;
 			PdArtReplacement.SkipAuthorLookup = true;
+
+			Parameters["Category"] = "Category:PD-Art (PD-old default)";
+			//Parameters["Category"] = "Category:PD-Art (PD-old-70)";
 		}
 
 		public override string GetCategory()
 		{
-			return "Category:PD-Art (PD-old default)";
-			//return "Category:PD-Art (PD-old-70)";
+			return Parameters["Category"];
 		}
 	}
 }

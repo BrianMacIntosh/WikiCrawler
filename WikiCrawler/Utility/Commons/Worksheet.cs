@@ -1,10 +1,13 @@
 ﻿using MediaWiki;
 
-public class CommonsWorksheet
+/// <summary>
+/// Base class that helps parse common info from a certain type of page.
+/// </summary>
+public abstract class Worksheet
 {
 	public readonly Article Article;
 
-	public CommonsWorksheet(Article article)
+	public Worksheet(Article article)
 	{
 		Article = article;
 	}

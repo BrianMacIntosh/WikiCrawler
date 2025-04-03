@@ -4,7 +4,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using WikiCrawler;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	public struct RegexReplacement
 	{

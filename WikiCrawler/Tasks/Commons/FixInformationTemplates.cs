@@ -2,12 +2,10 @@
 using System;
 using System.Collections.Generic;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	public class FixInformationTemplates : BaseReplacement
 	{
-		private static HashSet<string> artistOrAuthor = new HashSet<string> { "artist", "author" };
-
 		private static bool IsMainTemplate(string template)
 		{
 			template = template.TrimStart('{');
@@ -39,7 +37,7 @@ namespace Tasks
 			return DoReplacement(article, null);
 		}
 
-		public bool DoReplacement(Article article, HashSet<string> removeEmptyParams)
+		public bool DoReplacement(Article article, IList<string> removeEmptyParams)
 		{
 			if (Article.IsNullOrEmpty(article))
 			{
@@ -218,7 +216,7 @@ namespace Tasks
 			}
 			else if (artTemplateHasFilledAuthor && removeEmptyParams == null)
 			{
-				DoReplacement(article, artistOrAuthor);
+				DoReplacement(article, CommonsFileWorksheet.authorParams);
 			}
 
 			if (text != article.revisions[0].text)

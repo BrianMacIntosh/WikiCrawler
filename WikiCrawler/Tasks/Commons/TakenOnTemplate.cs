@@ -6,12 +6,12 @@ using System.Text;
 using System.Text.RegularExpressions;
 using MediaWiki;
 
-namespace WikiCrawler
+namespace Tasks.Commons
 {
 	/// <summary>
 	/// Adds "Template:Taken on" to the date fields of appropriate files in specified categories.
 	/// </summary>
-	public class TakenOnTemplate
+	public class TakenOnTemplate : BaseTask
 	{
 		private static string[] categories = new string[]
         {
@@ -36,11 +36,9 @@ namespace WikiCrawler
 			errorLog.WriteLine("!!! " + message);
 		}
 
-		public static void Do()
+		public override void Execute()
 		{
-			Console.WriteLine("Logging in...");
-			Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
-			Api.AutoLogIn();
+			Api Api = GlobalAPIs.Commons;
 
 			int maxArticles = int.MaxValue;
 

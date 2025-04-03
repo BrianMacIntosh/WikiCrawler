@@ -3,7 +3,7 @@
 /// <summary>
 /// Simplifies access to common data that might be needed from Commons creator pages.
 /// </summary>
-public class CommonsCreatorWorksheet : CommonsWorksheet
+public class CommonsCreatorWorksheet : Worksheet
 {
 	/// <summary>
 	/// The contents of the Wikidata parameter.

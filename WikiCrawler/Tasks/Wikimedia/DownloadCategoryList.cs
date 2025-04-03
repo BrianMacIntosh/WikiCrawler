@@ -10,11 +10,16 @@ namespace Tasks
 	/// </summary>
 	public class DownloadCategoryList : BaseTask
 	{
+		public DownloadCategoryList()
+		{
+			Parameters["Category"] = "Category:Primary license tags (flat list)";
+		}
+
 		public override void Execute()
 		{
-			using (StreamWriter writer = new StreamWriter(Path.Combine(Configuration.DataDirectory, "primary-license-tags.txt")))
+			using (StreamWriter writer = new StreamWriter(Path.Combine(Configuration.DataDirectory, "category-download.txt")))
 			{
-				foreach (Article page in GlobalAPIs.Commons.GetCategoryEntries("Category:Primary license tags (flat list)", CMType.page))
+				foreach (Article page in GlobalAPIs.Commons.GetCategoryEntries(Parameters["Category"], CMType.page))
 				{
 					if (page.title.StartsWith("Template:"))
 					{

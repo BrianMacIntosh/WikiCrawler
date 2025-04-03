@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using WikiCrawler;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	public class MappingCreator : MappingValue
 	{

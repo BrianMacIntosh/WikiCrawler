@@ -11,15 +11,20 @@ namespace Tasks
 	/// </summary>
 	public class RevertContribs : BaseTask
 	{
+		public RevertContribs()
+		{
+			Parameters["StartTime"] = "2018-09-22 16:00:00"; //very generous
+			Parameters["EndTime"] = "2018-09-22 17:20:00";
+			Parameters["User"] = "BMacZero";
+			Parameters["Comment"] = "replace city with recognized name - Doing 1 replacements.";
+		}
+
 		public override void Execute()
 		{
-			Uri commons = new Uri("https://commons.wikimedia.org/");
-			EasyWeb.SetDelayForDomain(commons, 0.1f);
-			Api Api = new Api(commons);
-			Api.AutoLogIn();
-
-			string startTime = "2018-09-22 16:00:00"; //very generous
-			string endTime = "2018-09-22 17:20:00";
+			Api Api = GlobalAPIs.Commons;
+			
+			string startTime = Parameters["StartTime"];
+			string endTime = Parameters["EndTime"];
 
 			List<int> badrevs = File.ReadAllLines("E:/temp.txt")
 				.Where(l => !string.IsNullOrEmpty(l))
@@ -28,9 +33,9 @@ namespace Tasks
 
 			try
 			{
-				foreach (Contribution contrib in Api.GetContributions("BMacZero", endTime, startTime))
+				foreach (Contribution contrib in Api.GetContributions(Parameters["User"], endTime, startTime))
 				{
-					if (contrib.comment == "replace city with recognized name - Doing 1 replacements."
+					if (contrib.comment == Parameters["Comment"]
 						&& !badrevs.Contains(contrib.revid))
 					{
 						Console.WriteLine(contrib.title);

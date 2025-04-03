@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	/// <summary>
 	/// Propagates data from Commons Creator pages to Wikidata.

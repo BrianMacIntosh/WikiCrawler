@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	/// <summary>
 	/// Creates creator templates from the wikidata ids in 'creator_queue.txt'.
@@ -596,6 +596,13 @@ namespace Tasks
 			string name = entity.labels["en"];
 			PageTitle commonsArticle = new PageTitle("Creator", name);
 
+			//FIXME
+			if (name.Contains("\""))
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Name has quotes.");
+				creatorPage = PageTitle.Empty;
+				return false;
+			}
 
 			// Check that it does not already exist on commons
 			Article existing = GlobalAPIs.Commons.GetPage(commonsArticle.ToString());

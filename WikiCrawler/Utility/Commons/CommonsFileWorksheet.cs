@@ -3,7 +3,7 @@
 /// <summary>
 /// Simplifies access to common data that might be needed from Commons file pages.
 /// </summary>
-public class CommonsFileWorksheet : CommonsWorksheet
+public class CommonsFileWorksheet : Worksheet
 {
 	/// <summary>
 	/// The contents of the author, artist, etc field in a primary information template.
@@ -53,7 +53,7 @@ public class CommonsFileWorksheet : CommonsWorksheet
 	private string author;
 	private string authorParam; // name of the param the author string was actually pulled from
 	private int authorIndex = -1;
-	private static string[] authorParams = new string[] { "author", "artist", "photographer", "artist_display_name" };
+	public static readonly string[] authorParams = new string[] { "author", "artist", "photographer", "artist_display_name" };
 
 	/// <summary>
 	/// The contents of the Wikidata field in a primary information template.

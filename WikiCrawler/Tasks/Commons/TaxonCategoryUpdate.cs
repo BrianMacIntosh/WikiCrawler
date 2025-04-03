@@ -3,11 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	public class TaxonCategoryUpdate : BaseTask
 	{
-		private static Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
 		private static Api SpeciesApi = new Api(new Uri("http://species.wikimedia.org/"));
 
 		private const string taxonTodoFile = "taxon_todo.txt";
@@ -72,9 +71,6 @@ namespace Tasks
 			//itisConnection = new MySqlConnection("server=127.0.0.1;uid=root;pwd=;database=ITIS;");
 			//itisConnection.Open();
 
-			Console.WriteLine("Logging in...");
-			Api.AutoLogIn();
-
 			try
 			{
 				while (todoCategories.Count > 0)
@@ -116,7 +112,7 @@ namespace Tasks
 			if (!catTree.ContainsKey(catname))
 			{
 				List<string> children = new List<string>();
-				foreach (Article article in Api.GetCategoryEntries(catname, cmtype: CMType.subcat))
+				foreach (Article article in GlobalAPIs.Commons.GetCategoryEntries(catname, cmtype: CMType.subcat))
 				{
 					children.Add(article.title);
 				}
@@ -124,7 +120,7 @@ namespace Tasks
 			}
 
 			// update page text
-			Article thisArticle = Api.GetPage(catname);
+			Article thisArticle = GlobalAPIs.Commons.GetPage(catname);
 
 		}
 	}

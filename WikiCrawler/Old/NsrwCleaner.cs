@@ -1,18 +1,16 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
+using System.Linq;
 
-namespace WikiCrawler
+namespace Tasks.Commons
 {
-	class NsrwCleaner
+	public class NsrwCleaner : BaseTask
 	{
-		public static void Do()
+		public override void Execute()
 		{
-			Console.WriteLine("Logging in...");
-			MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
-			Api.AutoLogIn();
+			Api Api = GlobalAPIs.Commons;
 
 			//Read queue
 			List<string> queue = new List<string>();
@@ -40,7 +38,7 @@ namespace WikiCrawler
 
 					Console.WriteLine(file);
 
-					MediaWiki.Article article = Api.GetPage(file);
+					Article article = Api.GetPage(file);
 					string text = article.revisions.First().text;
 
 					string extractedFrom = "{{extracted from|";

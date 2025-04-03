@@ -8,15 +8,16 @@ namespace Tasks
 	/// </summary>
 	public class FindCategoryCreators : BaseTask
 	{
+		public FindCategoryCreators()
+		{
+			Parameters["Category"] = "Category:Ships by name (flat list)";
+		}
+
 		public override void Execute()
 		{
-			Uri commons = new Uri("https://commons.wikimedia.org/");
-			EasyWeb.SetDelayForDomain(commons, 0.1f);
-			Api Api = new Api(commons);
+			Api Api = GlobalAPIs.Commons;
 			
-			Api.AutoLogIn();
-
-			foreach (Article article in Api.GetCategoryEntries("Category:Ships by name (flat list)", cmtype: CMType.subcat))
+			foreach (Article article in Api.GetCategoryEntries(Parameters["Category"], cmtype: CMType.subcat))
 			{
 				Article articleContent = Api.GetPage(article);
 				throw new NotImplementedException();

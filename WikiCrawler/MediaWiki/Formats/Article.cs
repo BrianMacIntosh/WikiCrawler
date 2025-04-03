@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Text;
 using System.Web.Script.Serialization;
 
@@ -37,6 +36,14 @@ namespace MediaWiki
 		public Article(string title)
 		{
 			this.title = title;
+		}
+
+		public Article(string title, string text)
+		{
+			this.title = title;
+			revisions = new Revision[1];
+			revisions[0] = new Revision();
+			revisions[0].text = text;
 		}
 
 		public Article(Dictionary<string, object> json)

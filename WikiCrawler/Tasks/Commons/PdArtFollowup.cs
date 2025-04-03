@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using WikiCrawler;
 
-namespace Tasks
+namespace Tasks.Commons
 {
 	/// <summary>
 	/// Reruns the PdArtReplacement on files from creator and date mappings that have been mapped.

@@ -9,17 +9,15 @@ namespace Tasks
 	/// </summary>
 	public class ReplaceInContribs : ReplaceIn
 	{
-		public readonly string User;
-
 		public ReplaceInContribs(string user, BaseReplacement replacement)
 			: base(replacement)
 		{
-			User = user;
+			Parameters["User"] = user;
 		}
 
 		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
 		{
-			IEnumerable<Contribution> allContribs = GlobalAPIs.Commons.GetContributions(User, "now", "2025-01-25T00:00:00Z");
+			IEnumerable<Contribution> allContribs = GlobalAPIs.Commons.GetContributions(Parameters["User"], "now", "2025-01-25T00:00:00Z");
 			while (true)
 			{
 				IEnumerable<Contribution> theseContribs = allContribs.Take(50);
