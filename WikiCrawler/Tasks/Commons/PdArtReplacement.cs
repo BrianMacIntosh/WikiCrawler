@@ -87,11 +87,6 @@ namespace Tasks
 		private ManualMapping<MappingDate> m_dateMapping;
 		private ManualMapping<MappingCreator> m_creatorMappings;
 
-		public static string DuplicateLicensesLogFile
-		{
-			get { return Path.Combine(ProjectDataDirectory, "duplicate-licenses.txt"); }
-		}
-
 		public static string DateMappingFile
 		{
 			get { return Path.Combine(ProjectDataDirectory, "date-mappings.txt"); }
@@ -501,11 +496,14 @@ OtherLicense: {8}",
 					// C. can author be associated to a creator based on file categories?
 					//TODO: operate directly on QID instead
 					PageTitle categoryCreator = ImplicitCreatorsReplacement.GetCreatorFromCategories(worksheet.Author, WikiUtils.GetCategories(worksheet.Text), 1);
-					CreatorData creator = WikidataCache.GetCreatorData(categoryCreator);
-					if (creator != null)
+					if (!categoryCreator.IsEmpty)
 					{
-						creatorDeathYear = creator.DeathYear;
-						creatorCountryOfCitizenship = creator.CountryOfCitizenship;
+						CreatorData creator = WikidataCache.GetCreatorData(categoryCreator);
+						if (creator != null)
+						{
+							creatorDeathYear = creator.DeathYear;
+							creatorCountryOfCitizenship = creator.CountryOfCitizenship;
+						}
 					}
 				}
 			}
@@ -701,6 +699,7 @@ OtherLicense: {8}",
 			}
 
 			// Other licenses will be reported as conflicts
+			string conflictLicenses = "";
 			foreach (string license in LicenseUtility.PrimaryLicenseTemplates)
 			{
 				// CC licenses are fine (probably a back-up license from the photographer)
@@ -713,10 +712,14 @@ OtherLicense: {8}",
 				if (WikiUtils.HasTemplate(worksheet.Text, license))
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Contains other license '{0}'.", license);
-					qtyOtherLicense++;
-					File.AppendAllText(DuplicateLicensesLogFile, article.title + "\n");
-					return false;
+					conflictLicenses = StringUtility.Join("|", conflictLicenses, license);
 				}
+			}
+			if (!string.IsNullOrEmpty(conflictLicenses))
+			{
+				qtyOtherLicense++;
+				CacheIrreplacableLicense(articleTitle, conflictLicenses);
+				return false;
 			}
 
 			article.Dirty = true;
@@ -813,6 +816,15 @@ OtherLicense: {8}",
 			command.CommandText = "UPDATE files SET newLicense=$newLicense WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("newLicense", newLicense);
+			command.ExecuteNonQuery();
+		}
+
+		private void CacheIrreplacableLicense(PageTitle title, string irreplaceableLicenses)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET irreplaceableLicenses=$irreplaceableLicenses WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("irreplaceableLicenses", irreplaceableLicenses);
 			command.ExecuteNonQuery();
 		}
 
