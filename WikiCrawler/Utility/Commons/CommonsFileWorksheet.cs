@@ -112,7 +112,7 @@ public class CommonsFileWorksheet : CommonsWorksheet
 	private string date;
 	private string dateParam; // name of the param the date string was actually pulled from
 	private int dateIndex = -1;
-	private static string[] dateParams = new string[] { "date" };
+	private static string[] dateParams = new string[] { "publication date", "date", "year" };
 
 	public CommonsFileWorksheet(Article article)
 		: base(article)
