@@ -145,6 +145,23 @@ namespace MediaWiki
 		}
 
 		/// <summary>
+		/// If the article is redirected, gets and returns the redirect target. Otherwise, returns null.
+		/// </summary>
+		public Article GetRedirectTarget(Article article)
+		{
+			Match redirectMatch = s_redirectRegex.Match(article.revisions[0].text);
+			if (redirectMatch.Success)
+			{
+				//TODO: get same props original article asked for
+				return GetPage(redirectMatch.Groups[1].Value);
+			}
+			else
+			{
+				return null;
+			}
+		}
+
+		/// <summary>
 		/// If the article is redirected, follows redirects until it isn't.
 		/// </summary>
 		public Article FollowRedirects(Article article)
