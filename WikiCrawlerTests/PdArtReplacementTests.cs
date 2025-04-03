@@ -13,12 +13,6 @@ public class PdArtReplacementTests
 		ImplicitCreatorsReplacement.SlowCategoryWalk = false;
 	}
 
-	[AssemblyCleanup]
-	public static void AssemblyCleanup()
-	{
-		CreatorUtilityMeta.SaveOut();
-	}
-
 	private static Article CreateArticle(string title, string content)
 	{
 		Article article = new Article();
