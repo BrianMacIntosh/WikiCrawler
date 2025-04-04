@@ -70,8 +70,11 @@ namespace Tasks
 
 		private void HeartbeatThread()
 		{
-			SendHeartbeat(false);
-			Thread.Sleep(HeartbeatInterval);
+			while (true)
+			{
+				SendHeartbeat(false);
+				Thread.Sleep(HeartbeatInterval);
+			}
 		}
 
 		protected void SendHeartbeat(bool terminate)

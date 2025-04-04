@@ -70,6 +70,7 @@ namespace Tasks
 		}
 
 		public ReplaceIn(BaseReplacement replacement)
+			: base()
 		{
 			m_replacement = replacement;
 
