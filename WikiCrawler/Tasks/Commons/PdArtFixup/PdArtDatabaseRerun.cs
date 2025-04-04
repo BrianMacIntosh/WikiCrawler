@@ -19,7 +19,8 @@ namespace Tasks.Commons
 			HeartbeatEnabled = true;
 			m_heartbeatData["taskKey"] = "PdArtFixup";
 
-			Parameters["Query"] = "SELECT * FROM files where bLicenseReplaced=0";
+			Parameters["Query"] = "SELECT * FROM files WHERE (dateString LIKE \"executed in%\" OR dateString LIKE \"%(published)\") AND bLicenseReplaced!=1";
+			//Parameters["Query"] = "SELECT * FROM files where bLicenseReplaced=0 AND (touchTimeUnix < 1743182781 OR touchTimeUnix IS NULL)";
 			//Parameters["Query"] = "SELECT * FROM files where pdArtLicense LIKE \"{{pd-art}}\" AND bLicenseReplaced=0";
 			//Parameters["Query"] = "SELECT pageTitle FROM files WHERE innerLicense LIKE \"PD-old-90\" AND bLicenseReplaced != 1 AND authorDeathYear != 9999";
 		}
