@@ -979,6 +979,28 @@ OtherLicense: {8}",
 				}
 			}
 
+			// check for "taken on" template
+			{
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "taken on");
+				if (span.IsValid)
+				{
+					string takenOnTemplate = date.Substring(span);
+					string innerDate = WikiUtils.GetTemplateParameter(1, takenOnTemplate);
+					return ParseDate(innerDate);
+				}
+			}
+
+			// check for "taken in" template
+			{
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "taken in");
+				if (span.IsValid)
+				{
+					string takenInTemplate = date.Substring(span);
+					string innerDate = WikiUtils.GetTemplateParameter(1, takenInTemplate);
+					return ParseDate(innerDate);
+				}
+			}
+
 			// check for "original upload date" template
 			{
 				StringSpan span = WikiUtils.GetTemplateLocation(date, "original upload date");
