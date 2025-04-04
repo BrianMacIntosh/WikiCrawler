@@ -683,6 +683,8 @@ OtherLicense: {8}",
 			}
 			allReplaceableLicenses.Sort((a, b) => a.end - b.end);
 
+			string oldText = worksheet.Text;
+
 			// replace the LAST license template
 			string replacedLicense = worksheet.Text.Substring(allReplaceableLicenses.Last());
 			worksheet.Text = worksheet.Text.Substring(0, allReplaceableLicenses.Last().start)
@@ -720,6 +722,7 @@ OtherLicense: {8}",
 			{
 				qtyOtherLicense++;
 				CacheIrreplacableLicense(articleTitle, conflictLicenses);
+				worksheet.Text = oldText; //HACK: reset text in case another replacement succeeds
 				return false;
 			}
 
