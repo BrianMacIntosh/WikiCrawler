@@ -530,7 +530,7 @@ OtherLicense: {8}",
 
 			CacheDeathyear(articleTitle, creatorDeathYear);
 
-			MappingDate mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle);
+			MappingDate mappedDate = null;
 
 			// 2. try to parse file/pub date
 			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
@@ -546,6 +546,7 @@ OtherLicense: {8}",
 			else
 			{
 				// unparseable date
+				mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle);
 				if (!string.IsNullOrEmpty(mappedDate.ReplaceDate))
 				{
 					// make the date replacement
