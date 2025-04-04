@@ -12,7 +12,12 @@ namespace Tasks.Commons
 	{
 		public static BaseReplacement CreateReplacement()
 		{
-			return new CompoundReplacementTask(new ImplicitCreatorsReplacement("PdArtReplacement"), new LocalizeDateReplacement(), new PdArtReplacement(), new FixInformationTemplates());
+			return new CompoundReplacementTask(
+				new ImplicitCreatorsReplacement("PdArtReplacement"),
+				new LocalizeDateReplacement(),
+				new PdArtReplacement()
+				//, new FixInformationTemplates()
+				);
 		}
 
 		public PdArtFixup()
