@@ -54,7 +54,7 @@ namespace Tasks
 		/// <summary>
 		/// The replacement operation to run.
 		/// </summary>
-		private BaseReplacement m_replacement;
+		private BaseReplacement[] m_replacements;
 
 		/// <summary>
 		/// Directory where task-specific data is stored.
@@ -69,10 +69,10 @@ namespace Tasks
 			get { return Path.Combine(ProjectDataDirectory, "cache"); }
 		}
 
-		public ReplaceIn(BaseReplacement replacement)
+		public ReplaceIn(params BaseReplacement[] replacements)
 			: base()
 		{
-			m_replacement = replacement;
+			m_replacements = replacements;
 
 			Directory.CreateDirectory(ProjectDataDirectory);
 		}
@@ -131,6 +131,7 @@ namespace Tasks
 			int readCount = 0;
 			int editCount = 0;
 
+			CreateHeartbeats();
 			StartHeartbeat();
 
 			foreach (Article file in GetPagesToAffect(startSortkey))
@@ -145,17 +146,29 @@ namespace Tasks
 				// save out stats
 				if (saveOutCounter >= saveOutInterval)
 				{
-					m_replacement.SaveOut();
+					foreach (BaseReplacement replacement in m_replacements)
+					{
+						replacement.SaveOut();
+					}
 
 					saveOutCounter -= saveOutInterval;
 				}
 				saveOutCounter++;
 
 				Console.WriteLine();
-				ConsoleUtility.WriteLine(ConsoleColor.White, "{0} on '{1}'", m_replacement.GetType().Name, file.title);
 				ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "Read {0}/{1}, Edit {2}/{3}", readCount, FormatInt(s_MaxReads), editCount, FormatInt(s_MaxEdits));
 
-				m_replacement.DoReplacement(file);
+				foreach (BaseReplacement replacement in m_replacements)
+				{
+					ConsoleUtility.WriteLine(ConsoleColor.White, "{0} on '{1}'", replacement.GetType().Name, file.title);
+					if (replacement.DoReplacement(file) && replacement.Heartbeat != null)
+					{
+						lock (replacement.Heartbeat)
+						{
+							replacement.Heartbeat.nEdits++;
+						}
+					}
+				}
 
 				if (file.Dirty && !UseCachedFiles)
 				{
@@ -163,7 +176,6 @@ namespace Tasks
 					//File.AppendAllText(LocalizeDateReplacement.ReplacementsLogFile, file.title + "\n");
 
 					GlobalAPIs.Commons.EditPage(file, file.GetEditSummary());
-					m_heartbeatData["nEdits"] = (int)m_heartbeatData["nEdits"] + 1;
 					editCount++;
 				}
 
@@ -176,12 +188,29 @@ namespace Tasks
 
 			SendHeartbeat(true);
 
-			m_replacement.SaveOut();
+			foreach (BaseReplacement replacement in m_replacements)
+			{
+				replacement.SaveOut();
+			}
 		}
 
 		private string FormatInt(int value)
 		{
 			return value == int.MaxValue ? "INF" : value.ToString();
+		}
+
+		/// <summary>
+		/// Creates a heartbeat task for each replacement operation that needs one.
+		/// </summary>
+		private void CreateHeartbeats()
+		{
+			foreach (BaseReplacement replacement in m_replacements)
+			{
+				if (replacement.UseHeartbeat)
+				{
+					replacement.Heartbeat = AddHeartbeatTask(replacement.GetType().Name);
+				}
+			}
 		}
 	}
 }

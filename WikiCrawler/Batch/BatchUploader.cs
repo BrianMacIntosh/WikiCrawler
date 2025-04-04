@@ -73,20 +73,23 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 			int licenseFailures = 0;
 			int uploadDeclined = 0;
 
-			if (totalKeys < 0)
+			lock (Heartbeat)
 			{
-				// assume everything was downloaded
-				m_heartbeatData["nTotal"] = metadataFiles.Count + m_succeeded.Count - m_permanentlyFailed.Count;
+				if (totalKeys < 0)
+				{
+					// assume everything was downloaded
+					Heartbeat.nTotal = metadataFiles.Count + m_succeeded.Count - m_permanentlyFailed.Count;
+				}
+				else
+				{
+					Heartbeat.nTotal = totalKeys - m_permanentlyFailed.Count;
+				}
+				Heartbeat.nCompleted = m_succeeded.Count;
+				Heartbeat.nDownloaded = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
+				Heartbeat.nFailed = m_failMessages.Count;
+				Heartbeat.nFailedLicense = licenseFailures;
+				Heartbeat.nDeclined = uploadDeclined;
 			}
-			else
-			{
-				m_heartbeatData["nTotal"] = totalKeys - m_permanentlyFailed.Count;
-			}
-			m_heartbeatData["nCompleted"] = m_succeeded.Count;
-			m_heartbeatData["nDownloaded"] = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
-			m_heartbeatData["nFailed"] = m_failMessages.Count;
-			m_heartbeatData["nFailedLicense"] = licenseFailures;
-			m_heartbeatData["nDeclined"] = uploadDeclined;
 
 			StartHeartbeat();
 
@@ -134,13 +137,13 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 						}
 					}
 
-					lock (m_heartbeatData)
+					lock (Heartbeat)
 					{
-						m_heartbeatData["nCompleted"] = m_succeeded.Count;
-						m_heartbeatData["nDownloaded"] = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
-						m_heartbeatData["nFailed"] = m_failMessages.Count;
-						m_heartbeatData["nFailedLicense"] = licenseFailures;
-						m_heartbeatData["nDeclined"] = uploadDeclined;
+						Heartbeat.nCompleted = m_succeeded.Count;
+						Heartbeat.nDownloaded = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
+						Heartbeat.nFailed = m_failMessages.Count;
+						Heartbeat.nFailedLicense = licenseFailures;
+						Heartbeat.nDeclined = uploadDeclined;
 					}
 
 					if (s_stop)

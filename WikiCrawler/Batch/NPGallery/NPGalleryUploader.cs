@@ -111,7 +111,6 @@ namespace NPGallery
 
 			// we'll need to redownload data when the Albums key is missing
 			m_downloader = new NPGalleryDownloader(key);
-			m_downloader.HeartbeatEnabled = false;
 
 			// get the hash of some error files
 			using (MD5 md5 = MD5.Create())

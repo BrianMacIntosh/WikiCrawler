@@ -10,21 +10,14 @@ namespace Tasks.Commons
 	/// </summary>
 	public class PdArtFixup : ReplaceInCategory
 	{
-		public static BaseReplacement CreateReplacement()
-		{
-			return new CompoundReplacementTask(
+		public PdArtFixup()
+			: base(
 				new ImplicitCreatorsReplacement("PdArtReplacement"),
-				new LocalizeDateReplacement(),
+				//new LocalizeDateReplacement(),
 				new PdArtReplacement()
 				//, new FixInformationTemplates()
-				);
-		}
-
-		public PdArtFixup()
-			: base(CreateReplacement())
+				)
 		{
-			HeartbeatEnabled = true;
-
 			Parameters.Add("Category", "Category:PD-Art (PD-old-auto)");
 		}
 

@@ -8,18 +8,36 @@ using WikiCrawler;
 
 namespace Tasks
 {
+	public class HeartbeatData
+	{
+		public HeartbeatData(string inTaskKey)
+		{
+			taskKey = inTaskKey;
+		}
+
+		public readonly string taskKey;
+		public bool terminate = false;
+
+		public int nEdits = 0;
+
+		public int nTotal;
+		public int nCompleted;
+		public int nDownloaded;
+		public int nFailed;
+		public int nFailedLicense;
+		public int nDeclined;
+	}
+
 	/// <summary>
 	/// Base class for a task the bot can run.
 	/// </summary>
 	public abstract class BaseTask
 	{
-		public bool HeartbeatEnabled = false;
-
 		private Uri m_heartbeatEndpoint;
 		private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(60f);
 		private Thread m_heartbeatThread;
 
-		protected Dictionary<string, object> m_heartbeatData = new Dictionary<string, object>();
+		protected Dictionary<string, HeartbeatData> m_heartbeatTasks = new Dictionary<string, HeartbeatData>();
 
 		private static string HeartbeatEndpointPath
 		{
@@ -35,10 +53,13 @@ namespace Tasks
 				m_heartbeatEndpoint = new Uri(File.ReadAllText(HeartbeatEndpointPath));
 				EasyWeb.SetDelayForDomain(m_heartbeatEndpoint, 0f);
 			}
+		}
 
-			m_heartbeatData["taskKey"] = GetType().Name;
-			m_heartbeatData["nEdits"] = 0;
-			m_heartbeatData["terminate"] = false;
+		protected HeartbeatData AddHeartbeatTask(string taskKey)
+		{
+			HeartbeatData newData = new HeartbeatData(taskKey);
+			m_heartbeatTasks.Add(taskKey, newData);
+			return newData;
 		}
 
 		public void ExecuteLogged()
@@ -61,7 +82,7 @@ namespace Tasks
 
 		protected void StartHeartbeat()
 		{
-			if (HeartbeatEnabled && !string.IsNullOrEmpty(m_heartbeatEndpoint.OriginalString))
+			if (m_heartbeatTasks.Count > 0 && !string.IsNullOrEmpty(m_heartbeatEndpoint.OriginalString))
 			{
 				m_heartbeatThread = new Thread(HeartbeatThread);
 				m_heartbeatThread.Start();
@@ -84,20 +105,29 @@ namespace Tasks
 				m_heartbeatThread.Abort();
 				m_heartbeatThread = null;
 			}
+
 			try
 			{
-				string serialized;
-				lock (m_heartbeatData)
+				foreach (HeartbeatData heartbeatTask in m_heartbeatTasks.Values)
 				{
-					m_heartbeatData["terminate"] = terminate;
-					serialized = JsonConvert.SerializeObject(m_heartbeatData);
-				}
-				string dataString = "d=" + System.Web.HttpUtility.UrlEncode(serialized);
-				Stream response = EasyWeb.Post(CreateHeartbeatRequest, dataString);
-				response.Dispose();
+					string dataString;
 
-				// edits are additive
-				m_heartbeatData["nEdits"] = 0;
+					lock (heartbeatTask)
+					{
+						string serialized;
+						heartbeatTask.terminate = terminate;
+						serialized = JsonConvert.SerializeObject(heartbeatTask);
+						dataString = "d=" + System.Web.HttpUtility.UrlEncode(serialized);
+
+						// edits are additive
+						heartbeatTask.nEdits = 0;
+					}
+
+					using (StreamReader response = new StreamReader(EasyWeb.Post(CreateHeartbeatRequest, dataString)))
+					{
+
+					}
+				}
 			}
 			catch (Exception e)
 			{

@@ -23,6 +23,11 @@ namespace Tasks.Commons
 			NotFound = 2,
 		}
 
+		public override bool UseHeartbeat
+		{
+			get { return true; }
+		}
+
 		/// <summary>
 		/// If set, skips files that are already cached.
 		/// </summary>
@@ -726,8 +731,12 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			article.Dirty = true;
-			article.Changes.Add(changeText);
+			bool changed = worksheet.Text != oldText;
+			if (changed)
+			{
+				article.Dirty = true;
+				article.Changes.Add(changeText);
+			}
 
 			CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
 			CacheNewLicense(articleTitle, newLicense);
@@ -739,7 +748,7 @@ OtherLicense: {8}",
 				m_dateMapping.SetDirty();
 			}
 
-			return true;
+			return changed;
 		}
 
 		private void CacheFile(PageTitle title, string author, string date, string pdArtLicense, string innerLicense)

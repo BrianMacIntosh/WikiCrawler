@@ -8,18 +8,18 @@ namespace Tasks
 	/// </summary>
 	public class CompoundReplacementTask : BaseReplacement
 	{
-		private BaseReplacement[] m_tasks;
+		public readonly BaseReplacement[] Children;
 
 		public CompoundReplacementTask(params BaseReplacement[] tasks)
 		{
-			m_tasks = tasks;
+			Children = tasks;
 		}
 
 		public override bool DoReplacement(Article article)
 		{
 			bool bAnyChange = false;
 
-			foreach (BaseReplacement task in m_tasks)
+			foreach (BaseReplacement task in Children)
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.White, "{0} on '{1}'", task.GetType().Name, article.title);
 
@@ -34,7 +34,7 @@ namespace Tasks
 		{
 			base.SaveOut();
 
-			foreach (BaseReplacement task in m_tasks)
+			foreach (BaseReplacement task in Children)
 			{
 				task.SaveOut();
 			}

@@ -12,9 +12,9 @@ namespace Tasks.Commons
 	public class PdArtFollowup : ReplaceIn
 	{
 		public PdArtFollowup()
-			: base(PdArtFixup.CreateReplacement())
+			: base(new ImplicitCreatorsReplacement("PdArtReplacement"), new PdArtReplacement())
 		{
-			HeartbeatEnabled = true;
+
 		}
 
 		public override void Execute()

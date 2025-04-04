@@ -20,6 +20,11 @@ namespace Tasks.Commons
 	/// </summary>
 	public class ImplicitCreatorsReplacement : BaseReplacement
 	{
+		public override bool UseHeartbeat
+		{
+			get { return true; }
+		}
+
 		/// <summary>
 		/// If set, will walk up categories to try to map creator string.
 		/// </summary>

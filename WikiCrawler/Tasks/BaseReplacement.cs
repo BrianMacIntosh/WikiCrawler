@@ -7,6 +7,13 @@ namespace Tasks
 	/// </summary>
 	public abstract class BaseReplacement
 	{
+		public virtual bool UseHeartbeat
+		{
+			get { return false; }
+		}
+
+		public HeartbeatData Heartbeat;
+
 		/// <summary>
 		/// Performs the replacement on the specified article.
 		/// </summary>

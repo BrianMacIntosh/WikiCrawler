@@ -8,7 +8,7 @@ namespace Tasks
 	/// </summary>
 	public abstract class ReplaceInCategory : ReplaceIn
 	{
-		public ReplaceInCategory(BaseReplacement replacement)
+		public ReplaceInCategory(params BaseReplacement[] replacement)
 			: base(replacement)
 		{
 

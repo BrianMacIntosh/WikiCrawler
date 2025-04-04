@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using Tasks;
 using WikiCrawler;
 
 public interface IBatchDownloader : IBatchTask
@@ -63,11 +64,11 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 
 			IEnumerable<KeyType> allKeys = GetKeys();
 			int totalKeyCount = allKeys.Count();
-			m_heartbeatData["nTotal"] = totalKeyCount - m_permanentlyFailed.Count;
-			m_heartbeatData["nCompleted"] = m_succeeded.Count;
-			m_heartbeatData["nDownloaded"] = downloadSucceededKeys.Count;
-			m_heartbeatData["nFailed"] = m_failMessages.Count;
-			m_heartbeatData["nFailedLicense"] = 0;
+			Heartbeat.nTotal = totalKeyCount - m_permanentlyFailed.Count;
+			Heartbeat.nCompleted = m_succeeded.Count;
+			Heartbeat.nDownloaded = downloadSucceededKeys.Count;
+			Heartbeat.nFailed = m_failMessages.Count;
+			Heartbeat.nFailedLicense = 0;
 
 			StartHeartbeat();
 
@@ -86,13 +87,13 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 				}
 				saveOutTimer--;
 
-				lock (m_heartbeatData)
+				lock (m_heartbeatTasks)
 				{
-					m_heartbeatData["nTotal"] = totalKeyCount - m_permanentlyFailed.Count;
-					m_heartbeatData["nCompleted"] = m_succeeded.Count;
-					m_heartbeatData["nDownloaded"] = downloadSucceededKeys.Count;
-					m_heartbeatData["nFailed"] = m_failMessages.Count;
-					m_heartbeatData["nFailedLicense"] = 0;
+					Heartbeat.nTotal = totalKeyCount - m_permanentlyFailed.Count;
+					Heartbeat.nCompleted = m_succeeded.Count;
+					Heartbeat.nDownloaded = downloadSucceededKeys.Count;
+					Heartbeat.nFailed = m_failMessages.Count;
+					Heartbeat.nFailedLicense = 0;
 				}
 				
 				if (File.Exists(stopFile))

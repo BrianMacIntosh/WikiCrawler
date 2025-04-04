@@ -3,7 +3,7 @@
 	public class FixImplicitCreators : ReplaceInCategory
 	{
 		public FixImplicitCreators()
-			: base(new CompoundReplacementTask(new ImplicitCreatorsReplacement("FixImplicitCreators"), new FixInformationTemplates(), new LocalizeDateReplacement()))
+			: base(new ImplicitCreatorsReplacement("FixImplicitCreators"), new FixInformationTemplates(), new LocalizeDateReplacement())
 		{
 			Parameters["Category"] = "Category:Author matching Creator template, Creator template not used";
 			//Parameters["Category"] = "Category:Artwork template with implicit creator";

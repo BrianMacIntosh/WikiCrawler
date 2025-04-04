@@ -35,10 +35,10 @@ public abstract class BatchTask : BaseTask, IBatchTask
 	protected string m_projectKey { get; private set; }
 	protected ProjectConfig m_config { get; set; }
 
+	protected HeartbeatData Heartbeat;
+
 	public BatchTask(string key)
 	{
-		HeartbeatEnabled = true;
-
 		m_projectKey = key;
 		ProjectDataDirectory = Path.Combine(Configuration.DataDirectory, m_projectKey);
 		ImageCacheDirectory = Path.Combine(ProjectDataDirectory, "images");
@@ -47,13 +47,7 @@ public abstract class BatchTask : BaseTask, IBatchTask
 		m_config = JsonConvert.DeserializeObject<ProjectConfig>(
 			File.ReadAllText(Path.Combine(ProjectDataDirectory, "config.json")));
 
-		m_heartbeatData["taskKey"] = m_projectKey;
-		m_heartbeatData["nTotal"] = 0;
-		m_heartbeatData["nCompleted"] = 0;
-		m_heartbeatData["nDownloaded"] = 0;
-		m_heartbeatData["nFailed"] = 0;
-		m_heartbeatData["nFailedLicense"] = 0;
-		m_heartbeatData["nDeclined"] = 0;
+		Heartbeat = AddHeartbeatTask(m_projectKey);
 	}
 
 	protected virtual void SaveOut()
