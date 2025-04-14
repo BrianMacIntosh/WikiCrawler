@@ -136,6 +136,12 @@ namespace Tasks
 
 			foreach (Article file in GetPagesToAffect(startSortkey))
 			{
+				if (Article.IsNullOrMissing(file))
+				{
+					//TODO: delete from db
+					continue;
+				}
+
 				if (editCount >= s_MaxEdits || readCount >= s_MaxReads)
 				{
 					break;
