@@ -36,7 +36,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// If set, skips any attempts to look up author deathyears with extra queries.
 		/// </summary>
-		public static bool SkipAuthorLookup = false;
+		public static bool SkipWikidataLookups = false;
 
 		/// <summary>
 		/// Directory where task-specific data is stored.
@@ -395,11 +395,13 @@ OtherLicense: {8}",
 				CacheFile(articleTitle, worksheet.Author, worksheet.Date, logLicense, logInnerLicense);
 			}
 
+			List<string> errors = new List<string>();
+			ReplacementStatus replacementStatus = ReplacementStatus.NotReplaced;
+
 			if (pdArts.Count == 0)
 			{
-				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to find any PD-Art templates.");
-				CacheReplacementStatus(articleTitle, ReplacementStatus.NotFound);
-				return false;
+				errors.Add("Failed to find any PD-Art templates.");
+				replacementStatus = ReplacementStatus.NotFound;
 			}
 
 			string licensedPdArtOtherLicense = null; //TODO: reimplement me
@@ -409,16 +411,15 @@ OtherLicense: {8}",
 			{
 				// check for unreplaceable templates
 				string nakedTemplate = WikiUtils.TrimTemplate(worksheet.Text.Substring(match.start, match.Length));
+
 				if (!IsReplaceablePdArt(nakedTemplate))
 				{
-					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Can't replace '{0}'.", nakedTemplate);
-					CacheReplacementStatus(articleTitle, ReplacementStatus.NotFound); //TODO: log instead
-					return false;
+					errors.Add(string.Format("Can't replace '{0}'.", nakedTemplate));
+					replacementStatus = ReplacementStatus.NotFound; //TODO: log instead
 				}
-
 				// does it already have exactly one good pd-art template?
 				//TODO: still remove extraneous templates
-				if (s_goodPdArtNakedRegex.IsMatch(nakedTemplate))
+				else if (s_goodPdArtNakedRegex.IsMatch(nakedTemplate))
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
 					Console.ResetColor();
@@ -434,46 +435,19 @@ OtherLicense: {8}",
 				}
 			}
 
-			CacheReplacementStatus(articleTitle, ReplacementStatus.NotReplaced);
+			CacheReplacementStatus(articleTitle, replacementStatus);
 
 			// 1. need author death date
 			int creatorDeathYear = 9999;
 			int? creatorCountryOfCitizenship = null;
 
-			// A. does wikidata item have author info?
-			if (!SkipAuthorLookup && !string.IsNullOrEmpty(worksheet.Wikidata))
-			{
-				try
-				{
-					Entity artworkEntity = GlobalAPIs.Wikidata.GetEntity(worksheet.Wikidata);
-					if (artworkEntity != null)
-					{
-						var artistEntities = artworkEntity.GetClaimValuesAsEntities(Wikidata.Prop_Creator, GlobalAPIs.Wikidata);
-						if (artistEntities.Any())
-						{
-							creatorDeathYear = artistEntities.Select(e => WikidataCache.GetCreatorDeathYear(e)).Max();
-							creatorCountryOfCitizenship = artistEntities.Select(e => WikidataCache.GetCreatorCountryOfCitizenship(e)).FirstOrDefault();
-						}
-					}
-				}
-				catch (WikimediaCodeException e)
-				{
-					if (e.Code != "no-such-entity")
-					{
-						throw;
-					}
-				}
-			}
-
 			if (creatorDeathYear == 9999)
 			{
 				if (string.IsNullOrEmpty(worksheet.Author))
 				{
-					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to find author.");
-					return false;
+					
 				}
-
-				if (ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author)
+				else if (ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author)
 					|| ImplicitCreatorsReplacement.IsAnonymousAuthor(worksheet.Author))
 				{
 					// skip all the expensive searching
@@ -527,19 +501,17 @@ OtherLicense: {8}",
 			{
 				// E. is death year manually mapped?
 				MappingCreator mapping = m_creatorMappings.TryMapValue(worksheet.Author, articleTitle);
-				if (mapping.MappedDeathyear != 9999)
+				if (mapping != null && mapping.MappedDeathyear != 9999)
 				{
 					creatorDeathYear = mapping.MappedDeathyear;
 				}
 			}
 
-			CacheDeathyear(articleTitle, creatorDeathYear);
-
 			MappingDate mappedDate = null;
 
 			// 2. try to parse file/pub date
 			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
-			int latestYear;
+			int latestYear = 9999;
 			if (string.IsNullOrEmpty(worksheet.Date))
 			{
 				latestYear = 9999;
@@ -574,29 +546,78 @@ OtherLicense: {8}",
 					{
 						latestYear = mappedDate.LatestYear;
 					}
-					else
-					{
-						ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to parse mapped date '{0}'.", worksheet.Date);
-						qtyDateParseFail++;
-						return false;
-					}
 				}
-				else if (mappedDate.LatestYear != 9999)
+				if (latestYear == 9999 && mappedDate.LatestYear != 9999)
 				{
 					latestYear = mappedDate.LatestYear;
 				}
-				else
+			}
+
+			// look for deathyear and pub year on wikidata if necessary
+			if ((creatorDeathYear == 9999 || latestYear == 9999) && !string.IsNullOrEmpty(worksheet.Wikidata))
+			{
+				if (Wikidata.TryUnQidify(worksheet.Wikidata, out int artworkQid))
 				{
-					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to parse date '{0}'.", worksheet.Date);
-					qtyDateParseFail++;
-					return false;
+					CacheArtQID(articleTitle, artworkQid);
+				}
+
+				if (!SkipWikidataLookups)
+				{
+					Entity artworkEntity = null;
+					try
+					{
+						//TODO: cache
+						artworkEntity = GlobalAPIs.Wikidata.GetEntity(worksheet.Wikidata);
+					}
+					catch (WikimediaCodeException e)
+					{
+						if (e.Code != "no-such-entity")
+						{
+							throw;
+						}
+					}
+
+					if (!Entity.IsNullOrMissing(artworkEntity))
+					{
+						if (creatorDeathYear == 9999)
+						{
+							IEnumerable<string> artistEntityIds = artworkEntity.GetClaimValuesAsEntityIds(Wikidata.Prop_Creator);
+							if (artistEntityIds.Any())
+							{
+								creatorDeathYear = artistEntityIds.Select(e => WikidataCache.GetPersonData(Wikidata.UnQidifyChecked(e)).DeathYear).Max();
+								creatorCountryOfCitizenship = artistEntityIds.Select(e => WikidataCache.GetPersonData(Wikidata.UnQidifyChecked(e)).CountryOfCitizenship).FirstOrDefault();
+							}
+						}
+						if (latestYear == 9999)
+						{
+							//TODO: year for art wikidata
+						}
+					}
 				}
 			}
 
-			CacheLatestYear(articleTitle, dateParseMetadata.LatestYear);
-
 			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorCountryOfCitizenship);
 			Console.WriteLine("  Date: {0}, Deathyear: {1}, PMA: {2}", latestYear, creatorDeathYear, pmaDuration);
+
+			if (latestYear != 9999)
+			{
+				CacheLatestYear(articleTitle, latestYear);
+			}
+			if (creatorDeathYear != 9999)
+			{
+				CacheDeathyear(articleTitle, creatorDeathYear);
+			}
+
+			if (latestYear == 9999)
+			{
+				errors.Add("Failed to identify publication date.");
+				qtyDateParseFail++;
+			}
+
+			if (creatorDeathYear == 9999)
+			{
+				errors.Add("Failed to find author deathyear.");
+			}
 
 			// is pub date old enough to assume 100 PMA?
 			bool bReallyOldUnknownAuthor = ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175;
@@ -609,9 +630,8 @@ OtherLicense: {8}",
 				}
 				else
 				{
-					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Can't determine death year for creator '{0}'.", worksheet.Author);
+					errors.Add(string.Format("Can't determine death year for creator '{0}'.", worksheet.Author));
 					qtyNoDeathYear++;
-					return false;
 				}
 			}
 			else if (creatorDeathYear >= System.DateTime.Now.Year - pmaDuration) 
@@ -623,9 +643,8 @@ OtherLicense: {8}",
 				}
 				else
 				{
-					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Death year {0} is inside max PMA.", creatorDeathYear);
+					errors.Add(string.Format("Death year {0} is inside max PMA.", creatorDeathYear));
 					qtyInsufficientPMA++;
-					return false;
 				}
 			}
 
@@ -640,9 +659,8 @@ OtherLicense: {8}",
 				}
 				else
 				{
-					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Date {0} is after the US expired threshold.", latestYear);
+					errors.Add(string.Format("Date {0} is after the US expired threshold.", latestYear));
 					qtyNotPDUS++;
-					return false;
 				}
 			}
 
@@ -655,13 +673,11 @@ OtherLicense: {8}",
 			}
 			else if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
 			{
-				Debug.Assert(creatorDeathYear != 9999);
 				newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear, licensedPdArtOtherLicense);
 				changeText = "improving PD-art license with more information based on file data";
 			}
 			else
 			{
-				Debug.Assert(creatorDeathYear != 9999);
 				newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
 				changeText = "improving PD-art license with more information based on file data";
 			}
@@ -691,19 +707,26 @@ OtherLicense: {8}",
 			string oldText = worksheet.Text;
 
 			// replace the LAST license template
-			string replacedLicense = worksheet.Text.Substring(allReplaceableLicenses.Last());
-			worksheet.Text = worksheet.Text.Substring(0, allReplaceableLicenses.Last().start)
-				+ newLicense
-				+ worksheet.Text.Substring(allReplaceableLicenses.Last().end + 1);
-
-			ConsoleUtility.WriteLine(ConsoleColor.Green, "  Replaced '{0}' with '{1}'.", replacedLicense, newLicense);
-
-			// remove extraneous license templates
-			for (int rangeIndex = allReplaceableLicenses.Count - 2; rangeIndex >= 0; --rangeIndex)
+			if (allReplaceableLicenses.Any())
 			{
-				string template = worksheet.Text.Substring(allReplaceableLicenses[rangeIndex]);
-				worksheet.Text = WikiUtils.RemoveTemplate(worksheet.Text, allReplaceableLicenses[rangeIndex]);
-				ConsoleUtility.WriteLine(ConsoleColor.Green, "  Removed '{0}'.", template.Trim());
+				string replacedLicense = worksheet.Text.Substring(allReplaceableLicenses.Last());
+				worksheet.Text = worksheet.Text.Substring(0, allReplaceableLicenses.Last().start)
+					+ newLicense
+					+ worksheet.Text.Substring(allReplaceableLicenses.Last().end + 1);
+
+				ConsoleUtility.WriteLine(ConsoleColor.Green, "  Replacing '{0}' with '{1}'.", replacedLicense, newLicense);
+
+				// remove extraneous license templates
+				for (int rangeIndex = allReplaceableLicenses.Count - 2; rangeIndex >= 0; --rangeIndex)
+				{
+					string template = worksheet.Text.Substring(allReplaceableLicenses[rangeIndex]);
+					worksheet.Text = WikiUtils.RemoveTemplate(worksheet.Text, allReplaceableLicenses[rangeIndex]);
+					ConsoleUtility.WriteLine(ConsoleColor.Green, "  Removed '{0}'.", template.Trim());
+				}
+			}
+			else
+			{
+				errors.Add("No replaceable licenses.");
 			}
 
 			// Other licenses will be reported as conflicts
@@ -719,7 +742,7 @@ OtherLicense: {8}",
 
 				if (WikiUtils.HasTemplate(worksheet.Text, license))
 				{
-					ConsoleUtility.WriteLine(ConsoleColor.Red, "  Contains other license '{0}'.", license);
+					errors.Add(string.Format("Contains other license '{0}'.", license));
 					conflictLicenses = StringUtility.Join("|", conflictLicenses, license);
 				}
 			}
@@ -727,9 +750,19 @@ OtherLicense: {8}",
 			{
 				qtyOtherLicense++;
 				CacheIrreplacableLicense(articleTitle, conflictLicenses);
+			}
+
+			if (errors.Count > 0)
+			{
+				foreach (string error in errors)
+				{
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "  " + error);
+				}
 				worksheet.Text = oldText; //HACK: reset text in case another replacement succeeds
 				return false;
 			}
+
+			Debug.Assert(creatorDeathYear != 9999);
 
 			bool changed = worksheet.Text != oldText;
 			if (changed)
@@ -838,6 +871,15 @@ OtherLicense: {8}",
 			command.CommandText = "UPDATE files SET irreplaceableLicenses=$irreplaceableLicenses WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("irreplaceableLicenses", irreplaceableLicenses);
+			command.ExecuteNonQuery();
+		}
+
+		private void CacheArtQID(PageTitle title, int artQid)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET artQid=$artQid WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("artQid", artQid);
 			command.ExecuteNonQuery();
 		}
 

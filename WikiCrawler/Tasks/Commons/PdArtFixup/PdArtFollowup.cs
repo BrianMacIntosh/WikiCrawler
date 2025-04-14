@@ -38,7 +38,7 @@ namespace Tasks.Commons
 		{
 			PdArtReplacement.SkipCached = false;
 			ImplicitCreatorsReplacement.SlowCategoryWalk = false; // already tried last time
-			PdArtReplacement.SkipAuthorLookup = true; // already tried last time
+			PdArtReplacement.SkipWikidataLookups = true; // already tried last time
 
 			string pdArtDirectory = Path.Combine(Configuration.DataDirectory, "PdArtReplacement");
 			ManualMapping<MappingCreator> creatorMapping = new ManualMapping<MappingCreator>(ImplicitCreatorsReplacement.GetCreatorMappingFile(pdArtDirectory));
