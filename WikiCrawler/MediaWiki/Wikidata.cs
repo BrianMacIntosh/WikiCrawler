@@ -78,6 +78,7 @@ namespace MediaWiki
 
 			//TODO: handle Creator?
 
+			// Q template
 			string q = WikiUtils.ExtractTemplate(author, "Q");
 			if (q == author)
 			{
@@ -90,6 +91,12 @@ namespace MediaWiki
 				{
 					return true;
 				}
+			}
+
+			// literal qid
+			if (TryUnQidify(author, out outQid))
+			{
+				return true;
 			}
 
 			outQid = 0;
