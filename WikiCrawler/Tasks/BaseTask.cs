@@ -118,14 +118,18 @@ namespace Tasks
 						heartbeatTask.terminate = terminate;
 						serialized = JsonConvert.SerializeObject(heartbeatTask);
 						dataString = "d=" + System.Web.HttpUtility.UrlEncode(serialized);
-
-						// edits are additive
-						heartbeatTask.nEdits = 0;
 					}
 
 					using (StreamReader response = new StreamReader(EasyWeb.Post(CreateHeartbeatRequest, dataString)))
 					{
+						//string text = response.ReadToEnd();
+						//Console.WriteLine(text);
+					}
 
+					lock (heartbeatTask)
+					{
+						// edits are additive
+						heartbeatTask.nEdits = 0;
 					}
 				}
 			}
