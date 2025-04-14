@@ -201,7 +201,7 @@ namespace WikiCrawler
 		private static CreatorData FetchNewPerson(int qid)
 		{
 			Entity entity = GlobalAPIs.Wikidata.GetEntity("Q" + qid);
-			if (entity.missing)
+			if (entity.missing || entity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) != Wikidata.Entity_Human)
 			{
 				return null;
 			}
