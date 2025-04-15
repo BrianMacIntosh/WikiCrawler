@@ -426,13 +426,14 @@ OtherLicense: {8}",
 					errors.Add(string.Format("Can't replace '{0}'.", nakedTemplate));
 					replacementStatus = ReplacementStatus.NotFound; //TODO: log instead
 				}
-				// does it already have exactly one good pd-art template?
-				//TODO: still remove extraneous templates
-				else if (s_goodPdArtNakedRegex.IsMatch(nakedTemplate))
+				else if (s_goodPdArtNakedRegex.IsMatch(nakedTemplate)
+					|| nakedTemplate.Equals("PD-Art|PD-old-100-expired", StringComparison.InvariantCultureIgnoreCase))
 				{
+					//TODO: still remove extraneous templates
 					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
 					Console.ResetColor();
 					CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
+					CacheNewLicense(articleTitle, "{{" + nakedTemplate + "}}");
 					return false;
 				}
 
