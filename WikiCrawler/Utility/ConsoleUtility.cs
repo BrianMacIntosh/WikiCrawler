@@ -6,7 +6,14 @@ public static class ConsoleUtility
 	{
 		ConsoleColor oldColor = Console.ForegroundColor;
 		Console.ForegroundColor = foregroundColor;
-		Console.WriteLine(text, formatParams);
+		if (formatParams.Length > 0)
+		{
+			Console.WriteLine(text, formatParams);
+		}
+		else
+		{
+			Console.WriteLine(text);
+		}
 		Console.ForegroundColor = oldColor;
 	}
 }
