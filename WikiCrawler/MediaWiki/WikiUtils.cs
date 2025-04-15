@@ -504,7 +504,7 @@ namespace MediaWiki
 
 			// find appropriate anonymous param
 			int paramNumber = 0;
-			int paramStartIndex = -1;
+			int paramStartIndex = bWholeTemplate ? 2 : 0;
 			int nestedTemplates = 0;
 			paramValueLocation = -1;
 			for (int c = 0; c < text.Length; c++)
