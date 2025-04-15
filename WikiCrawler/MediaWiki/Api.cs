@@ -11,17 +11,17 @@ using System.Xml.Linq;
 
 namespace MediaWiki
 {
-    /// <summary>
-    /// Contains methods for interacting with the Wikimedia web API.
-    /// </summary>
-    public class Api
-    {
-        public static string UserAgent = "BMacZeroBot (brianamacintosh@gmail.com)";
+	/// <summary>
+	/// Contains methods for interacting with the Wikimedia web API.
+	/// </summary>
+	public class Api
+	{
+		public static string UserAgent = "BMacZeroBot (brianamacintosh@gmail.com)";
 
 		public readonly Uri Domain;
 		public readonly Uri UrlApi;
 
-        private CookieContainer m_cookies;
+		private CookieContainer m_cookies;
 
 		private static JavaScriptSerializer s_jsonSerializer;
 
@@ -43,7 +43,7 @@ namespace MediaWiki
 		{
 			return CreateApiRequest("");
 		}
-		
+
 		internal HttpWebRequest CreateApiRequest(string getQuery)
 		{
 			Uri uri = UrlApi;
@@ -77,13 +77,13 @@ namespace MediaWiki
 				lgpass = Console.ReadLine();
 			}
 
-            string baseQuery = "format=json"
+			string baseQuery = "format=json"
 				+ "&action=login"
-                + "&lgname=" + UrlEncode(lgname)
-                + "&lgpassword=" + UrlEncode(lgpass);
+				+ "&lgname=" + UrlEncode(lgname)
+				+ "&lgpassword=" + UrlEncode(lgpass);
 
-            //Upload stream
-            m_cookies = new CookieContainer();
+			//Upload stream
+			m_cookies = new CookieContainer();
 			LogApiRequest("login", lgname);
 
 			//Read response
@@ -93,17 +93,17 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-            //Parse and read
-            Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-            Dictionary<string, object> login = (Dictionary<string, object>)deser["login"];
-            if (((string)login["result"]).Equals("Success"))
-            {
-                return true;
-            }
-            else if (((string)login["result"]).Equals("NeedToken"))
-            {
-                //Send request again, adding lgtoken from "token"
-                baseQuery += "&lgtoken=" + UrlEncode((string)login["token"]);
+			//Parse and read
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+			Dictionary<string, object> login = (Dictionary<string, object>)deser["login"];
+			if (((string)login["result"]).Equals("Success"))
+			{
+				return true;
+			}
+			else if (((string)login["result"]).Equals("NeedToken"))
+			{
+				//Send request again, adding lgtoken from "token"
+				baseQuery += "&lgtoken=" + UrlEncode((string)login["token"]);
 				LogApiRequest("login-lgtoken", lgname);
 
 				//Read response
@@ -111,14 +111,14 @@ namespace MediaWiki
 				{
 					json = read.ReadToEnd();
 				}
-            }
-            else
-            {
-                throw new WikimediaException("Logging in returned 'result'='" + ((string)login["result"]) + "'.");
-            }
+			}
+			else
+			{
+				throw new WikimediaException("Logging in returned 'result'='" + ((string)login["result"]) + "'.");
+			}
 
-            return false;
-        }
+			return false;
+		}
 
 		/// <summary>
 		/// Combines multiple values for a URL parameter that expects a list of tags, such as 'prop'.
@@ -168,17 +168,17 @@ namespace MediaWiki
 		{
 			//TODO: loop detection
 			Match redirectMatch = s_redirectRegex.Match(article.revisions[0].text);
-            if (redirectMatch.Success)
-            {
+			if (redirectMatch.Success)
+			{
 				//TODO: get same props original article asked for
 				article = GetPage(redirectMatch.Groups[1].Value);
 				return FollowRedirects(article);
-            }
+			}
 			else
 			{
 				return article;
 			}
-        }
+		}
 		private static readonly Regex s_redirectRegex = new Regex(@"#REDIRECT\s*\[\[(.+)\]\]\s*");
 
 		/// <summary>
@@ -191,8 +191,8 @@ namespace MediaWiki
 			string rvprop = "content",
 			int rvlimit = Limit.Unspecified)
 		{
-            return GetPage(page.title, prop, iiprop, iilimit, rvprop, rvlimit);
-        }
+			return GetPage(page.title, prop, iiprop, iilimit, rvprop, rvlimit);
+		}
 
 		/// <summary>
 		/// Returns the Wiki text of the specified page
@@ -225,8 +225,8 @@ namespace MediaWiki
 			string cldir = "",
 			string iwprefix = "")
 		{
-            return GetPages(new string[] { title }, prop, iiprop, iilimit, rvprop, rvlimit, clshow, cllimit, cldir, iwprefix)[0];
-        }
+			return GetPages(new string[] { title }, prop, iiprop, iilimit, rvprop, rvlimit, clshow, cllimit, cldir, iwprefix)[0];
+		}
 
 		/// <summary>
 		/// Returns the Wiki text for all of the specified pages
@@ -256,9 +256,9 @@ namespace MediaWiki
 			int cllimit = Limit.Max,
 			string cldir = "",
 			string iwprefix = "")
-        {
+		{
 			if (titles.Count == 0) return new Article[0];
-			
+
 			//Download stream
 			string baseQuery = "format=json"
 				+ "&action=query"
@@ -308,28 +308,28 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-            //Parse and read
+			//Parse and read
 			if (json.Length > s_jsonSerializer.MaxJsonLength)
 			{
 				//TODO: break up request
 			}
-            Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-            Dictionary<string, object> query = (Dictionary<string, object>)deser["query"];
-            Dictionary<string, object> pages = (Dictionary<string, object>)query["pages"];
-            Article[] ret = new Article[pages.Count];
-            int current = 0;
-            foreach (KeyValuePair<string, object> page in pages)
-            {
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+			Dictionary<string, object> query = (Dictionary<string, object>)deser["query"];
+			Dictionary<string, object> pages = (Dictionary<string, object>)query["pages"];
+			Article[] ret = new Article[pages.Count];
+			int current = 0;
+			foreach (KeyValuePair<string, object> page in pages)
+			{
 				Dictionary<string, object> jsonData = (Dictionary<string, object>)page.Value;
 				if (jsonData.ContainsKey("invalid"))
 				{
 					continue;
 				}
 				ret[current++] = new Article(jsonData);
-            }
+			}
 
-            return ret;
-        }
+			return ret;
+		}
 
 		/// <summary>
 		/// Creates a new page with the specified content.
@@ -368,22 +368,22 @@ namespace MediaWiki
 			bool bot = true,
 			bool createonly = false,
 			bool nocreate = false)
-        {
-            //MD5 hashFn = MD5.Create();
-            //byte[] hash = hashFn.ComputeHash(Encoding.UTF8.GetBytes(newpage.revisions[0].text.ToCharArray()));
-            //string md5 = Convert.ToBase64String(hash);
+		{
+			//MD5 hashFn = MD5.Create();
+			//byte[] hash = hashFn.ComputeHash(Encoding.UTF8.GetBytes(newpage.revisions[0].text.ToCharArray()));
+			//string md5 = Convert.ToBase64String(hash);
 
 			if (string.IsNullOrEmpty(newpage.edittoken))
 				newpage.edittoken = GetCsrfToken();
 
-            string baseQuery = "format=json"
-                + "&action=edit"
-                + "&title=" + UrlEncode(newpage.title)
-                + "&text=" + UrlEncode(newpage.revisions[0].text)
-                + "&summary=" + UrlEncode(summary)
-                //+ "&md5=" + UrlEncode(md5)
-                + "&starttimestamp=" + UrlEncode(newpage.starttimestamp)
-                + "&token=" + UrlEncode(newpage.edittoken);
+			string baseQuery = "format=json"
+				+ "&action=edit"
+				+ "&title=" + UrlEncode(newpage.title)
+				+ "&text=" + UrlEncode(newpage.revisions[0].text)
+				+ "&summary=" + UrlEncode(summary)
+				//+ "&md5=" + UrlEncode(md5)
+				+ "&starttimestamp=" + UrlEncode(newpage.starttimestamp)
+				+ "&token=" + UrlEncode(newpage.edittoken);
 			if (!string.IsNullOrEmpty(tags))
 			{
 				baseQuery += "&tags=" + UrlEncode(tags);
@@ -423,17 +423,17 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-            Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-            if (deser.ContainsKey("error"))
-            {
-                Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+			if (deser.ContainsKey("error"))
+			{
+				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
 				throw new WikimediaCodeException(error);
 			}
 
 			newpage.Dirty = false;
 			newpage.Changes.Clear();
-            return true;
-        }
+			return true;
+		}
 
 		/// <summary>
 		/// Undoes the specified revision.
@@ -490,7 +490,7 @@ namespace MediaWiki
 		public bool PurgePages(IList<string> inpages)
 		{
 			if (inpages.Count == 0) return true;
-			
+
 			//Download stream
 			string baseQuery = "format=json"
 				+ "&action=purge"
@@ -582,7 +582,7 @@ namespace MediaWiki
 			{
 				baseQuery += "&language=" + UrlEncode(language);
 			}
-			
+
 			HttpWebRequest request = CreateApiRequest(baseQuery);
 			LogApiRequest("wbsearchentities", search);
 
@@ -831,12 +831,12 @@ namespace MediaWiki
 		public bool UploadFromWeb(Article newpage, string url, string summary, bool bot = true)
 		{
 			string baseQuery = "format=json"
-                + "&action=upload"
-                + "&filename=" + UrlEncode(newpage.title)
-                + "&summary=" + UrlEncode(summary)
+				+ "&action=upload"
+				+ "&filename=" + UrlEncode(newpage.title)
+				+ "&summary=" + UrlEncode(summary)
 				+ "&url=" + UrlEncode(url)
-                + "&starttimestamp=" + UrlEncode(newpage.starttimestamp)
-                + "&token=" + UrlEncode(GetCsrfToken())
+				+ "&starttimestamp=" + UrlEncode(newpage.starttimestamp)
+				+ "&token=" + UrlEncode(GetCsrfToken())
 				+ "&ignorewarnings"
 				+ "&assert=bot";
 			if (bot)
@@ -867,34 +867,34 @@ namespace MediaWiki
 			return true;
 		}
 
-        /// <summary>
-        /// Uploads media from the local computer.
-        /// </summary>
-        /// <returns>Success</returns>
-        public bool UploadFromLocal(Article newpage, string path, string summary, bool bot = true)
-        {
+		/// <summary>
+		/// Uploads media from the local computer.
+		/// </summary>
+		/// <returns>Success</returns>
+		public bool UploadFromLocal(Article newpage, string path, string summary, bool bot = true)
+		{
 			if (!newpage.title.StartsWith("File:"))
 			{
 				newpage.title = "File:" + newpage.title;
 			}
 
-            //Download stream
-            Dictionary<string, string> data = new Dictionary<string, string>();
-            data["format"] = "json";
-            data["action"] = "upload";
-            data["filename"] = newpage.title;
-            data["token"] = GetCsrfToken();
-            data["ignorewarnings"] = "1";
+			//Download stream
+			Dictionary<string, string> data = new Dictionary<string, string>();
+			data["format"] = "json";
+			data["action"] = "upload";
+			data["filename"] = newpage.title;
+			data["token"] = GetCsrfToken();
+			data["ignorewarnings"] = "1";
 			data["summary"] = summary;
 			data["comment"] = summary;
 			if (bot) data["bot"] = "1";
 
-            if (newpage.revisions != null && newpage.revisions.Length > 0)
-            {
-                data["text"] = newpage.revisions[0].text;
-            }
+			if (newpage.revisions != null && newpage.revisions.Length > 0)
+			{
+				data["text"] = newpage.revisions[0].text;
+			}
 
-            string filetype = MimeUtility.GetMimeFromExtension(Path.GetExtension(path));
+			string filetype = MimeUtility.GetMimeFromExtension(Path.GetExtension(path));
 
 			byte[] rawfile;
 			using (BinaryReader reader = new BinaryReader(new FileStream(path, FileMode.Open)))
@@ -921,7 +921,7 @@ namespace MediaWiki
 				data["stash"] = "1";
 
 				//TODO: test me
-				
+
 				do
 				{
 					int thisChunkSize = Math.Min(chunkSize, rawfile.Length - fileOffset);
@@ -1016,9 +1016,9 @@ namespace MediaWiki
 				} while (retry);
 			}
 
-            Dictionary<string, object> finalResponse = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(finalResponseJson);
-            if (finalResponse.ContainsKey("error"))
-            {
+			Dictionary<string, object> finalResponse = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(finalResponseJson);
+			if (finalResponse.ContainsKey("error"))
+			{
 				Dictionary<string, object> error = (Dictionary<string, object>)finalResponse["error"];
 				if ((string)error["code"] == "verification-error")
 				{
@@ -1033,67 +1033,67 @@ namespace MediaWiki
 						return UploadFromLocal(newpage, path, summary, bot);
 					}
 				}
-				
+
 				throw new WikimediaCodeException(error);
 			}
-            return true;
-        }
+			return true;
+		}
 
 		//TODO: unnecessary?
-        public static Dictionary<string, object> GetCommonMetadata(Dictionary<string, object> file)
-        {
-            Dictionary<string, object> metadata = new Dictionary<string, object>();
-            if (file.ContainsKey("imageinfo"))
-            {
-                object[] ii = (object[])file["imageinfo"];
-                for (int c = 0; c < ii.Length; c++)
-                {
-                    Dictionary<string, object> cmCandidate = (Dictionary<string, object>)ii[c];
-                    if (cmCandidate.ContainsKey("commonmetadata"))
-                    {
-                        object[] cm = (object[])cmCandidate["commonmetadata"];
-                        foreach (Dictionary<string, object> dict in cm)
-                            metadata[(string)dict["name"]] = dict["value"];
-                        break;
-                    }
-                }
-            }
-            return metadata;
-        }
+		public static Dictionary<string, object> GetCommonMetadata(Dictionary<string, object> file)
+		{
+			Dictionary<string, object> metadata = new Dictionary<string, object>();
+			if (file.ContainsKey("imageinfo"))
+			{
+				object[] ii = (object[])file["imageinfo"];
+				for (int c = 0; c < ii.Length; c++)
+				{
+					Dictionary<string, object> cmCandidate = (Dictionary<string, object>)ii[c];
+					if (cmCandidate.ContainsKey("commonmetadata"))
+					{
+						object[] cm = (object[])cmCandidate["commonmetadata"];
+						foreach (Dictionary<string, object> dict in cm)
+							metadata[(string)dict["name"]] = dict["value"];
+						break;
+					}
+				}
+			}
+			return metadata;
+		}
 
 		//TODO: unnecessary?
 		public static Dictionary<string, object> GetMetadata(Dictionary<string, object> file)
-        {
-            Dictionary<string, object> metadata = new Dictionary<string, object>();
-            if (file.ContainsKey("imageinfo"))
-            {
-                object[] ii = (object[])file["imageinfo"];
-                for (int c = 0; c < ii.Length; c++)
-                {
-                    Dictionary<string, object> cmCandidate = (Dictionary<string, object>)ii[c];
-                    if (cmCandidate.ContainsKey("metadata"))
-                    {
-                        object[] cm = (object[])cmCandidate["metadata"];
-                        foreach (Dictionary<string, object> dict in cm)
-                            metadata[(string)dict["name"]] = dict["value"];
-                        break;
-                    }
-                }
-            }
-            return metadata;
-        }
+		{
+			Dictionary<string, object> metadata = new Dictionary<string, object>();
+			if (file.ContainsKey("imageinfo"))
+			{
+				object[] ii = (object[])file["imageinfo"];
+				for (int c = 0; c < ii.Length; c++)
+				{
+					Dictionary<string, object> cmCandidate = (Dictionary<string, object>)ii[c];
+					if (cmCandidate.ContainsKey("metadata"))
+					{
+						object[] cm = (object[])cmCandidate["metadata"];
+						foreach (Dictionary<string, object> dict in cm)
+							metadata[(string)dict["name"]] = dict["value"];
+						break;
+					}
+				}
+			}
+			return metadata;
+		}
 
 		/// <summary>
 		/// Checks for already-existing duplicate copies of the file.
 		/// </summary>
 		/// <returns>An array of key-value dictionaries describing the duplicate files(s)</returns>
-        public object[] GetDuplicateFiles(byte[] file, string prop = Prop.imageinfo)
-        {
-            SHA1 algo = SHA1.Create();
-            byte[] shaData = algo.ComputeHash(file);
-            StringBuilder shaHex = new StringBuilder();
-            for (int i = 0; i < shaData.Length; i++)
-                shaHex.Append(shaData[i].ToString("x2"));
+		public object[] GetDuplicateFiles(byte[] file, string prop = Prop.imageinfo)
+		{
+			SHA1 algo = SHA1.Create();
+			byte[] shaData = algo.ComputeHash(file);
+			StringBuilder shaHex = new StringBuilder();
+			for (int i = 0; i < shaData.Length; i++)
+				shaHex.Append(shaData[i].ToString("x2"));
 
 			//Download stream
 			string baseQuery = "format=json"
@@ -1104,8 +1104,8 @@ namespace MediaWiki
 			{
 				baseQuery += "&prop=" + prop;
 			}
-			
-            HttpWebRequest request = CreateApiRequest(baseQuery);
+
+			HttpWebRequest request = CreateApiRequest(baseQuery);
 			LogApiRequest("query-dupes");
 
 			string json;
@@ -1114,19 +1114,19 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-            //Parse and read
-            Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-            Dictionary<string, object> query = (Dictionary<string, object>)deser["query"];
-            if (query.ContainsKey("allimages"))
-                return (object[])query["allimages"];
-            else
-                return null;
-        }
+			//Parse and read
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+			Dictionary<string, object> query = (Dictionary<string, object>)deser["query"];
+			if (query.ContainsKey("allimages"))
+				return (object[])query["allimages"];
+			else
+				return null;
+		}
 
-        private string GetCsrfToken()
-        {
+		private string GetCsrfToken()
+		{
 			string baseQuery = "format=json&action=query&meta=tokens&type=csrf";
-            HttpWebRequest request = CreateApiRequest(baseQuery);
+			HttpWebRequest request = CreateApiRequest(baseQuery);
 			LogApiRequest("query-csrf");
 
 			string json;
@@ -1135,10 +1135,10 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-            //Parse and read
-            Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+			//Parse and read
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 
-            return (string)((Dictionary<string, object>)((Dictionary<string, object>)deser["query"])["tokens"])["csrftoken"];
+			return (string)((Dictionary<string, object>)((Dictionary<string, object>)deser["query"])["tokens"])["csrftoken"];
 		}
 
 		/// <summary>
@@ -1292,11 +1292,11 @@ namespace MediaWiki
 			}
 			while (doContinue);
 		}
-		
-        internal static string UrlEncode(string str)
-        {
-            return System.Web.HttpUtility.UrlEncode(str);
-        }
+
+		internal static string UrlEncode(string str)
+		{
+			return System.Web.HttpUtility.UrlEncode(str);
+		}
 
 		private void LogApiRequest(string endpoint)
 		{
@@ -1323,5 +1323,5 @@ namespace MediaWiki
 				return strings.First();
 			}
 		}
-    }
+	}
 }
