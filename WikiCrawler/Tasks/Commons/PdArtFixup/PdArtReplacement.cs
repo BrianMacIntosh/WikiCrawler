@@ -14,6 +14,9 @@ namespace Tasks.Commons
 	/// <summary>
 	/// Replaces PD-Art tags with imprecise licenses with a more specific license, if one can be determined.
 	/// </summary>
+	/// <remarks>
+	/// 1744582780 (database Unix seconds) Caching with no early-outs was implemented.
+	/// </remarks>
 	public class PdArtReplacement : BaseReplacement
 	{
 		public enum ReplacementStatus
@@ -366,7 +369,6 @@ OtherLicense: {8}",
 			}
 
 			PageTitle articleTitle = PageTitle.Parse(article.title);
-			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
 			if (SkipCached && IsFileCached(m_filesDatabase, articleTitle))
 			{
@@ -374,18 +376,30 @@ OtherLicense: {8}",
 				return false;
 			}
 
+			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
+
+			// any errors that prevent the replacement from being made
+			List<string> errors = new List<string>();
+
+			ReplacementStatus replacementStatus = ReplacementStatus.NotReplaced;
+
 			// locate pd-art template(s)
 			List<StringSpan> pdArts = GetPdArtTemplates(worksheet.Text);
+
+			if (pdArts.Count == 0)
+			{
+				errors.Add("Failed to find any PD-Art templates.");
+				replacementStatus = ReplacementStatus.NotFound;
+			}
 
 			{
 				string logLicense = null;
 				string logInnerLicense = null;
-				string[] logComponents = null;
 				if (pdArts.Count > 0)
 				{
 					logLicense = worksheet.Text.Substring(pdArts[0].start, pdArts[0].Length);
 					// break pd-art template params
-					logComponents = WikiUtils.TrimTemplate(logLicense).Split('|').Select(component => component.Trim()).ToArray();
+					string[] logComponents = WikiUtils.TrimTemplate(logLicense).Split('|').Select(component => component.Trim()).ToArray();
 					if (logComponents.Length >= 2)
 					{
 						logInnerLicense = logComponents[1];
@@ -395,16 +409,11 @@ OtherLicense: {8}",
 				CacheFile(articleTitle, worksheet.Author, worksheet.Date, logLicense, logInnerLicense);
 			}
 
-			List<string> errors = new List<string>();
-			ReplacementStatus replacementStatus = ReplacementStatus.NotReplaced;
+			// if the file uses Licensed-PD-Art, the other (non-PD) license
+			//TODO: reimplement me
+			string licensedPdArtOtherLicense = null;
 
-			if (pdArts.Count == 0)
-			{
-				errors.Add("Failed to find any PD-Art templates.");
-				replacementStatus = ReplacementStatus.NotFound;
-			}
-
-			string licensedPdArtOtherLicense = null; //TODO: reimplement me
+			// does the license template already have any PMA-bearing license?
 			bool bAlreadyHasPMA = false;
 
 			foreach (StringSpan match in pdArts)
@@ -436,187 +445,45 @@ OtherLicense: {8}",
 			}
 
 			CacheReplacementStatus(articleTitle, replacementStatus);
+			CacheNewLicense(articleTitle, null);
 
-			// 1. need author death date
-			int creatorDeathYear = 9999;
-			int? creatorCountryOfCitizenship = null;
-
-			if (creatorDeathYear == 9999)
+			// 1. find author death date
+			int creatorDeathYear;
+			int? creatorCountryOfCitizenship;
+			CreatorData creatorData = GetAuthorData(worksheet);
+			if (creatorData != null)
 			{
-				if (string.IsNullOrEmpty(worksheet.Author))
-				{
-					
-				}
-				else if (ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author)
-					|| ImplicitCreatorsReplacement.IsAnonymousAuthor(worksheet.Author))
-				{
-					// skip all the expensive searching
-				}
-				else if (CreatorUtility.TryGetCreatorTemplate(worksheet.Author, out PageTitle literalCreator))
-				{
-					CreatorData creator = WikidataCache.GetCreatorData(literalCreator);
-					if (creator != null)
-					{
-						creatorDeathYear = creator.DeathYear;
-						creatorCountryOfCitizenship = creator.CountryOfCitizenship;
-					}
-				}
-				else if (Wikidata.TryAuthorToQid(worksheet.Author, out int authorQid))
-				{
-					CreatorData creator = WikidataCache.GetPersonData(authorQid);
-					if (creator != null)
-					{
-						creatorDeathYear = creator.DeathYear;
-						creatorCountryOfCitizenship = creator.CountryOfCitizenship;
-					}
-				}
-				else if (ImplicitCreatorsReplacement.SlowCategoryWalk)
-				{
-					// C. can author be associated to a creator based on file categories?
-					//TODO: operate directly on QID instead
-					PageTitle categoryCreator = ImplicitCreatorsReplacement.GetCreatorFromCategories(worksheet.Author, WikiUtils.GetCategories(worksheet.Text), 1);
-					if (!categoryCreator.IsEmpty)
-					{
-						CreatorData creator = WikidataCache.GetCreatorData(categoryCreator);
-						if (creator != null)
-						{
-							creatorDeathYear = creator.DeathYear;
-							creatorCountryOfCitizenship = creator.CountryOfCitizenship;
-						}
-					}
-				}
-			}
-
-			if (creatorDeathYear == 9999)
-			{
-				// D. does author string contain a death date?
-				Match match = CreatorUtility.AuthorLifespanRegex.Match(worksheet.Author);
-				if (match.Success)
-				{
-					creatorDeathYear = int.Parse(match.Groups[3].Value);
-				}
-			}
-
-			if (creatorDeathYear == 9999)
-			{
-				// E. is death year manually mapped?
-				MappingCreator mapping = m_creatorMappings.TryMapValue(worksheet.Author, articleTitle);
-				if (mapping != null && mapping.MappedDeathyear != 9999)
-				{
-					creatorDeathYear = mapping.MappedDeathyear;
-				}
-			}
-
-			MappingDate mappedDate = null;
-
-			// 2. try to parse file/pub date
-			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
-			int latestYear = 9999;
-			if (string.IsNullOrEmpty(worksheet.Date))
-			{
-				latestYear = 9999;
-			}
-			else if (dateParseMetadata.LatestYear != 9999)
-			{
-				latestYear = dateParseMetadata.LatestYear;
+				creatorDeathYear = creatorData.DeathYear;
+				creatorCountryOfCitizenship = creatorData.CountryOfCitizenship;
 			}
 			else
 			{
-				// unparseable date
-				mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle);
-				if (!string.IsNullOrEmpty(mappedDate.ReplaceDate))
-				{
-					// make the date replacement
-					{
-						Console.ForegroundColor = ConsoleColor.Green;
-						Console.WriteLine("  Date '{0}' is mapped to '{1}'.", worksheet.Date, mappedDate.ReplaceDate);
-						Console.ResetColor();
-					
-						string textBefore = worksheet.Text.Substring(0, worksheet.DateIndex);
-						string textAfter = worksheet.Text.Substring(worksheet.DateIndex + worksheet.Date.Length);
-						worksheet.Text = textBefore + mappedDate.ReplaceDate + textAfter;
-					}
-
-					dateParseMetadata = ParseDate(mappedDate.ReplaceDate);
-					if (dateParseMetadata.LatestYear != 9999)
-					{
-						latestYear = dateParseMetadata.LatestYear;
-					}
-					else if (mappedDate.LatestYear != 9999)
-					{
-						latestYear = mappedDate.LatestYear;
-					}
-				}
-				if (latestYear == 9999 && mappedDate.LatestYear != 9999)
-				{
-					latestYear = mappedDate.LatestYear;
-				}
+				creatorDeathYear = 9999;
+				creatorCountryOfCitizenship = null;
 			}
 
-			// look for deathyear and pub year on wikidata if necessary
-			if ((creatorDeathYear == 9999 || latestYear == 9999) && !string.IsNullOrEmpty(worksheet.Wikidata))
-			{
-				if (Wikidata.TryUnQidify(worksheet.Wikidata, out int artworkQid))
-				{
-					CacheArtQID(articleTitle, artworkQid);
-				}
-
-				if (!SkipWikidataLookups)
-				{
-					Entity artworkEntity = null;
-					try
-					{
-						//TODO: cache
-						artworkEntity = GlobalAPIs.Wikidata.GetEntity(worksheet.Wikidata);
-					}
-					catch (WikimediaCodeException e)
-					{
-						if (e.Code != "no-such-entity")
-						{
-							throw;
-						}
-					}
-
-					if (!Entity.IsNullOrMissing(artworkEntity))
-					{
-						if (creatorDeathYear == 9999)
-						{
-							IEnumerable<string> artistEntityIds = artworkEntity.GetClaimValuesAsEntityIds(Wikidata.Prop_Creator);
-							if (artistEntityIds.Any())
-							{
-								creatorDeathYear = artistEntityIds.Select(e => WikidataCache.GetPersonData(Wikidata.UnQidifyChecked(e)).DeathYear).Max();
-								creatorCountryOfCitizenship = artistEntityIds.Select(e => WikidataCache.GetPersonData(Wikidata.UnQidifyChecked(e)).CountryOfCitizenship).FirstOrDefault();
-							}
-						}
-						if (latestYear == 9999)
-						{
-							//TODO: year for art wikidata
-						}
-					}
-				}
-			}
+			int latestYear = GetLatestPublicationYear(worksheet, out MappingDate mappedDate);
 
 			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorCountryOfCitizenship);
 			Console.WriteLine("  Date: {0}, Deathyear: {1}, PMA: {2}", latestYear, creatorDeathYear, pmaDuration);
-
-			if (latestYear != 9999)
-			{
-				CacheLatestYear(articleTitle, latestYear);
-			}
-			if (creatorDeathYear != 9999)
-			{
-				CacheDeathyear(articleTitle, creatorDeathYear);
-			}
 
 			if (latestYear == 9999)
 			{
 				errors.Add("Failed to identify publication date.");
 				qtyDateParseFail++;
 			}
+			else
+			{
+				CacheLatestYear(articleTitle, latestYear);
+			}
 
 			if (creatorDeathYear == 9999)
 			{
 				errors.Add("Failed to find author deathyear.");
+			}
+			else
+			{
+				CacheDeathyear(articleTitle, creatorDeathYear);
 			}
 
 			// is pub date old enough to assume 100 PMA?
@@ -705,16 +572,15 @@ OtherLicense: {8}",
 			allReplaceableLicenses.Sort((a, b) => a.end - b.end);
 
 			string oldText = worksheet.Text;
+			string replacedLicense = "";
 
 			// replace the LAST license template
 			if (allReplaceableLicenses.Any())
 			{
-				string replacedLicense = worksheet.Text.Substring(allReplaceableLicenses.Last());
+				replacedLicense = worksheet.Text.Substring(allReplaceableLicenses.Last());
 				worksheet.Text = worksheet.Text.Substring(0, allReplaceableLicenses.Last().start)
 					+ newLicense
 					+ worksheet.Text.Substring(allReplaceableLicenses.Last().end + 1);
-
-				ConsoleUtility.WriteLine(ConsoleColor.Green, "  Replacing '{0}' with '{1}'.", replacedLicense, newLicense);
 
 				// remove extraneous license templates
 				for (int rangeIndex = allReplaceableLicenses.Count - 2; rangeIndex >= 0; --rangeIndex)
@@ -763,6 +629,9 @@ OtherLicense: {8}",
 			}
 
 			Debug.Assert(creatorDeathYear != 9999);
+			Debug.Assert(!string.IsNullOrEmpty(replacedLicense));
+
+			ConsoleUtility.WriteLine(ConsoleColor.Green, "  Replacing '{0}' with '{1}'.", replacedLicense, newLicense);
 
 			bool changed = worksheet.Text != oldText;
 			if (changed)
@@ -782,6 +651,157 @@ OtherLicense: {8}",
 			}
 
 			return changed;
+		}
+
+		private CreatorData GetAuthorData(CommonsFileWorksheet worksheet)
+		{
+			PageTitle articleTitle = PageTitle.Parse(worksheet.Article.title);
+			string author = worksheet.Author;
+
+			if (string.IsNullOrEmpty(author))
+			{
+				// no author to parse
+			}
+			else if (ImplicitCreatorsReplacement.IsUnknownAuthor(author)
+				|| ImplicitCreatorsReplacement.IsAnonymousAuthor(author))
+			{
+				// unknown/anonymous author: skip all the expensive searching
+			}
+			else if (CreatorUtility.TryGetCreatorTemplate(author, out PageTitle literalCreator))
+			{
+				CreatorData creator = WikidataCache.GetCreatorData(literalCreator);
+				if (creator != null)
+				{
+					return creator;
+				}
+			}
+			else if (Wikidata.TryAuthorToQid(author, out int authorQid))
+			{
+				CreatorData creator = WikidataCache.GetPersonData(authorQid);
+				if (creator != null)
+				{
+					return creator;
+				}
+			}
+			else if (ImplicitCreatorsReplacement.SlowCategoryWalk)
+			{
+				// can author be associated to a creator based on file categories?
+				//TODO: operate directly on QID instead
+				PageTitle categoryCreator = ImplicitCreatorsReplacement.GetCreatorFromCategories(author, WikiUtils.GetCategories(worksheet.Text), 1);
+				if (!categoryCreator.IsEmpty)
+				{
+					CreatorData creator = WikidataCache.GetCreatorData(categoryCreator);
+					if (creator != null)
+					{
+						return creator;
+					}
+				}
+			}
+
+			// D. does author string contain a death date?
+			Match match = CreatorUtility.AuthorLifespanRegex.Match(author);
+			if (match.Success)
+			{
+				int deathYear = int.Parse(match.Groups[3].Value);
+				return new CreatorData() { DeathYear = deathYear };
+			}
+
+			// check the artwork wikidata, if it exists
+			if (Wikidata.TryUnQidify(worksheet.Wikidata, out int artworkQid))
+			{
+				CacheArtQID(articleTitle, artworkQid);
+
+				if (!SkipWikidataLookups)
+				{
+					//TODO: cache
+					Entity artworkEntity = GlobalAPIs.Wikidata.GetEntity(worksheet.Wikidata);
+
+					if (!Entity.IsNullOrMissing(artworkEntity))
+					{
+						IEnumerable<string> artistEntityIds = artworkEntity.GetClaimValuesAsEntityIds(Wikidata.Prop_Creator);
+						if (artistEntityIds.Any())
+						{
+							return new CreatorData()
+							{
+								DeathYear = artistEntityIds.Select(e => WikidataCache.GetPersonData(Wikidata.UnQidifyChecked(e)).DeathYear).Max(),
+								CountryOfCitizenship = artistEntityIds.Select(e => WikidataCache.GetPersonData(Wikidata.UnQidifyChecked(e)).CountryOfCitizenship).FirstOrDefault(),
+							};
+						}
+					}
+				}
+			}
+
+			// E. is death year manually mapped?
+			MappingCreator mapping = m_creatorMappings.TryMapValue(author, articleTitle);
+			if (mapping != null && mapping.MappedDeathyear != 9999)
+			{
+				return new CreatorData() { DeathYear = mapping.MappedDeathyear };
+			}
+
+			return null;
+		}
+
+		private int GetLatestPublicationYear(CommonsFileWorksheet worksheet, out MappingDate mappedDate)
+		{
+			PageTitle articleTitle = PageTitle.Parse(worksheet.Article.title);
+			mappedDate = null;
+
+			if (string.IsNullOrEmpty(worksheet.Date))
+			{
+				return 9999;
+			}
+
+			DateParseMetadata dateParseMetadata = ParseDate(worksheet.Date);
+			if (dateParseMetadata.LatestYear != 9999)
+			{
+				return dateParseMetadata.LatestYear;
+			}
+
+			// check the artwork wikidata, if it exists
+			//if (Wikidata.TryUnQidify(worksheet.Wikidata, out int artworkQid))
+			//{
+			//	CacheArtQID(articleTitle, artworkQid);
+			//
+			//	if (!SkipWikidataLookups)
+			//	{
+			//		//TODO: cache
+			//		Entity artworkEntity = GlobalAPIs.Wikidata.GetEntity(worksheet.Wikidata);
+			//
+			//		if (!Entity.IsNullOrMissing(artworkEntity))
+			//		{
+			//			//TODO: look up date
+			//		}
+			//	}
+			//}
+
+			// unparseable date
+			mappedDate = m_dateMapping.TryMapValue(worksheet.Date, PageTitle.Parse(worksheet.Article.title));
+
+			if (!string.IsNullOrEmpty(mappedDate.ReplaceDate))
+			{
+				// make the date replacement
+				{
+					Console.ForegroundColor = ConsoleColor.Green;
+					Console.WriteLine("  Date '{0}' is mapped to '{1}'.", worksheet.Date, mappedDate.ReplaceDate);
+					Console.ResetColor();
+
+					string textBefore = worksheet.Text.Substring(0, worksheet.DateIndex);
+					string textAfter = worksheet.Text.Substring(worksheet.DateIndex + worksheet.Date.Length);
+					worksheet.Text = textBefore + mappedDate.ReplaceDate + textAfter;
+				}
+
+				dateParseMetadata = ParseDate(mappedDate.ReplaceDate);
+				if (dateParseMetadata.LatestYear != 9999)
+				{
+					return dateParseMetadata.LatestYear;
+				}
+				else if (mappedDate.LatestYear != 9999)
+				{
+					return mappedDate.LatestYear;
+				}
+			}
+
+			return mappedDate.LatestYear;
 		}
 
 		private void CacheFile(PageTitle title, string author, string date, string pdArtLicense, string innerLicense)
