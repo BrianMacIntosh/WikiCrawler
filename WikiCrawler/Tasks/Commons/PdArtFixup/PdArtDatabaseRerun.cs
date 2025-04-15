@@ -10,16 +10,21 @@ namespace Tasks.Commons
 	public class PdArtDatabaseRerun : ReplaceIn
 	{
 		public PdArtDatabaseRerun()
-			: base(new PdArtReplacement())
+			: base(
+				  //new ImplicitCreatorsReplacement("FixImplicitCreators"),
+				  new PdArtReplacement())
 		{
 			PdArtReplacement.SkipCached = false;
 			ImplicitCreatorsReplacement.SlowCategoryWalk = false; // already tried last time
-			PdArtReplacement.SkipAuthorLookup = true; // already tried last time
+			PdArtReplacement.SkipWikidataLookups = true; // already tried last time
 
-			//Parameters["Query"] = "SELECT * FROM files WHERE (dateString LIKE \"executed in%\" OR dateString LIKE \"%(published)\") AND bLicenseReplaced!=1";
-			//Parameters["Query"] = "SELECT * FROM files where bLicenseReplaced=0 AND (touchTimeUnix < 1743182781 OR touchTimeUnix IS NULL)";
-			Parameters["Query"] = "SELECT * FROM files where pdArtLicense LIKE \"{{pd-art}}\" AND bLicenseReplaced=0";
-			//Parameters["Query"] = "SELECT pageTitle FROM files WHERE innerLicense LIKE \"PD-old-90\" AND bLicenseReplaced != 1 AND authorDeathYear != 9999";
+			Parameters["Query"] = "SELECT pageTitle from files where authorString LIKE \"{{c|%}}\" and bLicenseReplaced!=1";
+			//Parameters["Query"] = "SELECT pageTitle from files WHERE irreplaceableLicenses LIKE \"PD-US-unpublished\" AND bLicenseReplaced!=1";
+
+			// recache files where art qid is not yet cached (I think)
+			//Parameters["Query"] = "SELECT pageTitle FROM files where bLicenseReplaced=0 AND (touchTimeUnix < 1743182781 OR touchTimeUnix IS NULL)";
+
+			//Parameters["Query"] = "SELECT pageTitle FROM files where pdArtLicense LIKE \"{{pd-art}}\" AND bLicenseReplaced=0";
 		}
 
 		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
