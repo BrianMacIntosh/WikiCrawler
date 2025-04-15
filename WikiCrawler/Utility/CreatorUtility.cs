@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace MediaWiki
@@ -24,6 +23,12 @@ namespace MediaWiki
 			//TODO: nowiki
 			//TODO: comments
 			str = WikiUtils.TrimTemplate(str);
+
+			if (str.Contains("{{"))
+			{
+				return PageTitle.Empty;
+			}
+
 			string[] paramSplit = str.Split('|');
 			string[] templateSplit = paramSplit[0].Split(new char[] { ':' }, 2);
 			if (templateSplit.Length == 2 && templateSplit[0].Equals("creator", StringComparison.InvariantCultureIgnoreCase))
@@ -45,6 +50,13 @@ namespace MediaWiki
 			//TODO: nowiki
 			//TODO: comments
 			str = WikiUtils.TrimTemplate(str);
+
+			if (str.Contains("{{"))
+			{
+				template = PageTitle.Empty;
+				return false;
+			}
+
 			string[] paramSplit = str.Split('|');
 			string[] templateSplit = paramSplit[0].Split(new char[] { ':' }, 2);
 			if (templateSplit.Length == 2
