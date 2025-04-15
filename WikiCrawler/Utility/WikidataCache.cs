@@ -100,7 +100,7 @@ namespace WikiCrawler
 		public static CreatorData GetPersonData(int qid)
 		{
 			SQLiteCommand command = LocalDatabase.CreateCommand();
-			command.CommandText = "SELECT deathYear,countryOfCitizenship,commonsCategory FROM people WHERE qid=qid";
+			command.CommandText = "SELECT deathYear,countryOfCitizenship,commonsCategory FROM people WHERE qid=$qid";
 			command.Parameters.AddWithValue("qid", qid);
 			using (var reader = command.ExecuteReader())
 			{
