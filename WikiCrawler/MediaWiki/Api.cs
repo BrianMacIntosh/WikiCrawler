@@ -655,14 +655,28 @@ namespace MediaWiki
 		/// </summary>
 		public Entity GetEntity(string page)
 		{
-			Entity[] entities = GetEntities(new string[] { page });
-			if (entities != null && entities.Length > 0)
+			try
 			{
-				return entities[0];
+				Entity[] entities = GetEntities(new string[] { page });
+				if (entities != null && entities.Length > 0)
+				{
+					return entities[0];
+				}
+				else
+				{
+					return null;
+				}
 			}
-			else
+			catch (WikimediaCodeException e)
 			{
-				return null;
+				if (e.Code == "no-such-entity")
+				{
+					return null;
+				}
+				else
+				{
+					throw;
+				}
 			}
 		}
 
