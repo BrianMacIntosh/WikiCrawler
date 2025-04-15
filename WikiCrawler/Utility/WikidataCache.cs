@@ -7,6 +7,7 @@ using System.Linq;
 
 namespace WikiCrawler
 {
+	//TODO: struct?
 	public class CreatorData
 	{
 		public int DeathYear = 9999;
@@ -203,7 +204,7 @@ namespace WikiCrawler
 			Entity entity = GlobalAPIs.Wikidata.GetEntity("Q" + qid);
 			if (entity.missing || entity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) != Wikidata.Entity_Human)
 			{
-				return null;
+				return new CreatorData();
 			}
 			else
 			{
