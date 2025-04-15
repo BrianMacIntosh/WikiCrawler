@@ -501,6 +501,10 @@ OtherLicense: {8}",
 					qtyNoDeathYear++;
 				}
 			}
+			else if (creatorDeathYear == 10000)
+			{
+				Console.WriteLine("  Unknown author deathyear older than 100.");
+			}
 			else if (creatorDeathYear >= System.DateTime.Now.Year - pmaDuration) 
 			{
 				if (bAlreadyHasPMA)
@@ -533,7 +537,7 @@ OtherLicense: {8}",
 
 			string changeText;
 			string newLicense;
-			if (bReallyOldUnknownAuthor)
+			if (bReallyOldUnknownAuthor || creatorDeathYear == 10000)
 			{
 				newLicense = string.Format("{{{{PD-Art|PD-old-100-expired}}}}");
 				changeText = "improving PD-art license: date older than 175 yrs and author unknown";

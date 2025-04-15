@@ -208,6 +208,8 @@ namespace WikiCrawler
 			}
 			else
 			{
+				//TODO: if no deathdate but another date (e.g. floruit) that is very old, record that (using deathYear 10000)
+
 				int deathYear = GetCreatorDeathYear(entity);
 				int? countryOfCitizenship = GetCreatorCountryOfCitizenship(entity);
 				string commonsCategory = GetCreatorCommonsCategory(entity);
