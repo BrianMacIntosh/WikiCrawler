@@ -1,10 +1,10 @@
 ﻿using MediaWiki;
+using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Web.UI.WebControls;
 
 public abstract class MappingValue
 {
@@ -77,9 +77,9 @@ public class ManualMapping<MappingType> : IEnumerable<KeyValuePair<string, Mappi
 				{
 					first = false;
 				}
-				writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Key));
+				writer.Write(JsonConvert.SerializeObject(kv.Key));
 				writer.Write(":");
-				writer.Write(Newtonsoft.Json.JsonConvert.SerializeObject(kv.Value, Newtonsoft.Json.Formatting.Indented));
+				writer.Write(JsonConvert.SerializeObject(kv.Value, Formatting.Indented));
 			}
 			writer.WriteLine("\n}");
 		}
@@ -91,7 +91,7 @@ public class ManualMapping<MappingType> : IEnumerable<KeyValuePair<string, Mappi
 	{
 		if (File.Exists(Filename))
 		{
-			m_mappings = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, MappingType>>(File.ReadAllText(Filename, Encoding.UTF8));
+			m_mappings = JsonConvert.DeserializeObject<Dictionary<string, MappingType>>(File.ReadAllText(Filename, Encoding.UTF8));
 			m_isDirty = false;
 		}
 	}
