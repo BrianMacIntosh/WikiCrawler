@@ -1244,7 +1244,10 @@ OtherLicense: {8}",
 			}
 			if (int.TryParse(period, out int periodInt))
 			{
-				return new DateParseMetadata(0, periodInt, periodInt + 10 ^ imprecision - 1);
+				// padding needed to reach the end of the period
+				int padding = (int)Math.Pow(10, imprecision) - 1;
+
+				return new DateParseMetadata(0, periodInt, periodInt + padding);
 			}
 			else
 			{
