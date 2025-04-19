@@ -713,7 +713,10 @@ OtherLicense: {8}",
 			if (match.Success)
 			{
 				int deathYear = int.Parse(match.Groups[3].Value);
-				return new CreatorData() { DeathYear = deathYear };
+				if (deathYear <= System.DateTime.Now.Year)
+				{
+					return new CreatorData() { DeathYear = deathYear };
+				}
 			}
 
 			// check the artwork wikidata, if it exists
