@@ -417,6 +417,8 @@ OtherLicense: {8}",
 			// does the license template already have any PMA-bearing license?
 			bool bAlreadyHasPMA = false;
 
+			bool bLicenseAlreadyReplaced = false;
+
 			foreach (StringSpan match in pdArts)
 			{
 				// check for unreplaceable templates
@@ -430,12 +432,8 @@ OtherLicense: {8}",
 				else if (s_goodPdArtNakedRegex.IsMatch(nakedTemplate)
 					|| nakedTemplate.Equals("PD-Art|PD-old-100-expired", StringComparison.InvariantCultureIgnoreCase))
 				{
-					//TODO: still remove extraneous templates
-					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
-					Console.ResetColor();
-					CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
+					bLicenseAlreadyReplaced = true;
 					CacheNewLicense(articleTitle, "{{" + nakedTemplate + "}}");
-					return false;
 				}
 
 				// is there already a PMA license in here?
@@ -474,10 +472,7 @@ OtherLicense: {8}",
 				errors.Add("Failed to identify publication date.");
 				qtyDateParseFail++;
 			}
-			else
-			{
-				CacheLatestYear(articleTitle, latestYear);
-			}
+			CacheLatestYear(articleTitle, latestYear);
 
 			if (creatorDeathYear == 9999)
 			{
@@ -486,6 +481,15 @@ OtherLicense: {8}",
 			else
 			{
 				CacheDeathyear(articleTitle, creatorDeathYear);
+			}
+
+			if (bLicenseAlreadyReplaced)
+			{
+				//TODO: still remove extraneous templates
+				ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
+				Console.ResetColor();
+				CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
+				return false;
 			}
 
 			// is pub date old enough to assume 100 PMA?
