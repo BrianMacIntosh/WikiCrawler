@@ -32,7 +32,7 @@ namespace MediaWiki
 		public PageTitle(string ns, string name)
 		{
 			Namespace = ns;
-			Name = name;
+			Name = name.Trim();
 		}
 
 		/// <summary>
