@@ -5,20 +5,23 @@ using System.Collections.Generic;
 namespace Tasks
 {
 	/// <summary>
-	/// Performs a null edit on each file in a specified category.
+	/// Performs a null edit on each entry in a specified category.
 	/// </summary>
 	public class NullEditCategory : BaseTask
 	{
 		public NullEditCategory()
 		{
-			Parameters["Category"] = "Category:Null";
+			Parameters["Category"] = "Category:Maintenance categories";
+			Parameters["CMType"] = CMType.subcat;
 		}
 
 		public override void Execute()
 		{
 			int maxEdits = int.MaxValue;
 
-			IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntries(Parameters["Category"], CMType.file);
+			EasyWeb.SetDelayForDomain(GlobalAPIs.Commons.Domain, 0.5f);
+
+			IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntries(Parameters["Category"], Parameters["CMType"]);
 			foreach (Article file in GlobalAPIs.Commons.FetchArticles(allFiles))
 			{
 				if (maxEdits <= 0)
