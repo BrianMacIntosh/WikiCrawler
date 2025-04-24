@@ -61,7 +61,7 @@ namespace MediaWiki
 			string[] templateSplit = paramSplit[0].Split(new char[] { ':' }, 2);
 			if (templateSplit.Length == 2
 				&& templateSplit[0].Equals("creator", StringComparison.InvariantCultureIgnoreCase)
-				&& !string.IsNullOrEmpty(templateSplit[1]))
+				&& !string.IsNullOrWhiteSpace(templateSplit[1]))
 			{
 				template = new PageTitle("Creator", templateSplit[1]);
 				return true;
