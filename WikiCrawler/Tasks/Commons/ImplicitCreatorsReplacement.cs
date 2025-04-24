@@ -380,7 +380,11 @@ namespace Tasks.Commons
 				{
 					PageTitle articleTitle = PageTitle.Parse(article.title);
 					MappingCreator mapping = m_creatorMappings.TryMapValue(authorString, articleTitle);
-					if (!string.IsNullOrEmpty(mapping.MappedValue))
+					if (mapping == null)
+					{
+						// can do nothing with that
+					}
+					else if (!string.IsNullOrEmpty(mapping.MappedValue))
 					{
 						newAuthor = mapping.MappedValue;
 						mapping.FromPages.Remove(article.title);
