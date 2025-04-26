@@ -1,6 +1,6 @@
 ﻿using MediaWiki;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Tasks;
+using Tasks.Commons;
 
 [TestClass]
 public class PdArtReplacementTests
@@ -383,6 +383,78 @@ public class PdArtReplacementTests
 |permission={{Licensed-PD-Art|PD-old-auto-expired|deathyear=1914|Cc-zero}}
 |other versions=
 }}
+
+[[Category:Test Category]]",
+			article.revisions[0].text);
+	}
+
+	[TestMethod]
+	public void PdArtReplacementTests_AlreadyReplaced()
+	{
+		PdArtReplacement replacement = new PdArtReplacement();
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator:August Macke}}
+|permission=
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art|PD-old-auto-expired|deathyear=1914}}
+
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+		Assert.AreEqual(
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator:August Macke}}
+|permission=
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art|PD-old-auto-expired|deathyear=1914}}
+
+[[Category:Test Category]]",
+			article.revisions[0].text);
+	}
+
+	[TestMethod]
+	public void PdArtReplacementTests_AlreadyReplacedExtras()
+	{
+		PdArtReplacement replacement = new PdArtReplacement();
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator:August Macke}}
+|permission={{PD-1923}}
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art|PD-old-auto-expired|deathyear=1914}}
+
+[[Category:Test Category]]");
+		Assert.IsTrue(replacement.DoReplacement(article));
+		Assert.AreEqual(
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator:August Macke}}
+|permission=
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art|PD-old-auto-expired|deathyear=1914}}
 
 [[Category:Test Category]]",
 			article.revisions[0].text);
