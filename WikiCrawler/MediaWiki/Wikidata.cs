@@ -1,11 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.RegularExpressions;
-using WikiCrawler;
 
 namespace MediaWiki
 {
+	public enum WikidataRank
+	{
+		Deprecated,
+		Normal,
+		Preferred,
+	}
+
 	public static class Wikidata
 	{
 		public const string Prop_CountryOfCitizenship = "P27";
@@ -14,6 +21,8 @@ namespace MediaWiki
 		public const string Prop_CommonsCategory = "P373";
 		public const string Prop_DateOfBirth = "P569";
 		public const string Prop_DateOfDeath = "P570";
+		public const string Prop_Inception = "P571";
+		public const string Prop_PublicationDate = "P577";
 		public const string Prop_CommonsCreator = "P1472";
 
 		public const int Entity_Human = 5;
@@ -314,6 +323,44 @@ namespace MediaWiki
 			else
 			{
 				return "";
+			}
+		}
+
+		public static WikidataRank ParseRankChecked(string rank)
+		{
+			if (rank.Equals("deprecated", StringComparison.InvariantCultureIgnoreCase))
+			{
+				return WikidataRank.Deprecated;
+			}
+			else if (rank.Equals("normal", StringComparison.InvariantCultureIgnoreCase))
+			{
+				return WikidataRank.Normal;
+			}
+			else if (rank.Equals("preferred", StringComparison.InvariantCultureIgnoreCase))
+			{
+				return WikidataRank.Preferred;
+			}
+			else
+			{
+				throw new ArgumentException(string.Format("Unrecognized wikidata rank '{0}'.", rank));
+			}
+		}
+
+		private static readonly Claim[] s_emptyClaims = new Claim[0];
+
+		/// <summary>
+		/// Keeps only the items in the enumerable with the maximum rank.
+		/// </summary>
+		public static IEnumerable<Claim> KeepBestRank(IEnumerable<Claim> claims, WikidataRank minimumRank = WikidataRank.Normal)
+		{
+			WikidataRank maxRank = claims.Select(claim => claim.rank).Max();
+			if (maxRank < minimumRank)
+			{
+				return s_emptyClaims;
+			}
+			else
+			{
+				return claims.Where(claim => claim.rank == maxRank);
 			}
 		}
 	}

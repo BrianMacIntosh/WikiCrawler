@@ -7,14 +7,14 @@ namespace MediaWiki
 		public string id;
 		public Snak mainSnak;
 		public string type;
-		public string rank;
+		public WikidataRank rank;
 
 		public Claim(Dictionary<string, object> json)
 		{
 			id = (string)json["id"];
 			mainSnak = new Snak((Dictionary<string, object>)json["mainsnak"]);
 			type = (string)json["type"];
-			rank = (string)json["rank"];
+			rank = Wikidata.ParseRankChecked((string)json["rank"]);
 		}
 
 		public Claim(string value)
