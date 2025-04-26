@@ -366,6 +366,21 @@ OtherLicense: {8}",
 				return false;
 			}
 
+			// remove redirects from the cache and recache with new name
+			Article redirectTarget = GlobalAPIs.Commons.GetRedirectTarget(article);
+			if (redirectTarget != null)
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Redirect removed from database.");
+				RemoveFromCache(article.title);
+				article = redirectTarget;
+
+				if (article.missing)
+				{
+					RemoveFromCache(article.title);
+					return false;
+				}
+			}
+
 			PageTitle articleTitle = PageTitle.Parse(article.title);
 
 			if (SkipCached && IsFileCached(m_filesDatabase, articleTitle))
