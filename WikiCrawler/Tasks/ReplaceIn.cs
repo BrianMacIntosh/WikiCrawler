@@ -89,7 +89,7 @@ namespace Tasks
 			}
 			else
 			{
-				return GetPagesToAffectUncached(startSortkey);
+				return GlobalAPIs.Commons.FetchArticles(GetPagesToAffectUncached(startSortkey));
 			}
 #endif
 		}

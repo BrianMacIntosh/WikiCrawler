@@ -126,6 +126,7 @@
     <Compile Include="Tasks\Commons\AddCheckCategory.cs" />
     <Compile Include="Tasks\Commons\ContribsSummary.cs" />
     <Compile Include="Tasks\Commons\CreatorPossible.cs" />
+    <Compile Include="Tasks\ReplaceInCategories.cs" />
     <Compile Include="Tasks\Wikimedia\NullEditLinks.cs" />
     <Compile Include="Tasks\Commons\PdArtFixup\PdArtDatabaseRerun.cs" />
     <Compile Include="Tasks\Commons\PdArtFixup\PdArtFollowup.cs" />
