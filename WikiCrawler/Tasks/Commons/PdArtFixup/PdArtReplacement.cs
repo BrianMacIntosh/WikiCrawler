@@ -771,6 +771,18 @@ OtherLicense: {8}",
 			return null;
 		}
 
+		public static bool IsUnknownDate(string date)
+		{
+			switch (date)
+			{
+				case "{{other date|?}}":
+				case "{{unknown|date}}":
+					return true;
+				default:
+					return false;
+			}
+		}
+
 		private int GetLatestPublicationYear(CommonsFileWorksheet worksheet, out MappingDate mappedDate)
 		{
 			PageTitle articleTitle = PageTitle.Parse(worksheet.Article.title);
@@ -787,7 +799,13 @@ OtherLicense: {8}",
 					return artwork.LatestYear;
 				}
 			}
+
 			if (string.IsNullOrEmpty(worksheet.Date))
+			{
+				return 9999;
+			}
+
+			if (IsUnknownDate(worksheet.Date))
 			{
 				return 9999;
 			}
