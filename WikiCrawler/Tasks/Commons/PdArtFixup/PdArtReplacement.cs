@@ -794,9 +794,7 @@ OtherLicense: {8}",
 			{
 				// make the date replacement
 				{
-					Console.ForegroundColor = ConsoleColor.Green;
-					Console.WriteLine("  Date '{0}' is mapped to '{1}'.", worksheet.Date, mappedDate.ReplaceDate);
-					Console.ResetColor();
+					ConsoleUtility.WriteLine(ConsoleColor.Green, "  Date '{0}' is mapped to '{1}'.", worksheet.Date, mappedDate.ReplaceDate);
 
 					string textBefore = worksheet.Text.Substring(0, worksheet.DateIndex);
 					string textAfter = worksheet.Text.Substring(worksheet.DateIndex + worksheet.Date.Length);

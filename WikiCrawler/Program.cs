@@ -41,7 +41,6 @@ namespace WikiCrawler
 				if (taskType == null)
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.Red, "Could not find a class for that task.");
-					Console.ResetColor();
 				}
 				else
 				{
