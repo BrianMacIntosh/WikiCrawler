@@ -9,7 +9,7 @@ public class PdArtReplacementTests
 	public static void AssemblyInitialize(TestContext testContext)
 	{
 		PdArtReplacement.SkipCached = false;
-		PdArtReplacement.SkipAuthorLookup = true;
+		PdArtReplacement.SkipWikidataLookups = true;
 		ImplicitCreatorsReplacement.SlowCategoryWalk = false;
 	}
 

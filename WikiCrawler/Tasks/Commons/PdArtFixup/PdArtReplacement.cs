@@ -15,7 +15,9 @@ namespace Tasks.Commons
 	/// Replaces PD-Art tags with imprecise licenses with a more specific license, if one can be determined.
 	/// </summary>
 	/// <remarks>
-	/// 1744582780 (database Unix seconds) Caching with no early-outs was implemented.
+	/// Database Unix Seconds for changes:
+	/// 1744582780 Caching with no early-outs was implemented.
+	/// 1745684896 Artwork wikidata is now being looked up and used for latestYear
 	/// </remarks>
 	public class PdArtReplacement : BaseReplacement
 	{
@@ -35,11 +37,6 @@ namespace Tasks.Commons
 		/// If set, skips files that are already cached.
 		/// </summary>
 		public static bool SkipCached = true;
-
-		/// <summary>
-		/// If set, skips any attempts to look up author deathyears with extra queries.
-		/// </summary>
-		public static bool SkipWikidataLookups = false;
 
 		/// <summary>
 		/// Directory where task-specific data is stored.
@@ -724,23 +721,10 @@ OtherLicense: {8}",
 			{
 				CacheArtQID(articleTitle, artworkQid);
 
-				if (!SkipWikidataLookups)
+				ArtworkData artwork = WikidataCache.GetArtworkData(artworkQid);
+				if (artwork.CreatorQid.HasValue)
 				{
-					//TODO: cache
-					Entity artworkEntity = GlobalAPIs.Wikidata.GetEntity(worksheet.Wikidata);
-
-					if (!Entity.IsNullOrMissing(artworkEntity))
-					{
-						IEnumerable<string> artistEntityIds = artworkEntity.GetClaimValuesAsEntityIds(Wikidata.Prop_Creator);
-						if (artistEntityIds.Any())
-						{
-							return new CreatorData()
-							{
-								DeathYear = artistEntityIds.Select(e => WikidataCache.GetPersonData(Wikidata.UnQidifyChecked(e)).DeathYear).Max(),
-								CountryOfCitizenship = artistEntityIds.Select(e => WikidataCache.GetPersonData(Wikidata.UnQidifyChecked(e)).CountryOfCitizenship).FirstOrDefault(),
-							};
-						}
-					}
+					return WikidataCache.GetPersonData(artwork.CreatorQid.Value);
 				}
 			}
 
@@ -759,6 +743,17 @@ OtherLicense: {8}",
 			PageTitle articleTitle = PageTitle.Parse(worksheet.Article.title);
 			mappedDate = null;
 
+			// check the artwork wikidata, if it exists
+			if (Wikidata.TryUnQidify(worksheet.Wikidata, out int artworkQid))
+			{
+				CacheArtQID(articleTitle, artworkQid);
+
+				ArtworkData artwork = WikidataCache.GetArtworkData(artworkQid);
+				if (artwork.LatestYear != 9999)
+				{
+					return artwork.LatestYear;
+				}
+			}
 			if (string.IsNullOrEmpty(worksheet.Date))
 			{
 				return 9999;
@@ -769,23 +764,6 @@ OtherLicense: {8}",
 			{
 				return dateParseMetadata.LatestYear;
 			}
-
-			// check the artwork wikidata, if it exists
-			//if (Wikidata.TryUnQidify(worksheet.Wikidata, out int artworkQid))
-			//{
-			//	CacheArtQID(articleTitle, artworkQid);
-			//
-			//	if (!SkipWikidataLookups)
-			//	{
-			//		//TODO: cache
-			//		Entity artworkEntity = GlobalAPIs.Wikidata.GetEntity(worksheet.Wikidata);
-			//
-			//		if (!Entity.IsNullOrMissing(artworkEntity))
-			//		{
-			//			//TODO: look up date
-			//		}
-			//	}
-			//}
 
 			// unparseable date
 			mappedDate = m_dateMapping.TryMapValue(worksheet.Date, PageTitle.Parse(worksheet.Article.title));

@@ -12,7 +12,9 @@ namespace Tasks.Commons
 	public class PdArtFollowup : ReplaceIn
 	{
 		public PdArtFollowup()
-			: base(new ImplicitCreatorsReplacement("PdArtReplacement"), new PdArtReplacement())
+			: base(new ImplicitCreatorsReplacement("PdArtReplacement"),
+				  new LocalizeDateReplacement(),
+				  new PdArtReplacement())
 		{
 
 		}
@@ -38,7 +40,6 @@ namespace Tasks.Commons
 		{
 			PdArtReplacement.SkipCached = false;
 			ImplicitCreatorsReplacement.SlowCategoryWalk = false; // already tried last time
-			PdArtReplacement.SkipWikidataLookups = true; // already tried last time
 
 			string pdArtDirectory = Path.Combine(Configuration.DataDirectory, "PdArtReplacement");
 			ManualMapping<MappingCreator> creatorMapping = new ManualMapping<MappingCreator>(ImplicitCreatorsReplacement.GetCreatorMappingFile(pdArtDirectory));
@@ -49,7 +50,7 @@ namespace Tasks.Commons
 				if (!string.IsNullOrEmpty(kv.Value.ReplaceDate)
 					&& PdArtReplacement.ParseDate(kv.Value.ReplaceDate).LatestYear < System.DateTime.Now.Year - 95)
 				{
-					foreach (Article article in GlobalAPIs.Commons.FetchArticles(kv.Value.FromPages.Select(title => new Article(title))))
+					foreach (Article article in kv.Value.FromPages.Select(title => new Article(title)))
 					{
 						yield return article;
 					}
@@ -57,7 +58,7 @@ namespace Tasks.Commons
 				else if (kv.Value.LatestYear < System.DateTime.Now.Year - 95
 					|| PdArtReplacement.ParseDate(kv.Key).LatestYear < System.DateTime.Now.Year - 95)
 				{
-					foreach (Article article in GlobalAPIs.Commons.FetchArticles(kv.Value.FromPages.Select(title => new Article(title))))
+					foreach (Article article in kv.Value.FromPages.Select(title => new Article(title)))
 					{
 						yield return article;
 					}
@@ -73,7 +74,7 @@ namespace Tasks.Commons
 					|| !string.IsNullOrEmpty(kv.Value.MappedQID))
 				{
 					//TODO: GetPages should automatically break up file lists
-					foreach (Article article in GlobalAPIs.Commons.FetchArticles(kv.Value.FromPages.Select(title => new Article(title))))
+					foreach (Article article in kv.Value.FromPages.Select(title => new Article(title)))
 					{
 						yield return article;
 					}

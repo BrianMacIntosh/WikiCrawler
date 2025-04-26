@@ -10,7 +10,6 @@
 		{
 			PdArtReplacement.SkipCached = false;
 			ImplicitCreatorsReplacement.SlowCategoryWalk = false;
-			PdArtReplacement.SkipWikidataLookups = true;
 
 			Parameters["Category"] = "Category:PD-Art (PD-old default)";
 			//Parameters["Category"] = "Category:PD-Art (PD-old-70)";

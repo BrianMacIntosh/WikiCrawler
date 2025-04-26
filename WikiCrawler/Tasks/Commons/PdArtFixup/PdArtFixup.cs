@@ -41,6 +41,7 @@ namespace Tasks.Commons
 				"Category:PD-Art (PD-old-90-expired)",
 				"Category:PD-Art (PD-old-95)",
 				"Category:PD-Art (PD-old-95-expired)",
+				"Category:PD-Art (PD-old-100)",
 				"Category:PD-Art (PD-old)",
 				"Category:PD-Art (PD-old default)",
 				"Category:PD-Art (PD-old-auto)",

@@ -232,5 +232,19 @@ namespace MediaWiki
 				return s_emptyDateTime;
 			}
 		}
+
+		public bool TryGetClaimValuesAsDates(string property, out IEnumerable<DateTime> dates)
+		{
+			if (claims.TryGetValue(property, out Claim[] propClaims))
+			{
+				dates = propClaims.Where(c => c.HasValue()).Select(c => c.mainSnak.GetValueAsDate());
+				return true;
+			}
+			else
+			{
+				dates = s_emptyDateTime;
+				return false;
+			}
+		}
 	}
 }

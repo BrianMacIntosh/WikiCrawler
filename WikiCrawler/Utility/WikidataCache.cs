@@ -15,6 +15,12 @@ namespace WikiCrawler
 		public string CommonsCategory;
 	}
 
+	public struct ArtworkData
+	{
+		public int? CreatorQid;
+		public int LatestYear;
+	}
+
 	public static class WikidataCache
 	{
 		/// <summary>
@@ -234,15 +240,9 @@ namespace WikiCrawler
 
 		public static int GetCreatorDeathYear(Entity entity)
 		{
-			//TODO: respect rank
-			if (entity.HasClaim(Wikidata.Prop_DateOfDeath))
+			if (entity.claims.TryGetValue(Wikidata.Prop_DateOfDeath, out Claim[] deathDates))
 			{
-				IEnumerable<MediaWiki.DateTime> deathTimes = entity.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath)
-					.Where(date => date != null && date.Precision >= MediaWiki.DateTime.YearPrecision);
-				if (deathTimes.Any())
-				{
-					return deathTimes.Max(date => date.GetYear());
-				}
+				return GetLatestYear(deathDates);
 			}
 
 			return 9999;
@@ -268,6 +268,169 @@ namespace WikiCrawler
 			}
 
 			return null;
+		}
+
+		/// <summary>
+		/// Gets cached information about an artwork.
+		/// </summary>
+		public static ArtworkData GetArtworkData(string qid)
+		{
+			return GetArtworkData(Wikidata.UnQidifyChecked(qid));
+		}
+
+		/// <summary>
+		/// Gets cached information about an artwork.
+		/// </summary>
+		public static ArtworkData GetArtworkData(int qid)
+		{
+			SQLiteCommand command = LocalDatabase.CreateCommand();
+			command.CommandText = "SELECT creatorQid,latestYear,timestamp FROM artwork WHERE qid=$qid";
+			command.Parameters.AddWithValue("qid", qid);
+			using (var reader = command.ExecuteReader())
+			{
+				if (reader.Read())
+				{
+					int timestamp = reader.GetInt32(2);
+					if (timestamp < 1745687317)
+					{
+						// invalidated cache
+						return FetchNewArtwork(qid);
+					}
+					else
+					{
+						return new ArtworkData()
+						{
+							CreatorQid = reader.IsDBNull(0) ? null : (int?)reader.GetInt32(0),
+							LatestYear = reader.IsDBNull(1) ? 9999 : reader.GetInt32(1),
+						};
+					}
+				}
+				else
+				{
+					return FetchNewArtwork(qid);
+				}
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		private static ArtworkData FetchNewArtwork(int qid)
+		{
+			Entity entity = GlobalAPIs.Wikidata.GetEntity("Q" + qid);
+			if (entity.missing)
+			//TODO: check type: || entity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) != Wikidata.Entity_Human)
+			{
+				return new ArtworkData();
+			}
+			else
+			{
+				int? creatorQid = GetArtworkCreator(entity);
+				int? latestYear = GetArtworkLatestYear(entity);
+
+				SQLiteCommand command = LocalDatabase.CreateCommand();
+				command.CommandText = "INSERT INTO artwork (qid,creatorQid,latestYear,timestamp) " +
+					"VALUES ($qid,$creatorQid,$latestYear,unixepoch()) " +
+					"ON CONFLICT(qid) DO UPDATE SET creatorQid=$creatorQid,latestYear=$latestYear,timestamp=unixepoch();";
+				command.Parameters.AddWithValue("qid", qid);
+				command.Parameters.AddWithValue("creatorQid", creatorQid);
+				command.Parameters.AddWithValue("latestYear", latestYear);
+				command.ExecuteNonQuery();
+
+				return new ArtworkData()
+				{
+					CreatorQid = creatorQid,
+					LatestYear = latestYear.HasValue ? latestYear.Value : 9999,
+				};
+			}
+		}
+
+		public static int? GetArtworkCreator(Entity entity)
+		{
+			if (entity.claims.TryGetValue(Wikidata.Prop_Creator, out Claim[] creators))
+			{
+				IEnumerable<Claim> bestCreators = Wikidata.KeepBestRank(creators).Where(claim => claim.mainSnak.datavalue != null);
+				if (bestCreators.Count() == 1)
+				{
+					return creators.Select(claim => claim.mainSnak.GetValueAsEntityId()).First();
+				}
+				else
+				{
+					//TODO: handle multiple
+				}
+			}
+
+			return null;
+		}
+
+		public static int GetArtworkLatestYear(Entity entity)
+		{
+			if (entity.claims.TryGetValue(Wikidata.Prop_PublicationDate, out Claim[] pubDates))
+			{
+				return GetLatestYear(pubDates);
+			}
+			else if (entity.claims.TryGetValue(Wikidata.Prop_Inception, out Claim[] inceptDates))
+			{
+				return GetLatestYear(inceptDates);
+			}
+
+			return 9999;
+		}
+
+		/// <summary>
+		/// Returns the latest possible year represented by a set of date values.
+		/// </summary>
+		/// <returns></returns>
+		public static int GetLatestYear(Claim[] dateClaims)
+		{
+			IEnumerable<Claim> bestClaims = Wikidata.KeepBestRank(dateClaims);
+			if (bestClaims.Any())
+			{
+				return bestClaims.Select(claim => claim.mainSnak.GetValueAsDate()).Max(date => GetLatestYear(date));
+			}
+			else
+			{
+				return 9999;
+			}
+		}
+
+		/// <summary>
+		/// Returns the latest possible year represented by a DateTime.
+		/// </summary>
+		/// <returns></returns>
+		public static int GetLatestYear(MediaWiki.DateTime time)
+		{
+			if (time == null)
+			{
+				return 9999;
+			}
+			else if (time.Precision >= MediaWiki.DateTime.YearPrecision)
+			{
+				return time.GetYear();
+			}
+			else if (time.Precision == MediaWiki.DateTime.DecadePrecision)
+			{
+				return GetLatestYear(time.GetYear(), 1);
+			}
+			else if (time.Precision == MediaWiki.DateTime.CenturyPrecision)
+			{
+				return GetLatestYear(time.GetYear(), 2);
+			}
+			else if (time.Precision == MediaWiki.DateTime.MilleniumPrecision)
+			{
+				return GetLatestYear(time.GetYear(), 3);
+			}
+			else
+			{
+				return 9999;
+			}
+		}
+
+		public static int GetLatestYear(int value, int impreciseDigits)
+		{
+			int quanta = (int)Math.Pow(10, impreciseDigits);
+			int significantDigits = (int)Math.Ceiling(value / (double)quanta);
+			return (significantDigits + 1) * quanta - 1;
 		}
 	}
 }
