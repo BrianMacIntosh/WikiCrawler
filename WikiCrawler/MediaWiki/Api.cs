@@ -1166,9 +1166,10 @@ namespace MediaWiki
 			// query for articles in batches of fixed size
 			foreach (Article article in articles)
 			{
-				if (article.revisions != null)
+				if (article.missing || article.revisions != null)
 				{
-					throw new Exception("Trying to fetch an article that already looks fetched.");
+					// already fetched
+					yield return article;
 				}
 
 				if (bufferPtr < buffer.Length)
