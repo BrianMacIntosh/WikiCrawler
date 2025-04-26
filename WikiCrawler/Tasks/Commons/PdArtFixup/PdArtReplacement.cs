@@ -107,7 +107,10 @@ namespace Tasks.Commons
 			"pd-art-old-70",
 			"pd-art-life-70",
 			"pd-art-100",
+			//"pd-art-old-100",
 			//"pd-art-old-100-expired",
+			//"pd-art-100-1923",
+			//"pd-art-100-expired",
 			"pd-art-us",
 			"pd-art-two",
 			"licensed-pd-art",
@@ -141,6 +144,11 @@ namespace Tasks.Commons
 			"PD-old-100",
 			"PD-old-100-expired",
 			"PD-old-100-1923",
+
+			"pd-art-70",
+			"pd-art-old-70",
+			"pd-art-life-70",
+			"pd-art-100",
 		};
 
 		private static readonly string[] s_supersedeLicenses = new string[]
@@ -171,10 +179,11 @@ namespace Tasks.Commons
 			"PD-old-100",
 			"PD-old-100-expired",
 			"PD-old-100-1923",
+			"PD-old-X-expired",
 			"PD-old-assumed",
 			"PD-old-assumed-expired",
 			"PD-old-assumed/sandbox",
-			"PD-old-1923", //TODO: rerun me!
+			"PD-old-1923",
 			"PD-old-auto-1923",
 			"PD-old-auto-expired",
 			"PD-US",
@@ -429,12 +438,13 @@ OtherLicense: {8}",
 			// does the license template already have any PMA-bearing license?
 			bool bAlreadyHasPMA = false;
 
-			bool bLicenseAlreadyReplaced = false;
+			string existingGoodLicense = "";
 
 			foreach (StringSpan match in pdArts)
 			{
 				// check for unreplaceable templates
-				string nakedTemplate = WikiUtils.TrimTemplate(worksheet.Text.Substring(match.start, match.Length));
+				string rawTemplate = WikiUtils.TrimTemplate(worksheet.Text.Substring(match.start, match.Length));
+				string nakedTemplate = rawTemplate;
 
 				if (!IsReplaceablePdArt(nakedTemplate))
 				{
@@ -444,12 +454,14 @@ OtherLicense: {8}",
 				else if (s_goodPdArtNakedRegex.IsMatch(nakedTemplate)
 					|| nakedTemplate.Equals("PD-Art|PD-old-100-expired", StringComparison.InvariantCultureIgnoreCase))
 				{
-					bLicenseAlreadyReplaced = true;
+					//TODO: test
+					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
+					existingGoodLicense = "{{" + nakedTemplate + "}}";
+					CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
 					CacheNewLicense(articleTitle, "{{" + nakedTemplate + "}}");
 				}
 
 				// is there already a PMA license in here?
-				//TODO: detect PD-Art-70 etc
 				if (!bAlreadyHasPMA)
 				{
 					bAlreadyHasPMA = HasPMALicense(nakedTemplate);
@@ -493,15 +505,6 @@ OtherLicense: {8}",
 			else
 			{
 				CacheDeathyear(articleTitle, creatorDeathYear);
-			}
-
-			if (bLicenseAlreadyReplaced)
-			{
-				//TODO: still remove extraneous templates
-				ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
-				Console.ResetColor();
-				CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
-				return false;
 			}
 
 			// is pub date old enough to assume 100 PMA?
@@ -555,7 +558,15 @@ OtherLicense: {8}",
 
 			string changeText;
 			string newLicense;
-			if (bReallyOldUnknownAuthor || creatorDeathYear == 10000)
+			bool bRequiresLicenseRemoval = false;
+
+			if (!string.IsNullOrEmpty(existingGoodLicense))
+			{
+				bRequiresLicenseRemoval = true;
+				newLicense = existingGoodLicense;
+				changeText = "consolidating redundant PD licenses";
+			}
+			else if (bReallyOldUnknownAuthor || creatorDeathYear == 10000)
 			{
 				newLicense = string.Format("{{{{PD-Art|PD-old-100-expired}}}}");
 				changeText = "improving PD-art license: date older than 175 yrs and author unknown";
@@ -595,6 +606,7 @@ OtherLicense: {8}",
 
 			string oldText = worksheet.Text;
 			string replacedLicense = "";
+			bool bRemovedExtraLicense = false;
 
 			// replace the LAST license template
 			if (allReplaceableLicenses.Any())
@@ -607,9 +619,15 @@ OtherLicense: {8}",
 				// remove extraneous license templates
 				for (int rangeIndex = allReplaceableLicenses.Count - 2; rangeIndex >= 0; --rangeIndex)
 				{
+					bRemovedExtraLicense = true;
 					string template = worksheet.Text.Substring(allReplaceableLicenses[rangeIndex]);
 					worksheet.Text = WikiUtils.RemoveTemplate(worksheet.Text, allReplaceableLicenses[rangeIndex]);
-					ConsoleUtility.WriteLine(ConsoleColor.Green, "  Removed '{0}'.", template.Trim());
+					ConsoleUtility.WriteLine(ConsoleColor.Green, "  Will remove '{0}'.", template.Trim());
+				}
+
+				if (bRequiresLicenseRemoval && !bRemovedExtraLicense)
+				{
+					errors.Add("Existing good license and no removeable licenses.");
 				}
 			}
 			else
