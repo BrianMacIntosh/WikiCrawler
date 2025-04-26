@@ -53,18 +53,17 @@ class EasyWeb
 
 	public static void WaitForDelay(Uri uri)
 	{
-		if (domainTimers.ContainsKey(uri.Host))
+		if (domainTimers.TryGetValue(uri.Host, out Stopwatch stopwatch))
 		{
 			float useDelay = crawlDelay;
 			if (overrideDelays.ContainsKey(uri.Host.ToLower()))
 				useDelay = overrideDelays[uri.Host.ToLower()];
-			Stopwatch stopwatch = domainTimers[uri.Host];
 			Thread.Sleep(Math.Max(0, (int)(useDelay * 1000 - stopwatch.ElapsedMilliseconds)));
 			stopwatch.Restart();
 		}
 		else
 		{
-			domainTimers[uri.Host] = Stopwatch.StartNew();
+			domainTimers.Add(uri.Host, Stopwatch.StartNew());
 		}
 	}
 
