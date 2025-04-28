@@ -631,9 +631,7 @@ namespace MediaWiki
 
 				if (state == 4)
 				{
-					//read param content
-					bool templateEnd = c >= text.Length - 1;
-
+					// look for start of next param
 					bool paramEnd = nestingStack.Count == rootStackHeight && (text[c] == '|' || text[c] == '}');
 					if (paramEnd)
 					{
@@ -649,7 +647,7 @@ namespace MediaWiki
 						}
 					}
 
-					if (paramEnd || templateEnd)
+					if (paramEnd)
 					{
 						return text.Substring(paramValueLocation, c - paramValueLocation).Trim();
 					}
@@ -713,6 +711,13 @@ namespace MediaWiki
 
 				c++;
 			}
+
+			if (state == 4)
+			{
+				// string ended while reading param value
+				return text.Substring(paramValueLocation, text.Length - paramValueLocation).Trim();
+			}
+
 			return "";
 		}
 
