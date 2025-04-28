@@ -352,7 +352,7 @@ namespace WikiCrawler
 				IEnumerable<Claim> bestCreators = Wikidata.KeepBestRank(creators).Where(claim => claim.mainSnak.datavalue != null);
 				if (bestCreators.Count() == 1)
 				{
-					return creators.Select(claim => claim.mainSnak.GetValueAsEntityId()).First();
+					return bestCreators.Select(claim => claim.mainSnak.GetValueAsEntityId()).First();
 				}
 				else
 				{
