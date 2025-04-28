@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
+using Tasks.Commons;
 
 [TestClass()]
 public class TakenOnTemplateTest
@@ -34,7 +35,7 @@ public class TakenOnTemplateTest
 		foreach (ToISOTest test in testCases)
 		{
 			bool actualHasDay;
-			string actual = WikiCrawler.TakenOnTemplate.DateToISO(test.input, out actualHasDay);
+			string actual = TakenOnTemplate.DateToISO(test.input, out actualHasDay);
 			Assert.AreEqual(test.hasDay, actualHasDay);
 			Assert.AreEqual(test.date, actual);
 		}
