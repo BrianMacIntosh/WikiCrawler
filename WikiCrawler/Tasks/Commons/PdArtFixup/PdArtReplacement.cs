@@ -207,8 +207,6 @@ namespace Tasks.Commons
 			"Unclear-PD-US-old-70",
 		};
 
-		private static readonly Regex s_goodPdArtNakedRegex = new Regex(@"^\s*pd-art\|pd-old-auto-expired\|deathyear=[0-9]+\s*$", RegexOptions.IgnoreCase);
-
 		//TODO: add more
 		//TODO: implement me
 		private static readonly string[] s_removeCats = new string[]
@@ -310,15 +308,23 @@ OtherLicense: {8}",
 					&& !s_supersedeLicenses.Contains(component, StringComparer.InvariantCultureIgnoreCase)
 					&& !component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase)
 					&& !component.StartsWith("deathdate=", StringComparison.InvariantCultureIgnoreCase)
-					&& !component.Equals("country=", StringComparison.InvariantCultureIgnoreCase)
-					&& !component.Equals("country=US", StringComparison.InvariantCultureIgnoreCase)
-					&& !component.Equals("country=United States", StringComparison.InvariantCultureIgnoreCase))
+					&& !component.StartsWith("country=", StringComparison.InvariantCultureIgnoreCase))
 				{
 					return false;
 				}
 			}
 
 			return true;
+		}
+
+		/// <summary>
+		/// Returns true if the specified PD Art template needs no replacement.
+		/// </summary>
+		public bool IsGoodPdArt(string template)
+		{
+			string param = WikiUtils.GetTemplateParameter(1, template);
+			return param.Equals("pd-old-auto-expired", StringComparison.InvariantCultureIgnoreCase)
+				|| param.Equals("pd-old-100-expired", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		/// <summary>
@@ -440,6 +446,9 @@ OtherLicense: {8}",
 
 			string existingGoodLicense = "";
 
+			// if the license has a "country" parameter, the value
+			string licenseCountry = "";
+
 			foreach (StringSpan match in pdArts)
 			{
 				// check for unreplaceable templates
@@ -451,14 +460,23 @@ OtherLicense: {8}",
 					errors.Add(string.Format("Can't replace '{0}'.", nakedTemplate));
 					replacementStatus = ReplacementStatus.NotFound; //TODO: log instead
 				}
-				else if (s_goodPdArtNakedRegex.IsMatch(nakedTemplate)
-					|| nakedTemplate.Equals("PD-Art|PD-old-100-expired", StringComparison.InvariantCultureIgnoreCase))
+				else if (IsGoodPdArt(nakedTemplate))
 				{
 					//TODO: test
 					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
 					existingGoodLicense = "{{" + nakedTemplate + "}}";
 					CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
 					CacheNewLicense(articleTitle, "{{" + nakedTemplate + "}}");
+				}
+
+				string thisCountry = WikiUtils.GetTemplateParameter("country", nakedTemplate);
+				if (string.IsNullOrEmpty(licenseCountry))
+				{
+					licenseCountry = thisCountry;
+				}
+				else if (!licenseCountry.Equals(thisCountry, StringComparison.InvariantCultureIgnoreCase))
+				{
+					errors.Add("Multiple differing countries in existing licenses.");
 				}
 
 				// is there already a PMA license in here?
@@ -568,17 +586,39 @@ OtherLicense: {8}",
 			}
 			else if (bReallyOldUnknownAuthor || creatorDeathYear == 10000)
 			{
-				newLicense = string.Format("{{{{PD-Art|PD-old-100-expired}}}}");
+				if (!string.IsNullOrEmpty(licenseCountry))
+				{
+					newLicense = string.Format("{{{{PD-Art|PD-old-100-expired|country={0}}}}}", licenseCountry);
+				}
+				else
+				{
+					newLicense = string.Format("{{{{PD-Art|PD-old-100-expired}}}}");
+				}
 				changeText = "improving PD-art license: date older than 175 yrs and author unknown";
 			}
 			else if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
 			{
-				newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear, licensedPdArtOtherLicense);
+				if (!string.IsNullOrEmpty(licenseCountry))
+				{
+					Debug.Assert(false); //TODO:
+					newLicense = "ERROR";
+				}
+				else
+				{
+					newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear, licensedPdArtOtherLicense);
+				}
 				changeText = "improving PD-art license with more information based on file data";
 			}
 			else
 			{
-				newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
+				if (!string.IsNullOrEmpty(licenseCountry))
+				{
+					newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}|country={1}}}}}", creatorDeathYear, licenseCountry);
+				}
+				else
+				{
+					newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
+				}
 				changeText = "improving PD-art license with more information based on file data";
 			}
 
