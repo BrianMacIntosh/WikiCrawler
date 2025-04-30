@@ -51,6 +51,8 @@ namespace Tasks
 		/// </summary>
 		private const bool UseCachedFiles = false;
 
+		protected virtual bool UseCheckpoint => true;
+
 		/// <summary>
 		/// The replacement operation to run.
 		/// </summary>
@@ -120,9 +122,12 @@ namespace Tasks
 		{
 			string startSortkey = "";
 			string progressFile = Path.Combine(ProjectDataDirectory, "checkpoint.txt");
-			if (File.Exists(progressFile))
+			if (UseCheckpoint)
 			{
-				startSortkey = File.ReadAllText(progressFile);
+				if (File.Exists(progressFile))
+				{
+					startSortkey = File.ReadAllText(progressFile);
+				}
 			}
 
 			int saveOutInterval = 1;
@@ -186,7 +191,7 @@ namespace Tasks
 				}
 
 				// record sortkey progress
-				if (!UseCachedFiles)
+				if (!UseCachedFiles && UseCheckpoint)
 				{
 					File.WriteAllText(progressFile, WikiUtils.GetSortkey(file));
 				}

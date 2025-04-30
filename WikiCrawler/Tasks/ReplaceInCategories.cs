@@ -9,6 +9,9 @@ namespace Tasks
 	/// </summary>
 	public abstract class ReplaceInCategories : ReplaceIn
 	{
+		// checkpoints don't work with multiple cats
+		protected override bool UseCheckpoint => !GetCategories().AnyX(2);
+
 		public ReplaceInCategories(params BaseReplacement[] replacement)
 			: base(replacement)
 		{
@@ -45,6 +48,7 @@ namespace Tasks
 		{
 			foreach (string category in categories)
 			{
+				int count = 0;
 				ConsoleUtility.WriteLine(ConsoleColor.Cyan, "ReplaceInCategories on category '{0}'.", category);
 				if (recursive)
 				{
@@ -52,6 +56,7 @@ namespace Tasks
 					foreach (Article article in allFiles)
 					{
 						yield return article;
+						count++;
 					}
 				}
 				else
@@ -60,8 +65,10 @@ namespace Tasks
 					foreach (Article article in allFiles)
 					{
 						yield return article;
+						count++;
 					}
 				}
+				ConsoleUtility.WriteLine(ConsoleColor.Cyan, "  {0} files.", count);
 			}
 		}
 	}
