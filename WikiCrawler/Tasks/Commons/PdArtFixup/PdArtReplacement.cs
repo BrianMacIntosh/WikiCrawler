@@ -327,9 +327,10 @@ OtherLicense: {8}",
 		/// </summary>
 		public bool IsGoodPdArt(string template)
 		{
-			string param = WikiUtils.GetTemplateParameter(1, template);
-			return param.Equals("pd-old-auto-expired", StringComparison.InvariantCultureIgnoreCase)
-				|| param.Equals("pd-old-100-expired", StringComparison.InvariantCultureIgnoreCase);
+			string licenseParam = WikiUtils.GetTemplateParameter(1, template);
+			string deathyearParam = WikiUtils.GetTemplateParameter("deathyear", template);
+			return (licenseParam.Equals("pd-old-auto-expired", StringComparison.InvariantCultureIgnoreCase) && !string.IsNullOrEmpty(deathyearParam))
+				|| licenseParam.Equals("pd-old-100-expired", StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		/// <summary>
