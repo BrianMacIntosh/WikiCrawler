@@ -334,25 +334,18 @@ namespace MediaWiki
 		public static readonly string[] PrimaryInfoTemplates = new string[]
 		{
 			"information",
-			"Information",
+			"information2",
 			"artwork",
-			"Artwork",
-			"Art photo",
-			"Art Photo",
 			"art photo",
-			"art Photo",
 			"book",
-			"Book",
+			"map",
 			"photograph",
-			"Photograph",
-			"google Art Project",
-			"Google Art Project"
+			"google art project",
 		};
 
 		public static readonly string[] ArtworkTemplates = new string[]
 		{
 			"artwork",
-			"Artwork"
 		};
 
 		/// <summary>
