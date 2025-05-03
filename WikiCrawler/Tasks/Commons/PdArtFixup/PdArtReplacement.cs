@@ -110,7 +110,7 @@ namespace Tasks.Commons
 			"pd-art-old-70",
 			"pd-art-life-70",
 			"pd-art-100",
-			//"pd-art-old-100",
+			"pd-art-old-100",
 			//"pd-art-old-100-expired",
 			//"pd-art-100-1923",
 			//"pd-art-100-expired",
