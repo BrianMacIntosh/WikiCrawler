@@ -21,10 +21,10 @@ namespace Tasks.Commons
 
 		private static bool IsArtTemplate(string template)
 		{
-			template = template.TrimStart('{');
+			template = WikiUtils.TrimTemplate(template);
 			foreach (string primaryTemplate in WikiUtils.ArtworkTemplates)
 			{
-				if (string.Equals(template, primaryTemplate))
+				if (string.Equals(template, primaryTemplate, StringComparison.InvariantCultureIgnoreCase))
 				{
 					return true;
 				}
