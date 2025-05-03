@@ -411,36 +411,13 @@ OtherLicense: {8}",
 
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
+			CacheFile(articleTitle, worksheet.Author, worksheet.Date);
+
 			// any errors that prevent the replacement from being made
 			List<string> errors = new List<string>();
 
-			ReplacementStatus replacementStatus = ReplacementStatus.NotReplaced;
-
 			// locate pd-art template(s)
 			List<StringSpan> pdArts = GetPdArtTemplates(worksheet.Text);
-
-			if (pdArts.Count == 0)
-			{
-				errors.Add("Failed to find any PD-Art templates.");
-				replacementStatus = ReplacementStatus.NotFound;
-			}
-
-			{
-				string logLicense = null;
-				string logInnerLicense = null;
-				if (pdArts.Count > 0)
-				{
-					logLicense = worksheet.Text.Substring(pdArts[0].start, pdArts[0].Length);
-					// break pd-art template params
-					string[] logComponents = WikiUtils.TrimTemplate(logLicense).Split('|').Select(component => component.Trim()).ToArray();
-					if (logComponents.Length >= 2)
-					{
-						logInnerLicense = logComponents[1];
-					}
-				}
-
-				CacheFile(articleTitle, worksheet.Author, worksheet.Date, logLicense, logInnerLicense);
-			}
 
 			// if the file uses Licensed-PD-Art, the other (non-PD) license
 			//TODO: reimplement me
@@ -449,10 +426,14 @@ OtherLicense: {8}",
 			// does the license template already have any PMA-bearing license?
 			bool bAlreadyHasPMA = false;
 
-			string existingGoodLicense = "";
+			// if the file already has a good and complete license, the license
+			string existingGoodLicense = null;
 
 			// if the license has a "country" parameter, the value
 			string licenseCountry = "";
+
+			// if the file has a license we can replace, the license
+			string replaceableLicense = null;
 
 			foreach (StringSpan match in pdArts)
 			{
@@ -463,15 +444,16 @@ OtherLicense: {8}",
 				if (!IsReplaceablePdArt(nakedTemplate))
 				{
 					errors.Add(string.Format("Can't replace '{0}'.", nakedTemplate));
-					replacementStatus = ReplacementStatus.NotFound; //TODO: log instead
 				}
 				else if (IsGoodPdArt(nakedTemplate))
 				{
 					//TODO: test
 					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
 					existingGoodLicense = "{{" + nakedTemplate + "}}";
-					CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
-					CacheNewLicense(articleTitle, "{{" + nakedTemplate + "}}");
+				}
+				else
+				{
+					replaceableLicense = "{{" + nakedTemplate + "}}";
 				}
 
 				string thisCountry = WikiUtils.GetTemplateParameter("country", nakedTemplate);
@@ -491,8 +473,37 @@ OtherLicense: {8}",
 				}
 			}
 
+			ReplacementStatus replacementStatus;
+
+			if (!string.IsNullOrEmpty(existingGoodLicense))
+			{
+				replacementStatus = ReplacementStatus.Replaced;
+			}
+			else if (string.IsNullOrEmpty(replaceableLicense))
+			{
+				errors.Add("Failed to find a replaceable PD-Art template.");
+				replacementStatus = ReplacementStatus.NotFound;
+			}
+			else
+			{
+				//TODO: do cache unreplaceable licenses here
+
+				replacementStatus = ReplacementStatus.NotReplaced; // not yet, anyway
+
+				string replaceableInnerLicense = null;
+
+				// break pd-art template params
+				string[] logComponents = WikiUtils.TrimTemplate(replaceableLicense).Split('|').Select(component => component.Trim()).ToArray();
+				if (logComponents.Length >= 2)
+				{
+					replaceableInnerLicense = logComponents[1];
+				}
+
+				CacheOldLicense(articleTitle, replaceableLicense, replaceableInnerLicense);
+			}
+
 			CacheReplacementStatus(articleTitle, replacementStatus);
-			CacheNewLicense(articleTitle, null);
+			CacheNewLicense(articleTitle, existingGoodLicense);
 
 			// 1. find author death date
 			int creatorDeathYear;
@@ -890,18 +901,16 @@ OtherLicense: {8}",
 			return mappedDate.LatestYear;
 		}
 
-		private void CacheFile(PageTitle title, string author, string date, string pdArtLicense, string innerLicense)
+		private void CacheFile(PageTitle title, string author, string date)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
-			command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString, pdArtLicense, innerLicense) "
-				+ "VALUES ($pageTitle, $authorString, $dateString, $pdArtLicense, $innerLicense) "
+			command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString) "
+				+ "VALUES ($pageTitle, $authorString, $dateString) "
 				+ "ON CONFLICT (pageTitle) DO UPDATE "
-				+ "SET authorString=$authorString, dateString=$dateString, pdArtLicense=$pdArtLicense, innerLicense=$innerLicense";
+				+ "SET authorString=$authorString, dateString=$dateString";
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("authorString", author);
 			command.Parameters.AddWithValue("dateString", date);
-			command.Parameters.AddWithValue("pdArtLicense", pdArtLicense);
-			command.Parameters.AddWithValue("innerLicense", innerLicense);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 
 			CacheTimestamp(title);
@@ -927,12 +936,22 @@ OtherLicense: {8}",
 			}
 		}
 
+		private void CacheOldLicense(PageTitle title, string pdArtLicense, string innerLicense)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET pdArtLicense=$pdArtLicense,innerLicense=$innerLicense WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("pdArtLicense", pdArtLicense);
+			command.Parameters.AddWithValue("innerLicense", innerLicense);
+			Debug.Assert(command.ExecuteNonQuery() == 1);
+		}
+
 		private void CacheTimestamp(PageTitle title)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET touchTimeUnix=unixepoch() WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
-			command.ExecuteNonQuery();
+			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
 		private void CacheReplacementStatus(PageTitle title, ReplacementStatus state)
@@ -941,7 +960,7 @@ OtherLicense: {8}",
 			command.CommandText = "UPDATE files SET bLicenseReplaced=$state WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("state", (int)state);
-			command.ExecuteNonQuery();
+			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
 		private void CacheAuthorInfo(PageTitle title, int? qid, int deathyear)
@@ -951,7 +970,7 @@ OtherLicense: {8}",
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("authorQid", qid);
 			command.Parameters.AddWithValue("authorDeathYear", deathyear);
-			command.ExecuteNonQuery();
+			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
 		private void CacheLatestYear(PageTitle title, int latestYear)
@@ -960,7 +979,7 @@ OtherLicense: {8}",
 			command.CommandText = "UPDATE files SET latestYear=$latestYear WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("latestYear", latestYear);
-			command.ExecuteNonQuery();
+			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
 		private void CacheNewLicense(PageTitle title, string newLicense)
@@ -969,7 +988,7 @@ OtherLicense: {8}",
 			command.CommandText = "UPDATE files SET newLicense=$newLicense WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("newLicense", newLicense);
-			command.ExecuteNonQuery();
+			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
 		private void CacheIrreplacableLicense(PageTitle title, string irreplaceableLicenses)
@@ -978,7 +997,7 @@ OtherLicense: {8}",
 			command.CommandText = "UPDATE files SET irreplaceableLicenses=$irreplaceableLicenses WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("irreplaceableLicenses", irreplaceableLicenses);
-			command.ExecuteNonQuery();
+			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
 		private void CacheArtQID(PageTitle title, int artQid)
@@ -987,7 +1006,7 @@ OtherLicense: {8}",
 			command.CommandText = "UPDATE files SET artQid=$artQid WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
 			command.Parameters.AddWithValue("artQid", artQid);
-			command.ExecuteNonQuery();
+			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
 		private static bool IsAllowedOtherDateClass(string dateClass)
