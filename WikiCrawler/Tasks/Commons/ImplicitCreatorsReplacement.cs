@@ -106,6 +106,7 @@ namespace Tasks.Commons
 				|| string.Equals(author, "{{unknown|author}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{unknown|artist}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{unknown|1=author}}", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "{{unknown|1=artist}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{unknown author}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{author|unknown}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{unknown photographer}}", StringComparison.InvariantCultureIgnoreCase)
