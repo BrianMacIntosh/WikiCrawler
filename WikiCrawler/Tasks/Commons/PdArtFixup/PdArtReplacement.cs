@@ -18,6 +18,8 @@ namespace Tasks.Commons
 	/// Database Unix Seconds for changes:
 	/// 1744582780 Caching with no early-outs was implemented.
 	/// 1745684896 Artwork wikidata is now being looked up and used for latestYear
+	/// 
+	/// For counting: there are 16528 replacements that are not bLicenseReplaced=1 in the database.
 	/// </remarks>
 	public class PdArtReplacement : BaseReplacement
 	{
@@ -141,6 +143,7 @@ namespace Tasks.Commons
 			"PD-old-95",
 			"PD-old-95-expired",
 			"PD-old-95-1923",
+			"PD-100",
 			"PD-old-100",
 			"PD-old-100-expired",
 			"PD-old-100-1923",
@@ -179,6 +182,7 @@ namespace Tasks.Commons
 			"PD-old-100",
 			"PD-old-100-expired",
 			"PD-old-100-1923",
+			"PD-100",
 			"PD-old-X-expired",
 			"PD-old-assumed",
 			"PD-old-assumed-expired",
