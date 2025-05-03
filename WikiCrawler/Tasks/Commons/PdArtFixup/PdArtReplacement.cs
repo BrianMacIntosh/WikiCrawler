@@ -18,6 +18,7 @@ namespace Tasks.Commons
 	/// Database Unix Seconds for changes:
 	/// 1744582780 Caching with no early-outs was implemented.
 	/// 1745684896 Artwork wikidata is now being looked up and used for latestYear
+	/// 1746288973 authorQid was not cached at all before this
 	/// 
 	/// For counting: there are 16528 replacements that are not bLicenseReplaced=1 in the database.
 	/// </remarks>
@@ -501,14 +502,20 @@ OtherLicense: {8}",
 			{
 				creatorDeathYear = creatorData.DeathYear;
 				creatorCountryOfCitizenship = creatorData.CountryOfCitizenship;
+
+				CacheAuthorInfo(articleTitle, creatorData.QID, creatorDeathYear);
 			}
 			else
 			{
 				creatorDeathYear = 9999;
 				creatorCountryOfCitizenship = null;
+
+				CacheAuthorInfo(articleTitle, null, creatorDeathYear);
 			}
 
 			int latestYear = GetLatestPublicationYear(worksheet, out MappingDate mappedDate);
+
+			CacheLatestYear(articleTitle, latestYear);
 
 			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorCountryOfCitizenship);
 			Console.WriteLine("  Date: {0}, Deathyear: {1}, PMA: {2}", latestYear, creatorDeathYear, pmaDuration);
@@ -518,15 +525,10 @@ OtherLicense: {8}",
 				errors.Add("Failed to identify publication date.");
 				qtyDateParseFail++;
 			}
-			CacheLatestYear(articleTitle, latestYear);
 
 			if (creatorDeathYear == 9999)
 			{
 				errors.Add("Failed to find author deathyear.");
-			}
-			else
-			{
-				CacheDeathyear(articleTitle, creatorDeathYear);
 			}
 
 			// is pub date old enough to assume 100 PMA?
@@ -942,11 +944,12 @@ OtherLicense: {8}",
 			command.ExecuteNonQuery();
 		}
 
-		private void CacheDeathyear(PageTitle title, int deathyear)
+		private void CacheAuthorInfo(PageTitle title, int? qid, int deathyear)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
-			command.CommandText = "UPDATE files SET authorDeathYear=$authorDeathYear WHERE pageTitle=$pageTitle";
+			command.CommandText = "UPDATE files SET authorQid=$authorQid,authorDeathYear=$authorDeathYear WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("authorQid", qid);
 			command.Parameters.AddWithValue("authorDeathYear", deathyear);
 			command.ExecuteNonQuery();
 		}

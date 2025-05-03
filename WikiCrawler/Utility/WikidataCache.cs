@@ -10,6 +10,8 @@ namespace WikiCrawler
 	//TODO: struct?
 	public class CreatorData
 	{
+		public int? QID = null;
+
 		public int DeathYear = 9999;
 		public int? CountryOfCitizenship;
 		public string CommonsCategory;
@@ -79,7 +81,7 @@ namespace WikiCrawler
 			creatorTemplate = creatorPage.ToString();
 
 			SQLiteCommand command = LocalDatabase.CreateCommand();
-			command.CommandText = "SELECT p.deathYear,p.countryOfCitizenship,p.commonsCategory FROM people p, creatortemplates c WHERE p.qid=c.qid AND c.templateName=$templateName";
+			command.CommandText = "SELECT p.qid,p.deathYear,p.countryOfCitizenship,p.commonsCategory FROM people p, creatortemplates c WHERE p.qid=c.qid AND c.templateName=$templateName";
 			command.Parameters.AddWithValue("templateName", creatorTemplate);
 			using (var reader = command.ExecuteReader())
 			{
@@ -88,9 +90,10 @@ namespace WikiCrawler
 					isNew = false;
 					return new CreatorData()
 					{
-						DeathYear = reader.GetInt32(0),
-						CountryOfCitizenship = reader.IsDBNull(1) ? null : (int?)reader.GetInt32(1),
-						CommonsCategory = reader.IsDBNull(2) ? null : reader.GetString(2),
+						QID = reader.GetInt32(0),
+						DeathYear = reader.GetInt32(1),
+						CountryOfCitizenship = reader.IsDBNull(2) ? null : (int?)reader.GetInt32(2),
+						CommonsCategory = reader.IsDBNull(3) ? null : reader.GetString(3),
 					};
 				}
 				else
@@ -115,6 +118,7 @@ namespace WikiCrawler
 				{
 					return new CreatorData()
 					{
+						QID = qid,
 						DeathYear = reader.GetInt32(0),
 						CountryOfCitizenship = reader.IsDBNull(1) ? null : (int?)reader.GetInt32(1),
 						CommonsCategory = reader.IsDBNull(2) ? null : reader.GetString(2),
@@ -186,6 +190,7 @@ namespace WikiCrawler
 							{
 								return new CreatorData()
 								{
+									QID = qid.Value,
 									DeathYear = reader.GetInt32(0),
 									CountryOfCitizenship = reader.IsDBNull(1) ? null : (int?)reader.GetInt32(1),
 									CommonsCategory = reader.IsDBNull(2) ? null : reader.GetString(2),
@@ -231,6 +236,7 @@ namespace WikiCrawler
 
 				return new CreatorData()
 				{
+					QID = qid,
 					DeathYear = deathYear,
 					CountryOfCitizenship = countryOfCitizenship,
 					CommonsCategory = commonsCategory,
