@@ -68,6 +68,11 @@ namespace Tasks.Commons
 			return Path.Combine(projectDataDirectory, "creator-mappings.txt");
 		}
 
+		public static bool IsUnknownOrAnonymousAuthor(string author)
+		{
+			return IsUnknownAuthor(author) || IsAnonymousAuthor(author);
+		}
+
 		private static bool IsConvertibleUnknownAuthor(string author)
 		{
 			author = author.Trim(' ', ';', '.', ',');
@@ -92,7 +97,13 @@ namespace Tasks.Commons
 		{
 			author = author.Trim(' ', ';', '.', ',');
 			return string.Equals(author, "anonymous", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anonymouse", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
+				|| string.Equals(author, "anonymous artist", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
+				|| string.Equals(author, "anonymos artist", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
 				|| string.Equals(author, "anonyme", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anonme", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
+				|| string.Equals(author, "anonym", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
+				|| string.Equals(author, "anon", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
 				|| string.Equals(author, "auteur anonyme", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "anonimous", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "anonimus", StringComparison.InvariantCultureIgnoreCase)
@@ -117,11 +128,13 @@ namespace Tasks.Commons
 
 		public static bool IsAnonymousAuthor(string author)
 		{
+			string onlyTemplateName = WikiUtils.GetOnlyTemplateName(author);
+
 			return IsConvertibleAnonymousAuthor(author)
-				|| string.Equals(author, "{{anonymous}}", StringComparison.InvariantCulture)
-				|| string.Equals(author, "{{Anonymous}}", StringComparison.InvariantCulture)
-				|| string.Equals(author, "{{creator:Anonymous}}", StringComparison.InvariantCultureIgnoreCase)
-				|| string.Equals(author, "{{Creator:Anonymous}}", StringComparison.InvariantCultureIgnoreCase);
+				|| string.Equals(onlyTemplateName, "anonymous", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(onlyTemplateName, "Creator:Anonymous", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(onlyTemplateName, "Creator:Anon", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anonymous plate", StringComparison.InvariantCultureIgnoreCase); // don't know what to replace this with
 		}
 
 		private enum CreatorReplaceType

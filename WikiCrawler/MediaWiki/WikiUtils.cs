@@ -467,6 +467,35 @@ namespace MediaWiki
 		}
 
 		/// <summary>
+		/// If the specified text represents a single template, the name of the template.
+		/// </summary>
+		public static string GetOnlyTemplateName(string text)
+		{
+			//OPT: this could be done with way less allocation
+			string templateName = GetTemplateParameter(0, text);
+			if (string.IsNullOrEmpty(templateName))
+			{
+				return null;
+			}
+			else
+			{
+				string template = ExtractTemplate(text, templateName);
+				if (string.IsNullOrEmpty(template))
+				{
+					return null;
+				}
+				else if (TrimTemplate(template) == TrimTemplate(text))
+				{
+					return templateName;
+				}
+				else
+				{
+					return null;
+				}
+			}
+		}
+
+		/// <summary>
 		/// 
 		/// </summary>
 		/// <param name="text">The content of the template (with or without {{}}).</param>

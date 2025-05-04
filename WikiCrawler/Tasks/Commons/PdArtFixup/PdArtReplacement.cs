@@ -538,13 +538,8 @@ OtherLicense: {8}",
 				qtyDateParseFail++;
 			}
 
-			if (creatorDeathYear == 9999)
-			{
-				errors.Add("Failed to find author deathyear.");
-			}
-
 			// is pub date old enough to assume 100 PMA?
-			bool bReallyOldUnknownAuthor = ImplicitCreatorsReplacement.IsUnknownAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175;
+			bool bReallyOldUnknownAuthor = ImplicitCreatorsReplacement.IsUnknownOrAnonymousAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175;
 
 			if (creatorDeathYear == 9999)
 			{
@@ -621,15 +616,23 @@ OtherLicense: {8}",
 					Debug.Assert(false); //TODO:
 					newLicense = "ERROR";
 				}
-				else
+				else if (creatorDeathYear != 9999)
 				{
 					newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear, licensedPdArtOtherLicense);
+				}
+				else
+				{
+					newLicense = null;
 				}
 				changeText = "improving PD-art license with more information based on file data";
 			}
 			else
 			{
-				if (!string.IsNullOrEmpty(licenseCountry))
+				if (creatorDeathYear == 9999)
+				{
+					newLicense = null;
+				}
+				else if (!string.IsNullOrEmpty(licenseCountry))
 				{
 					newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}|country={1}}}}}", creatorDeathYear, licenseCountry);
 				}
@@ -726,8 +729,8 @@ OtherLicense: {8}",
 				return false;
 			}
 
-			Debug.Assert(creatorDeathYear != 9999);
 			Debug.Assert(!string.IsNullOrEmpty(replacedLicense));
+			Debug.Assert(!string.IsNullOrEmpty(newLicense));
 
 			ConsoleUtility.WriteLine(ConsoleColor.Green, "  Replacing '{0}' with '{1}'.", replacedLicense, newLicense);
 
@@ -760,8 +763,7 @@ OtherLicense: {8}",
 			{
 				// no author to parse
 			}
-			else if (ImplicitCreatorsReplacement.IsUnknownAuthor(author)
-				|| ImplicitCreatorsReplacement.IsAnonymousAuthor(author))
+			else if (ImplicitCreatorsReplacement.IsUnknownOrAnonymousAuthor(author))
 			{
 				// unknown/anonymous author: skip all the expensive searching
 			}
