@@ -472,7 +472,7 @@ namespace Tasks.Commons
 
 		private static readonly char[] s_authorTrim = new char[] { ' ', '[', ']', '.', ',', ';' };
 		private static readonly Regex s_lifespanRegex = new Regex(@"^([^\(]+)\s*\(?([0-9][0-9][0-9][0-9]) ?[\-– ] ?([0-9][0-9][0-9][0-9])\)?$");
-		private static readonly Regex s_interwikiLinkRegex = new Regex(@"^\[\[:?(?:w:)?([a-zA-Z]+):([^\|:]+)(?:\|(.+))?\]\]$");
+		private static readonly Regex s_interwikiLinkRegex = new Regex(@"^\[\[:?(?:w:)?([a-zA-Z]+):([^\|:]+)(?:\|([^\]]+))?\]\]$");
 		private static readonly Regex s_wikiLinkRegex = new Regex(@"^\[\[([^\|]+)(?:\|(.+))?\]\]$");
 
 		/// <summary>
