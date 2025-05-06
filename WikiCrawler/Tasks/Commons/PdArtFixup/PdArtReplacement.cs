@@ -539,7 +539,7 @@ OtherLicense: {8}",
 			}
 
 			// is pub date old enough to assume 100 PMA?
-			bool bReallyOldUnknownAuthor = ImplicitCreatorsReplacement.IsUnknownOrAnonymousAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175;
+			bool bReallyOldUnknownAuthor = IsUnknownOrAnonymousAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175;
 
 			if (creatorDeathYear == 9999)
 			{
@@ -754,6 +754,12 @@ OtherLicense: {8}",
 			return changed;
 		}
 
+		private bool IsUnknownOrAnonymousAuthor(string author)
+		{
+			return ImplicitCreatorsReplacement.IsUnknownOrAnonymousAuthor(author)
+				|| author.StartsWith("{{anonymous}}", StringComparison.InvariantCultureIgnoreCase);
+		}
+
 		private CreatorData GetAuthorData(CommonsFileWorksheet worksheet)
 		{
 			PageTitle articleTitle = PageTitle.Parse(worksheet.Article.title);
@@ -763,16 +769,22 @@ OtherLicense: {8}",
 			{
 				// no author to parse
 			}
-			else if (ImplicitCreatorsReplacement.IsUnknownOrAnonymousAuthor(author))
+			else if (IsUnknownOrAnonymousAuthor(author))
 			{
 				// unknown/anonymous author: skip all the expensive searching
 			}
-			else if (CreatorUtility.TryGetCreatorTemplate(author, out PageTitle literalCreator))
+			else if (CreatorUtility.TryGetCreatorTemplate(author, out CreatorTemplate literalCreator))
 			{
-				CreatorData creator = WikidataCache.GetCreatorData(literalCreator);
-				if (creator != null)
+				// reject creator options that mean the creator isn't actually the author
+				if (string.IsNullOrWhiteSpace(literalCreator.Option)
+					|| literalCreator.Option.Equals("probably", StringComparison.InvariantCultureIgnoreCase)
+					|| literalCreator.Option.Equals("presumably", StringComparison.InvariantCultureIgnoreCase))
 				{
-					return creator;
+					CreatorData creator = WikidataCache.GetCreatorData(literalCreator.Template);
+					if (creator != null)
+					{
+						return creator;
+					}
 				}
 			}
 			else if (Wikidata.TryAuthorToQid(author, out int authorQid))

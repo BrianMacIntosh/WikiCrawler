@@ -72,13 +72,13 @@ namespace WikiCrawler
 		/// <param name="creatorTemplate">The creator template.</param>
 		public static CreatorData GetCreatorData(string creatorTemplate, out bool isNew)
 		{
-			PageTitle creatorPage = CreatorUtility.GetCreatorTemplate(creatorTemplate);
-			if (creatorPage.IsEmpty)
+			CreatorTemplate creator = CreatorUtility.GetCreatorTemplate(creatorTemplate);
+			if (creator.Template.IsEmpty)
 			{
 				throw new ArgumentException("Not a creator template name.", "creatorTemplate");
 			}
 
-			creatorTemplate = creatorPage.ToString();
+			creatorTemplate = creator.Template.ToString();
 
 			SQLiteCommand command = LocalDatabase.CreateCommand();
 			command.CommandText = "SELECT p.qid,p.deathYear,p.countryOfCitizenship,p.commonsCategory FROM people p, creatortemplates c WHERE p.qid=c.qid AND c.templateName=$templateName";

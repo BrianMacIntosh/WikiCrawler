@@ -458,4 +458,25 @@ public class PdArtReplacementTests
 [[Category:Test Category]]",
 			article.revisions[0].text);
 	}
+
+	[TestMethod]
+	public void PdArtReplacementTests_SkipCreatorOption()
+	{
+		PdArtReplacement replacement = new PdArtReplacement();
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator:August Macke|worshop of}}
+|permission=
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art}}
+
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+	}
 }

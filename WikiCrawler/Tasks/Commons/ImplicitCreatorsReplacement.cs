@@ -182,6 +182,7 @@ namespace Tasks.Commons
 			Console.WriteLine("  Author string is '{0}'.", worksheet.Author);
 
 			string newAuthor = "";
+			string existingOption = "";
 			CreatorReplaceType replaceType = CreatorReplaceType.Implicit;
 
 			if (suggestedCreator != null)
@@ -228,9 +229,9 @@ namespace Tasks.Commons
 				ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  Already a template");
 				return false;
 			}
-			else if (CreatorUtility.TryGetCreatorTemplate(worksheet.Author, out PageTitle creatorTemplate))
+			else if (CreatorUtility.TryGetCreatorTemplate(worksheet.Author, out CreatorTemplate creatorTemplate))
 			{
-				if (GetPageExists(creatorTemplate))
+				if (GetPageExists(creatorTemplate.Template))
 				{
 					// already a creator - do nothing
 					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  Already a creator");
@@ -274,8 +275,10 @@ namespace Tasks.Commons
 					authorString = lifespanMatch.Groups[1].Value.Trim();
 
 					// maybe *now* it's a creator;
-					if (CreatorUtility.TryGetCreatorTemplate(authorString, out creator))
+					if (CreatorUtility.TryGetCreatorTemplate(authorString, out CreatorTemplate parsedCreator))
 					{
+						existingOption = parsedCreator.Option;
+						creator = parsedCreator.Template;
 						replaceType = CreatorReplaceType.RemoveLifespan;
 					}
 					else
@@ -305,12 +308,14 @@ namespace Tasks.Commons
 				}
 
 				// extract name from redlinked creator
-				if (CreatorUtility.TryGetCreatorTemplate(authorString, out PageTitle creatorTemplate))
+				if (CreatorUtility.TryGetCreatorTemplate(authorString, out CreatorTemplate parsedCreator2))
 				{
+					existingOption = parsedCreator2.Option;
+
 					//OPT: multiple checks against existence of this page
-					if (Article.IsNullOrMissing(GlobalAPIs.Commons.GetPage(creatorTemplate)))
+					if (Article.IsNullOrMissing(GlobalAPIs.Commons.GetPage(parsedCreator2.Template)))
 					{
-						authorString = creatorTemplate.Name;
+						authorString = parsedCreator2.Template.Name;
 					}
 				}
 
@@ -419,7 +424,14 @@ namespace Tasks.Commons
 				}
 				else
 				{
-					newAuthor = "{{" + creator + "}}";
+					if (string.IsNullOrWhiteSpace(existingOption))
+					{
+						newAuthor = "{{" + creator + "}}";
+					}
+					else
+					{
+						//TODO: support and test
+					}
 				}
 			}
 

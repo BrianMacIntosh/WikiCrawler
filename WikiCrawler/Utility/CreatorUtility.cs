@@ -1,9 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace MediaWiki
 {
+	public struct CreatorTemplate
+	{
+		public PageTitle Template;
+		public string Option;
+
+		public bool IsEmpty { get { return Template.IsEmpty; } }
+	}
+
 	/// <summary>
 	/// Caches useful information about authors and creators.
 	/// </summary>
@@ -17,60 +24,48 @@ namespace MediaWiki
 		/// <summary>
 		/// If the string represents a creator template, returns that template's page title.
 		/// </summary>
-		public static PageTitle GetCreatorTemplate(string str)
+		public static CreatorTemplate GetCreatorTemplate(string str)
 		{
-			//TODO: escape characters
-			//TODO: nowiki
-			//TODO: comments
-			str = WikiUtils.TrimTemplate(str);
-
-			if (str.Contains("{{"))
-			{
-				return PageTitle.Empty;
-			}
-
-			string[] paramSplit = str.Split('|');
-			string[] templateSplit = paramSplit[0].Split(new char[] { ':' }, 2);
-			if (templateSplit.Length == 2 && templateSplit[0].Equals("creator", StringComparison.InvariantCultureIgnoreCase))
-			{
-				return new PageTitle("Creator", templateSplit[1]);
-			}
-			else
-			{
-				return PageTitle.Empty;
-			}
+			TryGetCreatorTemplate(str, out CreatorTemplate creatorTemplate);
+			return creatorTemplate;
 		}
 
 		/// <summary>
 		/// Returns true if the string represents a creator template.
 		/// </summary>
-		public static bool TryGetCreatorTemplate(string str, out PageTitle template)
+		public static bool TryGetCreatorTemplate(string str, out CreatorTemplate template)
 		{
 			//TODO: escape characters
 			//TODO: nowiki
 			//TODO: comments
-			str = WikiUtils.TrimTemplate(str);
 
-			if (str.Contains("{{"))
+			bool treatAsTemplate = str.Contains("{{");
+
+			string templateName = treatAsTemplate ? WikiUtils.GetOnlyTemplateName(str) : str;
+			if (string.IsNullOrEmpty(templateName))
 			{
-				template = PageTitle.Empty;
+				template = new CreatorTemplate();
 				return false;
 			}
 
-			string[] paramSplit = str.Split('|');
-			string[] templateSplit = paramSplit[0].Split(new char[] { ':' }, 2);
-			if (templateSplit.Length == 2
-				&& templateSplit[0].Equals("creator", StringComparison.InvariantCultureIgnoreCase)
-				&& !string.IsNullOrWhiteSpace(templateSplit[1]))
+			PageTitle title = PageTitle.Parse(templateName);
+			if (title.IsEmpty 
+				|| !title.IsNamespace("creator")
+				|| string.IsNullOrWhiteSpace(title.Name))
 			{
-				template = new PageTitle("Creator", templateSplit[1]);
-				return true;
-			}
-			else
-			{
-				template = PageTitle.Empty;
+				template = new CreatorTemplate();
 				return false;
 			}
+
+			template = new CreatorTemplate() { Template = title };
+
+			if (treatAsTemplate)
+			{
+				string templateText = WikiUtils.ExtractTemplate(str, templateName);
+				template.Option = WikiUtils.GetTemplateParameter(1, templateText);
+			}
+
+			return true;
 		}
 
 		public static bool TryGetHomeCategory(string creator, out string homeCategory)
