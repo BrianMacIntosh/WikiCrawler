@@ -48,7 +48,7 @@ namespace MediaWiki
 				return false;
 			}
 
-			PageTitle title = PageTitle.Parse(templateName);
+			PageTitle title = PageTitle.TryParse(templateName);
 			if (title.IsEmpty 
 				|| !title.IsNamespace("creator")
 				|| string.IsNullOrWhiteSpace(title.Name))
