@@ -97,13 +97,14 @@ namespace Tasks.Commons
 		{
 			author = author.Trim(' ', ';', '.', ',');
 			return string.Equals(author, "anonymous", StringComparison.InvariantCultureIgnoreCase)
-				|| string.Equals(author, "anonymouse", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
-				|| string.Equals(author, "anonymous artist", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
-				|| string.Equals(author, "anonymos artist", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
+				|| string.Equals(author, "anonymouse", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anonymous artist", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anonymos artist", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "anonyme", StringComparison.InvariantCultureIgnoreCase)
-				|| string.Equals(author, "anonme", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
-				|| string.Equals(author, "anonym", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
-				|| string.Equals(author, "anon", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
+				|| string.Equals(author, "anonimo", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anonme", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anonym", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "anon", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "auteur anonyme", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "anonimous", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "anonimus", StringComparison.InvariantCultureIgnoreCase)
