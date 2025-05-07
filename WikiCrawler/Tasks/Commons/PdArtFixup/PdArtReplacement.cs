@@ -51,7 +51,7 @@ namespace Tasks.Commons
 
 		public static string FilesDatabaseFile
 		{
-			get { return Path.Combine(ProjectDataDirectory, "files.db"); }
+			get { return Path.Combine(ProjectDataDirectory, "pdartreplacement.db"); }
 		}
 
 		/// <summary>

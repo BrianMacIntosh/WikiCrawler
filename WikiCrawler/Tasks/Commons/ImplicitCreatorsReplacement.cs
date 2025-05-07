@@ -1,6 +1,8 @@
 ﻿using MediaWiki;
 using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -20,10 +22,21 @@ namespace Tasks.Commons
 	/// </summary>
 	public class ImplicitCreatorsReplacement : BaseReplacement
 	{
+		public enum ReplacementStatus
+		{
+			NotReplaced = 0,
+			Replaced = 1,
+		}
+
 		public override bool UseHeartbeat
 		{
 			get { return true; }
 		}
+
+		/// <summary>
+		/// If set, skips files that are already cached.
+		/// </summary>
+		public static bool SkipCached = true;
 
 		/// <summary>
 		/// If set, will walk up categories to try to map creator string.
@@ -34,6 +47,11 @@ namespace Tasks.Commons
 		/// Directory where task-specific data is stored.
 		/// </summary>
 		public readonly string ProjectDataDirectory;
+
+		/// <summary>
+		/// Database caching information about files that have been examined so far.
+		/// </summary>
+		private SQLiteConnection m_filesDatabase;
 
 		/// <summary>
 		/// Caches the qids of entities linked to each category.
@@ -61,6 +79,11 @@ namespace Tasks.Commons
 		public string CreatorMappingFile
 		{
 			get { return GetCreatorMappingFile(ProjectDataDirectory); }
+		}
+
+		public string FilesDatabaseFile
+		{
+			get { return Path.Combine(ProjectDataDirectory, "implicitcreators.db"); }
 		}
 
 		public static string GetCreatorMappingFile(string projectDataDirectory)
@@ -150,6 +173,19 @@ namespace Tasks.Commons
 			ProjectDataDirectory = Path.Combine(Configuration.DataDirectory, directory);
 			Directory.CreateDirectory(ProjectDataDirectory);
 			m_creatorMappings = new ManualMapping<MappingCreator>(CreatorMappingFile);
+			m_filesDatabase = ConnectFilesDatabase(true);
+		}
+
+		public SQLiteConnection ConnectFilesDatabase(bool bWantsWrite)
+		{
+			SQLiteConnectionStringBuilder connectionString = new SQLiteConnectionStringBuilder
+			{
+				{ "Data Source", FilesDatabaseFile },
+				{ "Mode", bWantsWrite ? "ReadWrite" : "ReadOnly" }
+			};
+			SQLiteConnection connection = new SQLiteConnection(connectionString.ConnectionString);
+			connection.Open();
+			return connection;
 		}
 
 		public override void SaveOut()
@@ -171,6 +207,14 @@ namespace Tasks.Commons
 
 		public bool DoReplacement(Article article, Entity suggestedCreator)
 		{
+			PageTitle articleTitle = PageTitle.Parse(article.title);
+
+			if (SkipCached && IsFileCached(m_filesDatabase, articleTitle))
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Already cached.");
+				return false;
+			}
+
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
 			if (string.IsNullOrEmpty(worksheet.Author))
@@ -181,9 +225,13 @@ namespace Tasks.Commons
 
 			Console.WriteLine("  Author string is '{0}'.", worksheet.Author);
 
+			CacheFile(articleTitle, worksheet.Author);
+
 			string newAuthor = "";
 			string existingOption = "";
 			CreatorReplaceType replaceType = CreatorReplaceType.Implicit;
+
+			//TODO: if everything is in a language tag and every language tag comes up with the same result, replace
 
 			if (suggestedCreator != null)
 			{
@@ -398,7 +446,6 @@ namespace Tasks.Commons
 				// manually map
 				if (creator.IsEmpty)
 				{
-					PageTitle articleTitle = PageTitle.Parse(article.title);
 					MappingCreator mapping = m_creatorMappings.TryMapValue(authorString, articleTitle);
 					if (mapping == null)
 					{
@@ -439,6 +486,8 @@ namespace Tasks.Commons
 			// do not make case-only changes
 			if (!string.IsNullOrEmpty(newAuthor) && !string.Equals(newAuthor, worksheet.Author, StringComparison.InvariantCultureIgnoreCase))
 			{
+				CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
+
 				ConsoleUtility.WriteLine(ConsoleColor.Green, "  FixImplicitCreators inserting '{0}'.", newAuthor);
 
 				string textBefore = worksheet.Text.Substring(0, worksheet.AuthorIndex);
@@ -468,6 +517,46 @@ namespace Tasks.Commons
 				default:
 					return "replace implicit creator";
 			}
+		}
+
+		public static bool IsFileCached(SQLiteConnection connection, PageTitle title)
+		{
+			SQLiteCommand command = connection.CreateCommand();
+			command.CommandText = "SELECT COUNT(*) FROM files WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			using (var reader = command.ExecuteReader())
+			{
+				reader.Read();
+				return reader.GetInt32(0) > 0;
+			}
+		}
+
+		private void CacheFile(PageTitle title, string author)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "INSERT INTO files (pageTitle, authorString, touchTimeUnix) VALUES ($pageTitle, $authorString, unixepoch()) "
+				+ "ON CONFLICT (pageTitle) DO UPDATE SET authorString=$authorString,touchTimeUnix=unixepoch()";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("authorString", author);
+			Debug.Assert(command.ExecuteNonQuery() == 1);
+		}
+
+		private void CacheReplacementStatus(PageTitle title, ReplacementStatus state)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET replaced=$state WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("state", (int)state);
+			Debug.Assert(command.ExecuteNonQuery() == 1);
+		}
+
+		private void CacheAuthorInfo(PageTitle title, int? qid)
+		{
+			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET authorQid=$authorQid WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("authorQid", qid);
+			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
 		private static readonly char[] s_authorTrim = new char[] { ' ', '[', ']', '.', ',', ';' };
