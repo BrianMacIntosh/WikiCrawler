@@ -309,6 +309,7 @@ OtherLicense: {8}",
 				//	continue;
 				//}
 
+				//TODO: handle whitespace after param name
 				if (!string.IsNullOrEmpty(component)
 					&& !s_supersedeLicenses.Contains(component, StringComparer.InvariantCultureIgnoreCase)
 					&& !component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase)
