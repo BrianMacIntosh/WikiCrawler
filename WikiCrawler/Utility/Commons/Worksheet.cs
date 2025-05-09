@@ -6,18 +6,20 @@
 public abstract class Worksheet
 {
 	public readonly Article Article;
+	public readonly int RevisionIndex;
 
-	public Worksheet(Article article)
+	public Worksheet(Article article, int revisionIndex = 0)
 	{
 		Article = article;
+		RevisionIndex = revisionIndex;
 	}
 
 	public string Text
 	{
-		get { return Article.revisions[0].text; }
+		get { return Article.revisions[RevisionIndex].text; }
 		set
 		{
-			Article.revisions[0].text = value;
+			Article.revisions[RevisionIndex].text = value;
 			Invalidate();
 		}
 	}

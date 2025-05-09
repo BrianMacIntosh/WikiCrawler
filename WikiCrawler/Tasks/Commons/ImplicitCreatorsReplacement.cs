@@ -49,6 +49,14 @@ namespace Tasks.Commons
 		public readonly string ProjectDataDirectory;
 
 		/// <summary>
+		/// Directory where task-specific data is stored.
+		/// </summary>
+		public static string StaticDataDirectory
+		{
+			get { return Path.Combine(Configuration.DataDirectory, "ImplicitCreatorsReplacement"); }
+		}
+
+		/// <summary>
 		/// Database caching information about files that have been examined so far.
 		/// </summary>
 		private SQLiteConnection m_filesDatabase;
@@ -81,14 +89,14 @@ namespace Tasks.Commons
 			get { return GetCreatorMappingFile(ProjectDataDirectory); }
 		}
 
-		public string FilesDatabaseFile
-		{
-			get { return Path.Combine(ProjectDataDirectory, "implicitcreators.db"); }
-		}
-
 		public static string GetCreatorMappingFile(string projectDataDirectory)
 		{
 			return Path.Combine(projectDataDirectory, "creator-mappings.txt");
+		}
+
+		public static string FilesDatabaseFile
+		{
+			get { return Path.Combine(StaticDataDirectory, "implicitcreators.db"); }
 		}
 
 		public static bool IsUnknownOrAnonymousAuthor(string author)
@@ -176,7 +184,7 @@ namespace Tasks.Commons
 			m_filesDatabase = ConnectFilesDatabase(true);
 		}
 
-		public SQLiteConnection ConnectFilesDatabase(bool bWantsWrite)
+		public static SQLiteConnection ConnectFilesDatabase(bool bWantsWrite)
 		{
 			SQLiteConnectionStringBuilder connectionString = new SQLiteConnectionStringBuilder
 			{

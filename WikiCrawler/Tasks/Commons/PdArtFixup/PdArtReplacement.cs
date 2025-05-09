@@ -20,7 +20,7 @@ namespace Tasks.Commons
 	/// 1745684896 Artwork wikidata is now being looked up and used for latestYear
 	/// 1746288973 authorQid was not cached at all before this
 	/// 
-	/// For counting: there are 16528 replacements that are not bLicenseReplaced=1 in the database.
+	/// For counting: there are 16063 replacements that are not bLicenseReplaced=1 in the database.
 	/// </remarks>
 	public class PdArtReplacement : BaseReplacement
 	{

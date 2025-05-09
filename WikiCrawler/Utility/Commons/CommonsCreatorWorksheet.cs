@@ -39,8 +39,8 @@ public class CommonsCreatorWorksheet : Worksheet
 	private int wikidataIndex = -1;
 	private static string[] wikidataParams = new string[] { "wikidata" };
 
-	public CommonsCreatorWorksheet(Article article)
-		: base(article)
+	public CommonsCreatorWorksheet(Article article, int revisionIndex = 0)
+		: base(article, revisionIndex)
 	{
 	}
 

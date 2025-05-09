@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MediaWiki
 {
@@ -17,6 +13,13 @@ namespace MediaWiki
 		/// The parameter was unspecified.
 		/// </summary>
 		public const int Unspecified = -1;
+	}
+
+	public static class Direction
+	{
+		public const string Newer = "newer";
+
+		public const string Older = "older";
 	}
 
 	public static class Prop

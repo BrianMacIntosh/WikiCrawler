@@ -114,8 +114,8 @@ public class CommonsFileWorksheet : Worksheet
 	private int dateIndex = -1;
 	private static string[] dateParams = new string[] { "publication date", "date", "year" };
 
-	public CommonsFileWorksheet(Article article)
-		: base(article)
+	public CommonsFileWorksheet(Article article, int revisionIndex = 0)
+		: base(article, revisionIndex)
 	{
 	}
 

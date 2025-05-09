@@ -7,7 +7,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
-using System.Xml.Linq;
 
 namespace MediaWiki
 {
@@ -203,12 +202,15 @@ namespace MediaWiki
 			int iilimit = Limit.Unspecified,
 			string rvprop = "content",
 			int rvlimit = Limit.Unspecified,
+			string rvstart = "",
+			string rvend = "",
+			string rvdir = "",
 			string clshow = "",
 			int cllimit = Limit.Max,
 			string cldir = "",
 			string iwprefix = "")
 		{
-			return GetPages(new string[] { title.ToString() }, prop, iiprop, iilimit, rvprop, rvlimit, clshow, cllimit, cldir, iwprefix)[0];
+			return GetPages(new string[] { title.ToString() }, prop, iiprop, iilimit, rvprop, rvlimit, rvstart, rvend, rvdir, clshow, cllimit, cldir, iwprefix)[0];
 		}
 
 		/// <summary>
@@ -220,12 +222,15 @@ namespace MediaWiki
 			int iilimit = Limit.Unspecified,
 			string rvprop = "content",
 			int rvlimit = Limit.Unspecified,
+			string rvstart = "",
+			string rvend = "",
+			string rvdir = "",
 			string clshow = "",
 			int cllimit = Limit.Max,
 			string cldir = "",
 			string iwprefix = "")
 		{
-			return GetPages(new string[] { title }, prop, iiprop, iilimit, rvprop, rvlimit, clshow, cllimit, cldir, iwprefix)[0];
+			return GetPages(new string[] { title }, prop, iiprop, iilimit, rvprop, rvlimit, rvstart, rvend, rvdir, clshow, cllimit, cldir, iwprefix)[0];
 		}
 
 		/// <summary>
@@ -252,6 +257,9 @@ namespace MediaWiki
 			int iilimit = Limit.Unspecified,
 			string rvprop = "content",
 			int rvlimit = Limit.Unspecified,
+			string rvstart = "",
+			string rvend = "",
+			string rvdir = "",
 			string clshow = "",
 			int cllimit = Limit.Max,
 			string cldir = "",
@@ -278,6 +286,18 @@ namespace MediaWiki
 			if (!string.IsNullOrEmpty(rvprop))
 			{
 				baseQuery += "&rvprop=" + UrlEncode(rvprop);
+			}
+			if (!string.IsNullOrEmpty(rvstart))
+			{
+				baseQuery += "&rvstart=" + UrlEncode(rvstart);
+			}
+			if (!string.IsNullOrEmpty(rvend))
+			{
+				baseQuery += "&rvend=" + UrlEncode(rvend);
+			}
+			if (!string.IsNullOrEmpty(rvdir))
+			{
+				baseQuery += "&rvdir=" + UrlEncode(rvdir);
 			}
 			if (rvlimit != Limit.Unspecified)
 			{
