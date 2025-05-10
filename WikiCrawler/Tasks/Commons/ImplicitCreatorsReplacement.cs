@@ -164,8 +164,13 @@ namespace Tasks.Commons
 
 			return IsConvertibleAnonymousAuthor(author)
 				|| string.Equals(onlyTemplateName, "anonymous", StringComparison.InvariantCultureIgnoreCase)
-				|| string.Equals(onlyTemplateName, "Creator:Anonymous", StringComparison.InvariantCultureIgnoreCase)
+				|| (onlyTemplateName != null && onlyTemplateName.StartsWith("Creator:Anonymous", StringComparison.InvariantCultureIgnoreCase))
 				|| string.Equals(onlyTemplateName, "Creator:Anon", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(onlyTemplateName, "Creator:Anonimo", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(onlyTemplateName, "Creator:Anonyme", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(onlyTemplateName, "Creator:Anonym", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(onlyTemplateName, "Creator:Anoniem", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(onlyTemplateName, "Creator:Anònim", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "anonymous plate", StringComparison.InvariantCultureIgnoreCase); // don't know what to replace this with
 		}
 
