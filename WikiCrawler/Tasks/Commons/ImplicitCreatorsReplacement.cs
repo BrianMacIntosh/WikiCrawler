@@ -179,6 +179,7 @@ namespace Tasks.Commons
 			Implicit,
 			Inline,
 			RemoveLifespan,
+			Mapped,
 		}
 
 		public ImplicitCreatorsReplacement(string directory)
@@ -240,14 +241,14 @@ namespace Tasks.Commons
 
 			CacheFile(articleTitle, worksheet.Author);
 
-			string newAuthor = "";
-			string existingOption = "";
-			CreatorReplaceType replaceType = CreatorReplaceType.Implicit;
+			CreatorReplaceType replaceType;
 
-			//TODO: if everything is in a language tag and every language tag comes up with the same result, replace
-
+			// map the author string to a template
+			string newAuthor;
 			if (suggestedCreator != null)
 			{
+				replaceType = CreatorReplaceType.Mapped;
+
 				string suggestedLabel = suggestedCreator.labels["en"];
 				if (AuthorIs(worksheet.Author, suggestedCreator))
 				{
@@ -261,240 +262,11 @@ namespace Tasks.Commons
 					return false;
 				}
 			}
-			else if (IsConvertibleUnknownAuthor(worksheet.Author))
+			else
 			{
-				if (string.Equals(worksheet.AuthorParam, "artist") || string.Equals(worksheet.AuthorParam, "artist_display_name"))
-				{
-					newAuthor = "{{unknown|artist}}";
-				}
-				else if (string.Equals(worksheet.AuthorParam, "photographer"))
-				{
-					newAuthor = "{{unknown photographer}}";
-				}
-				else
-				{
-					newAuthor = "{{unknown|author}}";
-				}
-			}
-			else if (IsConvertibleAnonymousAuthor(worksheet.Author))
-			{
-				newAuthor = "{{anonymous}}";
-			}
-			else if (IsConvertibleUnknownArtist(worksheet.Author))
-			{
-				newAuthor = "{{unknown|artist}}";
-			}
-			else if (IsUnknownAuthor(worksheet.Author) || IsAnonymousAuthor(worksheet.Author))
-			{
-				// already a template - do nothing
-				ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  Already a template");
-				return false;
-			}
-			else if (CreatorUtility.TryGetCreatorTemplate(worksheet.Author, out CreatorTemplate creatorTemplate))
-			{
-				if (GetPageExists(creatorTemplate.Template))
-				{
-					// already a creator - do nothing
-					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  Already a creator");
-
-					//HACK: make sure this file is not still in the creator mappings
-					foreach (var kv in m_creatorMappings)
-					{
-						kv.Value.FromPages.Remove(article.title);
-						m_creatorMappings.SetDirty();
-					}
-
-					return false;
-				}
-				else
-				{
-					// already a creator, but a missing one
-					ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Author is redlink creator '{0}'", creatorTemplate);
-				}
-			}
-			else if (CreatorUtility.InlineCreatorTemplateRegex.MatchOut(worksheet.Author, out Match inlineCreatorMatch))
-			{
-				Entity entity = GlobalAPIs.Wikidata.GetEntity(inlineCreatorMatch.Groups[1].Value); //TODO: use cache
-				if (!Entity.IsNullOrMissing(entity))
-				{
-					PageTitle creator;
-					CommonsCreatorFromWikidata.TryMakeCreator(entity, out creator);
-					newAuthor = "{{" + creator + "}}";
-					replaceType = CreatorReplaceType.Inline;
-				}
+				newAuthor = MapCreatorTemplate(worksheet, worksheet.Author, worksheet.AuthorParam, out replaceType);
 			}
 			
-			if (string.IsNullOrEmpty(newAuthor))
-			{
-				PageTitle creator = PageTitle.Empty;
-				string authorString;
-
-				// extract lifespan from author string
-				Match lifespanMatch = s_lifespanRegex.Match(worksheet.Author);
-				if (lifespanMatch.Success)
-				{
-					authorString = lifespanMatch.Groups[1].Value.Trim();
-
-					// maybe *now* it's a creator;
-					if (CreatorUtility.TryGetCreatorTemplate(authorString, out CreatorTemplate parsedCreator))
-					{
-						existingOption = parsedCreator.Option;
-						creator = parsedCreator.Template;
-						replaceType = CreatorReplaceType.RemoveLifespan;
-					}
-					else
-					{
-						// search for a creator by name/DOB/DOD
-						//TODO: cache result
-						string dob = lifespanMatch.Groups[2].Value.Trim();
-						string dod = lifespanMatch.Groups[3].Value.Trim();
-						Entity wikidata = CommonsCreatorFromWikidata.GetWikidata(authorString, dob, dod);
-						if (!Entity.IsNullOrMissing(wikidata))
-						{
-							if (wikidata.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] creators))
-							{
-								//TODO: check exists
-								creator = new PageTitle("Creator", creators[0]);
-							}
-							else
-							{
-								CommonsCreatorFromWikidata.TryMakeCreator(wikidata, out creator);
-							}
-						}
-					}
-				}
-				else
-				{
-					authorString = worksheet.Author;
-				}
-
-				// extract name from redlinked creator
-				if (CreatorUtility.TryGetCreatorTemplate(authorString, out CreatorTemplate parsedCreator2))
-				{
-					existingOption = parsedCreator2.Option;
-
-					//OPT: multiple checks against existence of this page
-					if (Article.IsNullOrMissing(GlobalAPIs.Commons.GetPage(parsedCreator2.Template)))
-					{
-						authorString = parsedCreator2.Template.Name;
-					}
-				}
-
-				// unwrap author iwlink
-				if (creator.IsEmpty)
-				{
-					Match interwikiLinkMatch = s_interwikiLinkRegex.Match(authorString);
-					if (interwikiLinkMatch.Success)
-					{
-						authorString = interwikiLinkMatch.Groups[2].Value.Trim();
-
-						Article interwikiArticle = GetInterwikiPage(interwikiLinkMatch.Groups[1].Value, interwikiLinkMatch.Groups[2].Value);
-						if (!Article.IsNullOrMissing(interwikiArticle) && interwikiArticle.iwlinks != null)
-						{
-							string qid = null;
-							PageTitle commonsPage = PageTitle.Empty;
-
-							foreach (InterwikiLink iwlink in interwikiArticle.iwlinks)
-							{
-								if (iwlink.prefix == "d" && iwlink.value.StartsWith("Q"))
-								{
-									qid = iwlink.value;
-									Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
-
-									Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
-									if (!Entity.IsNullOrMissing(entity))
-									{
-										if (AuthorIs(authorString, entity))
-										{
-											if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
-											{
-												creator = entityCreator;
-												break;
-											}
-										}
-										else
-										{
-											string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
-											ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Can't match '{0}' to '{1}'.", authorString, entityStr);
-										}
-									}
-								}
-								//HACK: does not actually find wikidata link, have to go through commons
-								else if (iwlink.prefix == "commons")
-								{
-									commonsPage = PageTitle.Parse(iwlink.value);
-								}
-							}
-
-							// if no wikidata but yes Commons, try to get WD from Commons
-							if (string.IsNullOrEmpty(qid) && !commonsPage.IsEmpty)
-							{
-								creator = GetCreatorFromCommonsPage(authorString, commonsPage);
-							}
-						}
-					}
-				}
-
-				// unwrap author wikilink
-				if (creator.IsEmpty)
-				{
-					Match wikiLinkMatch = s_wikiLinkRegex.Match(authorString);
-					if (wikiLinkMatch.Success)
-					{
-						authorString = wikiLinkMatch.Groups[1].Value.Trim();
-						PageTitle authorTitle = PageTitle.TryParse(authorString);
-						if (!authorTitle.IsEmpty)
-						{
-							creator = GetCreatorFromCommonsPage(authorString, authorTitle);
-						}
-					}
-				}
-
-				// go looking for matching creator templates in parent cats
-				if (creator.IsEmpty && SlowCategoryWalk)
-				{
-					creator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1);
-				}
-
-				// manually map
-				if (creator.IsEmpty)
-				{
-					MappingCreator mapping = m_creatorMappings.TryMapValue(authorString, articleTitle);
-					if (mapping == null)
-					{
-						// can do nothing with that
-					}
-					else if (!string.IsNullOrEmpty(mapping.MappedValue))
-					{
-						newAuthor = mapping.MappedValue;
-						mapping.FromPages.Remove(article.title);
-						m_creatorMappings.SetDirty();
-					}
-					else if (!string.IsNullOrEmpty(mapping.MappedQID))
-					{
-						Entity entity = GlobalAPIs.Wikidata.GetEntity(mapping.MappedQID);
-						if (!Entity.IsNullOrMissing(entity))
-						{
-							if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
-							{
-								mapping.MappedValue = newAuthor = "{{" + entityCreator + "}}";
-							}
-						}
-					}
-				}
-				else
-				{
-					if (string.IsNullOrWhiteSpace(existingOption))
-					{
-						newAuthor = "{{" + creator + "}}";
-					}
-					else
-					{
-						//TODO: support and test
-					}
-				}
-			}
-
 			// found it, place creator and update
 			// do not make case-only changes
 			if (!string.IsNullOrEmpty(newAuthor) && !string.Equals(newAuthor, worksheet.Author, StringComparison.InvariantCultureIgnoreCase))
@@ -518,6 +290,339 @@ namespace Tasks.Commons
 			}
 		}
 
+		/// <summary>
+		/// If the specified string can be definitively mapped to a template (e.g. creator), returns the template.
+		/// </summary>
+		private string MapCreatorTemplate(CommonsFileWorksheet worksheet, string authorString, string authorParam, out CreatorReplaceType replaceType)
+		{
+			//TODO: if everything is in a language tag and every language tag comes up with the same result, replace
+
+			replaceType = CreatorReplaceType.Implicit;
+
+			if (IsConvertibleUnknownAuthor(authorString))
+			{
+				if (string.Equals(authorParam, "artist") || string.Equals(authorParam, "artist_display_name"))
+				{
+					return "{{unknown|artist}}";
+				}
+				else if (string.Equals(authorParam, "photographer"))
+				{
+					return "{{unknown photographer}}";
+				}
+				else
+				{
+					return "{{unknown|author}}";
+				}
+			}
+			else if (IsConvertibleAnonymousAuthor(authorString))
+			{
+				return "{{anonymous}}";
+			}
+			else if (IsConvertibleUnknownArtist(authorString))
+			{
+				return "{{unknown|artist}}";
+			}
+			else if (IsUnknownAuthor(authorString) || IsAnonymousAuthor(authorString))
+			{
+				// already an anon/unknown template - do nothing
+				ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  Already a template");
+				return "";
+			}
+
+			// extract lifespan from author string
+			Match lifespanMatch = s_lifespanRegex.Match(authorString);
+			if (lifespanMatch.Success)
+			{
+				authorString = lifespanMatch.Groups[1].Value.Trim();
+			}
+
+			if (CreatorUtility.TryGetCreatorTemplate(authorString, out CreatorTemplate creatorTemplate))
+			{
+				// already a creator
+				if (GetPageExists(creatorTemplate.Template))
+				{
+					// creator exists
+					if (lifespanMatch.Success)
+					{
+						// only stripping lifespan
+						replaceType = CreatorReplaceType.RemoveLifespan;
+						return creatorTemplate.ToString();
+					}
+					else
+					{
+						// do nothing
+						ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  Already a creator");
+
+						//HACK: make sure this file is not still in the creator mappings
+						foreach (var kv in m_creatorMappings)
+						{
+							kv.Value.FromPages.Remove(worksheet.Article.title);
+							m_creatorMappings.SetDirty();
+						}
+
+						return "";
+					}
+				}
+				else
+				{
+					// redlinked creator
+					ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Author is redlink creator '{0}'", creatorTemplate);
+
+					// extract name from redlinked creator
+					//OPT: multiple checks against existence of this page
+					if (Article.IsNullOrMissing(GlobalAPIs.Commons.GetPage(creatorTemplate.Template)))
+					{
+						authorString = creatorTemplate.Template.Name;
+					}
+
+					if (TryMapNonTemplateString(worksheet, authorString, out CreatorTemplate mappedRedlinkAuthor, out replaceType))
+					{
+						if (string.IsNullOrWhiteSpace(mappedRedlinkAuthor.Option)
+							&& string.IsNullOrWhiteSpace(creatorTemplate.Option))
+						{
+							return "{{" + mappedRedlinkAuthor.Template + "}}";
+						}
+						else
+						{
+							//TODO: support and test
+						}
+					}
+				}
+			}
+			else if (CreatorUtility.InlineCreatorTemplateRegex.MatchOut(authorString, out Match inlineCreatorMatch))
+			{
+				// inline-QID creator: replace with named creator
+#if false
+				Entity entity = GlobalAPIs.Wikidata.GetEntity(inlineCreatorMatch.Groups[1].Value); //TODO: use cache
+				if (!Entity.IsNullOrMissing(entity))
+				{
+					PageTitle creator;
+					CommonsCreatorFromWikidata.TryMakeCreator(entity, out creator);
+					replaceType = CreatorReplaceType.Inline;
+					return "{{" + creator + "}}";
+				}
+				else
+				{
+					// QID is invalid
+					//TODO:?
+					return "";
+				}
+#endif
+				return ""; // this is fine
+			}
+
+			string authorTemplate = WikiUtils.GetOnlyTemplateName(authorString);
+			if (string.IsNullOrEmpty(authorTemplate))
+			{
+				// not a template
+			}
+			else if (authorTemplate.Equals("c", StringComparison.InvariantCultureIgnoreCase))
+			{
+#if false
+				string template = WikiUtils.ExtractTemplate(authorString, authorTemplate);
+				string category = WikiUtils.GetTemplateParameter(1, template);
+				PageTitle categoryPage = PageTitle.TryParse(category);
+				if (categoryPage.IsEmpty)
+				{
+					categoryPage = new PageTitle("Category", category);
+				}
+
+				PageTitle creator = GetCreatorFromCategories(null, new PageTitle[] { categoryPage }, 0);
+				if (!creator.IsEmpty)
+				{
+					return "{{" + creator + "}}";
+				}
+#endif
+
+				return "";
+			}
+			else if (authorTemplate.StartsWith("#property", StringComparison.InvariantCultureIgnoreCase))
+			{
+				// just going to assume this is fine
+				return "";
+			}
+
+			if (lifespanMatch.Success)
+			{
+				// search for a creator by name/DOB/DOD
+				//TODO: cache result
+				string dob = lifespanMatch.Groups[2].Value.Trim();
+				string dod = lifespanMatch.Groups[3].Value.Trim();
+				Entity wikidata = CommonsCreatorFromWikidata.GetWikidata(authorString, dob, dod);
+				if (!Entity.IsNullOrMissing(wikidata))
+				{
+					if (wikidata.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] creators))
+					{
+						//TODO: check exists
+						return "{{" + new PageTitle("Creator", creators[0]) + "}}";
+					}
+					else if (CommonsCreatorFromWikidata.TryMakeCreator(wikidata, out PageTitle creator))
+					{
+						return "{{" + creator + "}}";
+					}
+				}
+			}
+
+			if (TryMapNonTemplateString(worksheet, authorString, out CreatorTemplate mappedRawAuthor, out replaceType))
+			{
+				return mappedRawAuthor.ToString();
+			}
+			else if (TryMapMultiLanguage(authorString, out CreatorTemplate mappedMultiLanguage, out replaceType))
+			{
+				return mappedMultiLanguage.ToString();
+			}
+
+			return "";
+		}
+
+		/// <summary>
+		/// Tries to map an author string that is already known to not be a template to a creator template.
+		/// </summary>
+		private bool TryMapNonTemplateString(CommonsFileWorksheet worksheet, string authorString, out CreatorTemplate creator, out CreatorReplaceType replaceType)
+		{
+			creator = AutoMapNonTemplateAuthor(worksheet, authorString, out replaceType);
+			return !creator.IsEmpty;
+		}
+
+		/// <summary>
+		/// Tries to map a raw author string to a creator template.
+		/// </summary>
+		private CreatorTemplate AutoMapNonTemplateAuthor(CommonsFileWorksheet worksheet, string authorString, out CreatorReplaceType replaceType)
+		{
+			replaceType = CreatorReplaceType.Implicit;
+
+			// unwrap author iwlink
+			Match interwikiLinkMatch = s_interwikiLinkRegex.Match(authorString);
+			if (interwikiLinkMatch.Success)
+			{
+				authorString = interwikiLinkMatch.Groups[2].Value.Trim();
+
+				Article interwikiArticle = GetInterwikiPage(interwikiLinkMatch.Groups[1].Value, interwikiLinkMatch.Groups[2].Value);
+				if (!Article.IsNullOrMissing(interwikiArticle) && interwikiArticle.iwlinks != null)
+				{
+					string qid = null;
+					PageTitle commonsPage = PageTitle.Empty;
+
+					foreach (InterwikiLink iwlink in interwikiArticle.iwlinks)
+					{
+						if (iwlink.prefix == "d" && iwlink.value.StartsWith("Q"))
+						{
+							qid = iwlink.value;
+							Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
+
+							Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
+							if (!Entity.IsNullOrMissing(entity))
+							{
+								if (AuthorIs(authorString, entity))
+								{
+									if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
+									{
+										return entityCreator;
+									}
+								}
+								else
+								{
+									string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
+									ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Can't match '{0}' to '{1}'.", authorString, entityStr);
+								}
+							}
+						}
+						//HACK: does not actually find wikidata link, have to go through commons
+						else if (iwlink.prefix == "commons")
+						{
+							commonsPage = PageTitle.Parse(iwlink.value);
+						}
+					}
+
+					// if no wikidata but yes Commons, try to get WD from Commons
+					if (string.IsNullOrEmpty(qid) && !commonsPage.IsEmpty)
+					{
+						return GetCreatorFromCommonsPage(authorString, commonsPage);
+					}
+				}
+			}
+
+			// unwrap author wikilink
+			Match wikiLinkMatch = s_wikiLinkRegex.Match(authorString);
+			if (wikiLinkMatch.Success)
+			{
+				authorString = wikiLinkMatch.Groups[1].Value.Trim();
+				PageTitle authorTitle = PageTitle.TryParse(authorString);
+				if (!authorTitle.IsEmpty)
+				{
+					return GetCreatorFromCommonsPage(authorString, authorTitle);
+				}
+			}
+
+			// go looking for matching creator templates in parent cats
+			if (SlowCategoryWalk)
+			{
+				PageTitle catCreator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1);
+				if (!catCreator.IsEmpty)
+				{
+					return catCreator;
+				}
+			}
+
+			// manually map
+			MappingCreator mapping = m_creatorMappings.TryMapValue(authorString, PageTitle.Parse(worksheet.Article.title));
+			if (mapping == null)
+			{
+				// null or empty authorString?
+				return new CreatorTemplate();
+			}
+			else if (!string.IsNullOrEmpty(mapping.MappedValue))
+			{
+				if (CreatorUtility.TryGetCreatorTemplate(mapping.MappedValue, out CreatorTemplate parsedCreator))
+				{
+					mapping.FromPages.Remove(worksheet.Article.title);
+					m_creatorMappings.SetDirty();
+					return parsedCreator;
+				}
+				else
+				{
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "Can't parse mapped creator '{0}'.", mapping.MappedValue);
+				}
+			}
+			else if (!string.IsNullOrEmpty(mapping.MappedQID))
+			{
+				Entity entity = GlobalAPIs.Wikidata.GetEntity(mapping.MappedQID);
+				if (!Entity.IsNullOrMissing(entity))
+				{
+					if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
+					{
+						mapping.MappedValue = "{{" + entityCreator + "}}";
+						return entityCreator;
+					}
+				}
+				else
+				{
+					ConsoleUtility.WriteLine(ConsoleColor.Red, "Failed to find mapped creator entity with QID '{0}'.", mapping.MappedQID);
+				}
+			}
+
+			return new CreatorTemplate();
+		}
+
+		/// <summary>
+		/// Checks if the string is a series of language templates and they all match one creator.
+		/// </summary>
+		private static bool TryMapMultiLanguage(string authorString, out CreatorTemplate creator, out CreatorReplaceType replaceType)
+		{
+			creator = AutoMapMultiLanguage(authorString, out replaceType);
+			return !creator.IsEmpty;
+		}
+
+		/// <summary>
+		/// Checks if the string is a series of language templates and they all match one creator.
+		/// </summary>
+		private static CreatorTemplate AutoMapMultiLanguage(string authorString, out CreatorReplaceType replaceType)
+		{
+			//TODO:
+			replaceType = CreatorReplaceType.Implicit;
+			return new CreatorTemplate();
+		}
+
 		private static string GetEditSummary(CreatorReplaceType replaceType)
 		{
 			switch (replaceType)
@@ -526,6 +631,8 @@ namespace Tasks.Commons
 					return "replace inline creator";
 				case CreatorReplaceType.RemoveLifespan:
 					return "remove redundant creator lifespan";
+				case CreatorReplaceType.Mapped:
+					return "replace manually mapped creator";
 				case CreatorReplaceType.Implicit:
 				default:
 					return "replace implicit creator";
@@ -563,6 +670,7 @@ namespace Tasks.Commons
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
+		//TODO:
 		private void CacheAuthorInfo(PageTitle title, int? qid)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
@@ -618,7 +726,7 @@ namespace Tasks.Commons
 			return false;
 		}
 
-		private bool GetPageExists(PageTitle pageTitle)
+		private static bool GetPageExists(PageTitle pageTitle)
 		{
 			if (s_ExtantPages.Contains(pageTitle))
 			{
@@ -635,7 +743,7 @@ namespace Tasks.Commons
 			}
 		}
 
-		private Article GetInterwikiPage(string wiki, string page)
+		private static Article GetInterwikiPage(string wiki, string page)
 		{
 			//TODO: cache
 			switch (wiki.ToLowerInvariant())

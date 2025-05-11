@@ -5,6 +5,29 @@ namespace MediaWiki
 {
 	public struct CreatorTemplate
 	{
+		public CreatorTemplate(PageTitle InTemplate)
+		{
+			Template = InTemplate;
+			Option = null;
+		}
+
+		public static implicit operator CreatorTemplate(PageTitle template)
+		{
+			return new CreatorTemplate(template);
+		}
+
+		public override string ToString()
+		{
+			if (string.IsNullOrWhiteSpace(Option))
+			{
+				return "{{" + Template.ToString() + "}}";
+			}
+			else
+			{
+				return "{{" + Template + "|" + Option + "}}";
+			}
+		}
+
 		public PageTitle Template;
 		public string Option;
 
