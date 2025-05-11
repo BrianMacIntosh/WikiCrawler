@@ -9,6 +9,7 @@ public class PdArtReplacementTests
 	public static void AssemblyInitialize(TestContext testContext)
 	{
 		PdArtReplacement.SkipCached = false;
+		ImplicitCreatorsReplacement.SkipCached = false;
 		ImplicitCreatorsReplacement.SlowCategoryWalk = false;
 	}
 
@@ -21,7 +22,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_SimplePdOldDefault()
+	public void SimplePdOldDefault()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -57,7 +58,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_InlineRemoveLicense()
+	public void InlineRemoveLicense()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -94,7 +95,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_NoDate()
+	public void NoDate()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -128,7 +129,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_MalformedPdOldDefault()
+	public void MalformedPdOldDefault()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -149,7 +150,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_Nowiki()
+	public void Nowiki()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -170,7 +171,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_Nowiki2()
+	public void Nowiki2()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -191,7 +192,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_Comment()
+	public void Comment()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -212,7 +213,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_Comment2()
+	public void Comment2()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -233,7 +234,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_OtherLicenseBlocked()
+	public void OtherLicenseBlocked()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -254,7 +255,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_MultiPdOldDefault()
+	public void MultiPdOldDefault()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -290,7 +291,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_PdOldPdArt()
+	public void PdOldPdArt()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -326,7 +327,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_DensePdOldDefault()
+	public void DensePdOldDefault()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -342,7 +343,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_DensePdOldDefaultRemoval()
+	public void DensePdOldDefaultRemoval()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -358,7 +359,7 @@ public class PdArtReplacementTests
 	}
 
 	//[TestMethod]
-	public void PdArtReplacementTests_LicensedPdArt()
+	public void LicensedPdArt()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -388,7 +389,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_AlreadyReplaced()
+	public void AlreadyReplaced()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -424,7 +425,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_AlreadyReplacedExtras()
+	public void AlreadyReplacedExtras()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
@@ -460,7 +461,7 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
-	public void PdArtReplacementTests_SkipCreatorOption()
+	public void SkipCreatorOption()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
 		Article article = CreateArticle("File:Test.jpg",
