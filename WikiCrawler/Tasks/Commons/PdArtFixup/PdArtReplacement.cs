@@ -123,6 +123,7 @@ namespace Tasks.Commons
 
 		private static readonly string[] s_pmaLicenses = new string[]
 		{
+			"PD-old-auto",
 			"PD-old-50",
 			"PD-old-50-expired",
 			"PD-old-50-1923",
