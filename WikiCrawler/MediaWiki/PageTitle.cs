@@ -1,7 +1,61 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MediaWiki
 {
+	public class PageNameComparer : IEqualityComparer<string>
+	{
+		public static readonly PageNameComparer Instance = new PageNameComparer();
+
+		public bool Equals(string a, string b)
+		{
+			if (string.IsNullOrEmpty(b))
+			{
+				return string.IsNullOrEmpty(a);
+			}
+			else if (string.IsNullOrEmpty(a))
+			{
+				return string.IsNullOrEmpty(b);
+			}
+			else if (a.Length != b.Length)
+			{
+				return false;
+			}
+			else if (char.ToUpperInvariant(b[0]) != char.ToUpperInvariant(a[0]))
+			{
+				return false;
+			}
+
+			for (int i = 1; i < a.Length; i++)
+			{
+				if (!CharEquals(a[i], b[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		private static bool CharEquals(char a, char b)
+		{
+			switch (a)
+			{
+				case ' ':
+				case '_':
+					return b == ' ' || b == '_';
+				default:
+					return a == b;
+			}
+		}
+
+		public int GetHashCode(string obj)
+		{
+			//TODO: reduce allocations
+			return obj.ToUpperFirst().Replace('_', ' ').GetHashCode();
+		}
+	}
+
 	/// <summary>
 	/// Represents the title of a Mediawiki page.
 	/// </summary>
@@ -90,18 +144,7 @@ namespace MediaWiki
 
 		public bool IsName(string name)
 		{
-			if (string.IsNullOrEmpty(name))
-			{
-				return string.IsNullOrEmpty(Name);
-			}
-			else if (string.IsNullOrEmpty(Name))
-			{
-				return string.IsNullOrEmpty(name);
-			}
-
-			//TODO: reduce allocations
-			return char.ToLowerInvariant(name[0]) == char.ToLowerInvariant(Name[0])
-				&& string.Equals(name.Substring(1), Name.Substring(1), StringComparison.InvariantCultureIgnoreCase); ;
+			return PageNameComparer.Instance.Equals(Name, name);
 		}
 
 		public bool Equals(PageTitle other)
@@ -121,8 +164,7 @@ namespace MediaWiki
 
 		public override int GetHashCode()
 		{
-			//TODO: remove allocation
-			return Namespace.ToLower().GetHashCode() * 13 + Name.ToLowerFirst().GetHashCode();
+			return StringComparer.OrdinalIgnoreCase.GetHashCode(Namespace) * 13 + PageNameComparer.Instance.GetHashCode(Name);
 		}
 
 		public override bool Equals(object obj)
