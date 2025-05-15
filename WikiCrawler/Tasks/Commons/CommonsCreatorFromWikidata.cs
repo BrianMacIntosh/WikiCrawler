@@ -205,10 +205,59 @@ namespace Tasks.Commons
 			}
 		}
 
+		private struct WikidataSearch
+		{
+			public string Name;
+			public string YearOfBirth;
+			public string YearOfDeath;
+
+			public override bool Equals(object obj)
+			{
+				if (obj is WikidataSearch)
+				{
+					WikidataSearch search = (WikidataSearch)obj;
+					return search.Name == Name && search.YearOfBirth == YearOfBirth && search.YearOfDeath == YearOfDeath;
+				}
+				else
+				{
+					return false;
+				}
+			}
+
+			public override int GetHashCode()
+			{
+				int hashCode = -1656821439;
+				hashCode = hashCode * -1521134295 + Name.GetHashCode();
+				hashCode = hashCode * -1521134295 + YearOfBirth.GetHashCode();
+				hashCode = hashCode * -1521134295 + YearOfDeath.GetHashCode();
+				return hashCode;
+			}
+		}
+
+		private static Dictionary<WikidataSearch, Entity> s_searchCache = new Dictionary<WikidataSearch, Entity>();
+
 		/// <summary>
 		/// Searches for a wikidata entity matching the specified info.
 		/// </summary>
 		public static Entity GetWikidata(string name, string yearOfBirth, string yearOfDeath)
+		{
+			WikidataSearch search = new WikidataSearch
+			{
+				Name = name,
+				YearOfBirth = yearOfBirth,
+				YearOfDeath = yearOfDeath
+			};
+			if (s_searchCache.TryGetValue(search, out Entity cachedEntity))
+			{
+				return cachedEntity;
+			}
+
+			Entity entity = GetWikidataUncached(name, yearOfBirth, yearOfDeath);
+			s_searchCache[search] = entity;
+			return entity;
+		}
+
+		public static Entity GetWikidataUncached(string name, string yearOfBirth, string yearOfDeath)
 		{
 			// search wikidata
 			string[] search = GlobalAPIs.Wikidata.SearchEntities(name);
