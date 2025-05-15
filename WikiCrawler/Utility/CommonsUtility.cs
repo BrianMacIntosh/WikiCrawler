@@ -1,8 +1,18 @@
 ﻿using MediaWiki;
 using System;
+using System.IO;
+using System.Linq;
+using WikiCrawler;
 
 public static class CommonsUtility
 {
+	private static readonly string[] s_languageTemplates;
+
+	static CommonsUtility()
+	{
+		s_languageTemplates = File.ReadAllLines(Path.Combine(Configuration.DataDirectory, "language-templates.txt"));
+	}
+
 	public static string GetLanguageTemplate(string parse)
 	{
 		switch (parse.ToLower())
@@ -14,6 +24,14 @@ public static class CommonsUtility
 			default:
 				throw new UWashException("Unrecognized language '" + parse + "'.");
 		}
+	}
+
+	/// <summary>
+	/// Returns true if the specified template name is a language template.
+	/// </summary>
+	public static bool IsLanguageTemplate(string templateName)
+	{
+		return s_languageTemplates.Contains(templateName, PageNameComparer.Instance);
 	}
 
 	/// <summary>

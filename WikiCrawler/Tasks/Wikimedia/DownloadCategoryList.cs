@@ -12,12 +12,16 @@ namespace Tasks
 	{
 		public DownloadCategoryList()
 		{
-			Parameters["Category"] = "Category:Primary license tags (flat list)";
+			//Parameters["Category"] = "Category:Primary license tags (flat list)";
+			//Parameters["OutputFile"] = "primary-license-tags.txt";
+
+			Parameters["Category"] = "Category:Language templates";
+			Parameters["OutputFile"] = "language-templates.txt";
 		}
 
 		public override void Execute()
 		{
-			using (StreamWriter writer = new StreamWriter(Path.Combine(Configuration.DataDirectory, "category-download.txt")))
+			using (StreamWriter writer = new StreamWriter(Path.Combine(Configuration.DataDirectory, Parameters["OutputFile"])))
 			{
 				foreach (Article page in GlobalAPIs.Commons.GetCategoryEntries(Parameters["Category"], CMType.page))
 				{
