@@ -1,9 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace MediaWiki
 {
-	public struct CreatorTemplate
+	public struct CreatorTemplate : IEquatable<CreatorTemplate>
 	{
 		public CreatorTemplate(PageTitle InTemplate)
 		{
@@ -26,6 +27,35 @@ namespace MediaWiki
 			{
 				return "{{" + Template + "|" + Option + "}}";
 			}
+		}
+
+		public override bool Equals(object obj)
+		{
+			return obj is CreatorTemplate template && Equals(template);
+		}
+
+		public bool Equals(CreatorTemplate other)
+		{
+			return Template.Equals(other.Template) &&
+				   Option == other.Option;
+		}
+
+		public override int GetHashCode()
+		{
+			int hashCode = -1709716073;
+			hashCode = hashCode * -1521134295 + Template.GetHashCode();
+			hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(Option);
+			return hashCode;
+		}
+
+		public static bool operator==(CreatorTemplate a, CreatorTemplate b)
+		{
+			return a.Template == b.Template && a.Option == b.Option;
+		}
+
+		public static bool operator !=(CreatorTemplate a, CreatorTemplate b)
+		{
+			return a.Template != b.Template && a.Option != b.Option;
 		}
 
 		public PageTitle Template;
