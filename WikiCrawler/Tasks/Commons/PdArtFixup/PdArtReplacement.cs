@@ -773,7 +773,7 @@ OtherLicense: {8}",
 			}
 			else
 			{
-				string creatorTemplate = ImplicitCreatorsReplacement.MapCreatorTemplate(worksheet, false);
+				string creatorTemplate = ImplicitCreatorsReplacement.MapAuthorTemplate(worksheet);
 				if (IsUnknownOrAnonymousAuthor(creatorTemplate))
 				{
 					// keep going; maybe wikidata knows
