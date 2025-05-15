@@ -769,42 +769,33 @@ OtherLicense: {8}",
 
 			if (string.IsNullOrEmpty(author))
 			{
-				// no author to parse
+				// no embedded author to parse
 			}
-			else if (IsUnknownOrAnonymousAuthor(author))
+			else
 			{
-				// unknown/anonymous author: skip all the expensive searching
-			}
-			else if (CreatorUtility.TryGetCreatorTemplate(author, out CreatorTemplate literalCreator))
-			{
-				// reject creator options that mean the creator isn't actually the author
-				if (string.IsNullOrWhiteSpace(literalCreator.Option)
-					|| literalCreator.Option.Equals("probably", StringComparison.InvariantCultureIgnoreCase)
-					|| literalCreator.Option.Equals("presumably", StringComparison.InvariantCultureIgnoreCase))
+				string creatorTemplate = ImplicitCreatorsReplacement.MapCreatorTemplate(worksheet, false);
+				if (IsUnknownOrAnonymousAuthor(creatorTemplate))
 				{
-					CreatorData creator = WikidataCache.GetCreatorData(literalCreator.Template);
-					if (creator != null)
+					// keep going; maybe wikidata knows
+				}
+				else if (CreatorUtility.TryGetCreatorTemplate(creatorTemplate, out CreatorTemplate literalCreator))
+				{
+					// reject creator options that mean the creator isn't actually the author
+					if (string.IsNullOrWhiteSpace(literalCreator.Option)
+						|| literalCreator.Option.Equals("probably", StringComparison.InvariantCultureIgnoreCase)
+						|| literalCreator.Option.Equals("presumably", StringComparison.InvariantCultureIgnoreCase))
 					{
-						return creator;
+						CreatorData creator = WikidataCache.GetCreatorData(literalCreator.Template);
+						if (creator != null)
+						{
+							return creator;
+						}
 					}
 				}
-			}
-			else if (Wikidata.TryAuthorToQid(author, out int authorQid))
-			{
-				CreatorData creator = WikidataCache.GetPersonData(authorQid);
-				if (creator != null)
+				//TODO: remove to MapCreatorTemplate
+				else if (Wikidata.TryAuthorToQid(author, out int authorQid))
 				{
-					return creator;
-				}
-			}
-			else if (ImplicitCreatorsReplacement.SlowCategoryWalk)
-			{
-				// can author be associated to a creator based on file categories?
-				//TODO: operate directly on QID instead
-				PageTitle categoryCreator = ImplicitCreatorsReplacement.GetCreatorFromCategories(author, WikiUtils.GetCategories(worksheet.Text), 1);
-				if (!categoryCreator.IsEmpty)
-				{
-					CreatorData creator = WikidataCache.GetCreatorData(categoryCreator);
+					CreatorData creator = WikidataCache.GetPersonData(authorQid);
 					if (creator != null)
 					{
 						return creator;

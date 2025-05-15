@@ -82,11 +82,11 @@ namespace Tasks.Commons
 		/// </summary>
 		private static HashSet<PageTitle> s_ExtantPages = new HashSet<PageTitle>();
 
-		private ManualMapping<MappingCreator> m_creatorMappings;
+		private static ManualMapping<MappingCreator> s_creatorMappings;
 
-		public string CreatorMappingFile
+		public static string CreatorMappingFile
 		{
-			get { return GetCreatorMappingFile(ProjectDataDirectory); }
+			get { return GetCreatorMappingFile(StaticDataDirectory); }
 		}
 
 		public static string GetCreatorMappingFile(string projectDataDirectory)
@@ -182,11 +182,15 @@ namespace Tasks.Commons
 			Mapped,
 		}
 
+		static ImplicitCreatorsReplacement()
+		{
+			s_creatorMappings = new ManualMapping<MappingCreator>(CreatorMappingFile);
+		}
+
 		public ImplicitCreatorsReplacement(string directory)
 		{
 			ProjectDataDirectory = Path.Combine(Configuration.DataDirectory, directory);
 			Directory.CreateDirectory(ProjectDataDirectory);
-			m_creatorMappings = new ManualMapping<MappingCreator>(CreatorMappingFile);
 			m_filesDatabase = ConnectFilesDatabase(true);
 		}
 
@@ -206,7 +210,7 @@ namespace Tasks.Commons
 		{
 			base.SaveOut();
 
-			m_creatorMappings.Serialize();
+			s_creatorMappings.Serialize();
 		}
 
 		/// <summary>
@@ -264,12 +268,17 @@ namespace Tasks.Commons
 			}
 			else
 			{
-				newAuthor = MapCreatorTemplate(worksheet, worksheet.Author, worksheet.AuthorParam, out replaceType);
+				newAuthor = MapCreatorTemplate(worksheet, true, out replaceType);
 			}
-			
+
+			if (string.IsNullOrEmpty(newAuthor))
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to replace author '{0}'.", worksheet.Author);
+				return false;
+			}
 			// found it, place creator and update
 			// do not make case-only changes
-			if (!string.IsNullOrEmpty(newAuthor) && !string.Equals(newAuthor, worksheet.Author, StringComparison.InvariantCultureIgnoreCase))
+			else if (!string.Equals(newAuthor, worksheet.Author, StringComparison.InvariantCultureIgnoreCase))
 			{
 				CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
 
@@ -285,7 +294,7 @@ namespace Tasks.Commons
 			}
 			else
 			{
-				ConsoleUtility.WriteLine(ConsoleColor.Red, "  Failed to replace author '{0}'.", worksheet.Author);
+				// no change desired
 				return false;
 			}
 		}
@@ -293,19 +302,28 @@ namespace Tasks.Commons
 		/// <summary>
 		/// If the specified string can be definitively mapped to a template (e.g. creator), returns the template.
 		/// </summary>
-		private string MapCreatorTemplate(CommonsFileWorksheet worksheet, string authorString, string authorParam, out CreatorReplaceType replaceType)
+		public static string MapCreatorTemplate(CommonsFileWorksheet worksheet, bool replaceableOnly)
+		{
+			return MapCreatorTemplate(worksheet, replaceableOnly, out CreatorReplaceType replaceType);
+		}
+
+		/// <summary>
+		/// If the specified string can be definitively mapped to a template (e.g. creator), returns the template.
+		/// </summary>
+		private static string MapCreatorTemplate(CommonsFileWorksheet worksheet, bool replaceableOnly, out CreatorReplaceType replaceType)
 		{
 			//TODO: if everything is in a language tag and every language tag comes up with the same result, replace
 
 			replaceType = CreatorReplaceType.Implicit;
+			string authorString = worksheet.Author;
 
 			if (IsConvertibleUnknownAuthor(authorString))
 			{
-				if (string.Equals(authorParam, "artist") || string.Equals(authorParam, "artist_display_name"))
+				if (string.Equals(worksheet.AuthorParam, "artist") || string.Equals(worksheet.AuthorParam, "artist_display_name"))
 				{
 					return "{{unknown|artist}}";
 				}
-				else if (string.Equals(authorParam, "photographer"))
+				else if (string.Equals(worksheet.AuthorParam, "photographer"))
 				{
 					return "{{unknown photographer}}";
 				}
@@ -354,10 +372,10 @@ namespace Tasks.Commons
 						ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  Already a creator");
 
 						//HACK: make sure this file is not still in the creator mappings
-						foreach (var kv in m_creatorMappings)
+						foreach (var kv in s_creatorMappings)
 						{
 							kv.Value.FromPages.Remove(worksheet.Article.title);
-							m_creatorMappings.SetDirty();
+							s_creatorMappings.SetDirty();
 						}
 
 						return "";
@@ -392,23 +410,27 @@ namespace Tasks.Commons
 			else if (CreatorUtility.InlineCreatorTemplateRegex.MatchOut(authorString, out Match inlineCreatorMatch))
 			{
 				// inline-QID creator: replace with named creator
-#if false
-				Entity entity = GlobalAPIs.Wikidata.GetEntity(inlineCreatorMatch.Groups[1].Value); //TODO: use cache
-				if (!Entity.IsNullOrMissing(entity))
+				if (!replaceableOnly)
 				{
-					PageTitle creator;
-					CommonsCreatorFromWikidata.TryMakeCreator(entity, out creator);
-					replaceType = CreatorReplaceType.Inline;
-					return "{{" + creator + "}}";
+					Entity entity = GlobalAPIs.Wikidata.GetEntity(inlineCreatorMatch.Groups[1].Value); //TODO: use cache
+					if (!Entity.IsNullOrMissing(entity))
+					{
+						PageTitle creator;
+						CommonsCreatorFromWikidata.TryMakeCreator(entity, out creator);
+						replaceType = CreatorReplaceType.Inline;
+						return "{{" + creator + "}}";
+					}
+					else
+					{
+						// QID is invalid
+						//TODO:?
+						return "";
+					}
 				}
 				else
 				{
-					// QID is invalid
-					//TODO:?
-					return "";
+					return ""; // not replaceable
 				}
-#endif
-				return ""; // this is fine
 			}
 
 			string authorTemplate = WikiUtils.GetOnlyTemplateName(authorString);
@@ -418,28 +440,37 @@ namespace Tasks.Commons
 			}
 			else if (authorTemplate.Equals("c", StringComparison.InvariantCultureIgnoreCase))
 			{
-#if false
-				string template = WikiUtils.ExtractTemplate(authorString, authorTemplate);
-				string category = WikiUtils.GetTemplateParameter(1, template);
-				PageTitle categoryPage = PageTitle.TryParse(category);
-				if (categoryPage.IsEmpty)
+				if (!replaceableOnly)
 				{
-					categoryPage = new PageTitle("Category", category);
-				}
+					string template = WikiUtils.ExtractTemplate(authorString, authorTemplate);
+					string category = WikiUtils.GetTemplateParameter(1, template);
+					PageTitle categoryPage = PageTitle.TryParse(category);
+					if (categoryPage.IsEmpty)
+					{
+						categoryPage = new PageTitle("Category", category);
+					}
 
-				PageTitle creator = GetCreatorFromCategories(null, new PageTitle[] { categoryPage }, 0);
-				if (!creator.IsEmpty)
+					PageTitle creator = GetCreatorFromCategories(null, new PageTitle[] { categoryPage }, 0);
+					if (!creator.IsEmpty)
+					{
+						return "{{" + creator + "}}";
+					}
+				}
+				else
 				{
-					return "{{" + creator + "}}";
+					return ""; // not replaceable
 				}
-#endif
-
-				return "";
 			}
 			else if (authorTemplate.StartsWith("#property", StringComparison.InvariantCultureIgnoreCase))
 			{
-				// just going to assume this is fine
-				return "";
+				if (!replaceableOnly)
+				{
+					//TODO:
+				}
+				else
+				{
+					return ""; // not replaceable
+				}
 			}
 
 			if (lifespanMatch.Success)
@@ -478,7 +509,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// Tries to map an author string that is already known to not be a template to a creator template.
 		/// </summary>
-		private bool TryMapNonTemplateString(CommonsFileWorksheet worksheet, string authorString, out CreatorTemplate creator, out CreatorReplaceType replaceType)
+		private static bool TryMapNonTemplateString(CommonsFileWorksheet worksheet, string authorString, out CreatorTemplate creator, out CreatorReplaceType replaceType)
 		{
 			creator = AutoMapNonTemplateAuthor(worksheet, authorString, out replaceType);
 			return !creator.IsEmpty;
@@ -487,7 +518,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// Tries to map a raw author string to a creator template.
 		/// </summary>
-		private CreatorTemplate AutoMapNonTemplateAuthor(CommonsFileWorksheet worksheet, string authorString, out CreatorReplaceType replaceType)
+		private static CreatorTemplate AutoMapNonTemplateAuthor(CommonsFileWorksheet worksheet, string authorString, out CreatorReplaceType replaceType)
 		{
 			replaceType = CreatorReplaceType.Implicit;
 
@@ -565,7 +596,7 @@ namespace Tasks.Commons
 			}
 
 			// manually map
-			MappingCreator mapping = m_creatorMappings.TryMapValue(authorString, PageTitle.Parse(worksheet.Article.title));
+			MappingCreator mapping = s_creatorMappings.TryMapValue(authorString, PageTitle.Parse(worksheet.Article.title));
 			if (mapping == null)
 			{
 				// null or empty authorString?
@@ -576,7 +607,7 @@ namespace Tasks.Commons
 				if (CreatorUtility.TryGetCreatorTemplate(mapping.MappedValue, out CreatorTemplate parsedCreator))
 				{
 					mapping.FromPages.Remove(worksheet.Article.title);
-					m_creatorMappings.SetDirty();
+					s_creatorMappings.SetDirty();
 					return parsedCreator;
 				}
 				else
@@ -618,8 +649,10 @@ namespace Tasks.Commons
 		/// </summary>
 		private static CreatorTemplate AutoMapMultiLanguage(string authorString, out CreatorReplaceType replaceType)
 		{
-			//TODO:
 			replaceType = CreatorReplaceType.Implicit;
+
+			//TODO: break down
+
 			return new CreatorTemplate();
 		}
 
