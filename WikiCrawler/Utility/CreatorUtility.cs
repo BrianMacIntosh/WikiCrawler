@@ -55,7 +55,7 @@ namespace MediaWiki
 
 		public static bool operator !=(CreatorTemplate a, CreatorTemplate b)
 		{
-			return a.Template != b.Template && a.Option != b.Option;
+			return a.Template != b.Template || a.Option != b.Option;
 		}
 
 		public PageTitle Template;
