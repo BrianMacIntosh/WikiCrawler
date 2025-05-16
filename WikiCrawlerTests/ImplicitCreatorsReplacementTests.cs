@@ -167,18 +167,11 @@ public class ImplicitCreatorsReplacementTests
 }}
 
 [[Category:Test Category]]");
-		Assert.IsTrue(replacement.DoReplacement(article));
-		Assert.AreEqual(
-@"=={{int:filedesc}}==
-{{Information
-|description=File description
-|date=1800
-|author={{Creator:August Macke}}
-|permission=
-}}
+		Assert.IsFalse(replacement.DoReplacement(article));
 
-[[Category:Test Category]]",
-			article.revisions[0].text);
+		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
+		Assert.AreEqual(creator, "{{Creator:August Macke}}");
+		Assert.AreEqual(replaceType, ImplicitCreatorsReplacement.CreatorReplaceType.Identity);
 	}
 
 	[TestMethod]
@@ -195,18 +188,125 @@ public class ImplicitCreatorsReplacementTests
 }}
 
 [[Category:Test Category]]");
-		Assert.IsTrue(replacement.DoReplacement(article));
-		Assert.AreEqual(
+		Assert.IsFalse(replacement.DoReplacement(article));
+
+		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
+		Assert.AreEqual(creator, "{{Creator:August Macke}}");
+		Assert.AreEqual(replaceType, ImplicitCreatorsReplacement.CreatorReplaceType.Identity);
+	}
+
+	[TestMethod]
+	public void OptionCreator()
+	{
+		ImplicitCreatorsReplacement replacement = new ImplicitCreatorsReplacement("FixImplicitCreators");
+		Article article = CreateArticle("File:Test.jpg",
 @"=={{int:filedesc}}==
 {{Information
 |description=File description
 |date=1800
-|author={{Creator:August Macke}}
+|author={{Creator:August Macke|circle of}}
 |permission=
 }}
 
-[[Category:Test Category]]",
-			article.revisions[0].text);
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+	}
+
+	[TestMethod]
+	public void DoubleOptionCreator()
+	{
+		ImplicitCreatorsReplacement replacement = new ImplicitCreatorsReplacement("FixImplicitCreators");
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator:August Macke|circle of}}{{Creator:August Macke|probably}}
+|permission=
+}}
+
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+	}
+
+	[TestMethod]
+	public void TwoTemplatesAndLifespan()
+	{
+		ImplicitCreatorsReplacement replacement = new ImplicitCreatorsReplacement("FixImplicitCreators");
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator:William Henry Bartlett}} and {{w|Robert Brandard}} (1805 – 1862)
+|permission=
+}}
+
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+	}
+
+	[TestMethod]
+	public void LiteralQID()
+	{
+		ImplicitCreatorsReplacement replacement = new ImplicitCreatorsReplacement("FixImplicitCreators");
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author=Q33981
+|permission=
+}}
+
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+
+		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
+		Assert.AreEqual(creator, "{{Creator:August Macke}}");
+		Assert.AreEqual(replaceType, ImplicitCreatorsReplacement.CreatorReplaceType.Identity);
+	}
+
+	[TestMethod]
+	public void QTemplate()
+	{
+		ImplicitCreatorsReplacement replacement = new ImplicitCreatorsReplacement("FixImplicitCreators");
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Q|Q33981}}
+|permission=
+}}
+
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+
+		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
+		Assert.AreEqual(creator, "{{Creator:August Macke}}");
+		Assert.AreEqual(replaceType, ImplicitCreatorsReplacement.CreatorReplaceType.Identity);
+	}
+
+	[TestMethod]
+	public void QTemplateRaw()
+	{
+		ImplicitCreatorsReplacement replacement = new ImplicitCreatorsReplacement("FixImplicitCreators");
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Q|33981}}
+|permission=
+}}
+
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+
+		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
+		Assert.AreEqual(creator, "{{Creator:August Macke}}");
+		Assert.AreEqual(replaceType, ImplicitCreatorsReplacement.CreatorReplaceType.Identity);
 	}
 
 	//TODO: test TryMapNonTemplateString

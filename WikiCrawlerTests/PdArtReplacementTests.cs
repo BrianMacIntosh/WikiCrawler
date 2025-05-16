@@ -480,4 +480,26 @@ public class PdArtReplacementTests
 [[Category:Test Category]]");
 		Assert.IsFalse(replacement.DoReplacement(article));
 	}
+
+	[TestMethod]
+	public void MultipleInlineCreator()
+	{
+		PdArtReplacement replacement = new PdArtReplacement();
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator|Wikidata=Q3504241}}
+{{Creator|Wikidata=Q4260905}}
+|permission=
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art}}
+
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+	}
 }
