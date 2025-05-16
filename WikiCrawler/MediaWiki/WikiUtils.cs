@@ -807,7 +807,7 @@ namespace MediaWiki
 				}
 				if (readIndex >= text.Length || text[readIndex] != '|')
 				{
-					while (IsLineReturn(text[span.end + 1]))
+					while (span.end + 1 < text.Length && IsLineReturn(text[span.end + 1]))
 					{
 						span.end++;
 					}
