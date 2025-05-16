@@ -241,6 +241,11 @@ namespace Tasks.Commons
 		/// </summary>
 		public static Entity GetWikidata(string name, string yearOfBirth, string yearOfDeath)
 		{
+			if (string.IsNullOrWhiteSpace(name))
+			{
+				return null;
+			}
+
 			WikidataSearch search = new WikidataSearch
 			{
 				Name = name,
