@@ -625,49 +625,14 @@ namespace Tasks.Commons
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    iwlink");
 
-				authorString = interwikiLinkMatch.Groups[2].Value.Trim();
+				authorString = interwikiLinkMatch.Groups[3].Value.Trim();
 
-				Article interwikiArticle = GetInterwikiPage(interwikiLinkMatch.Groups[1].Value, interwikiLinkMatch.Groups[2].Value);
-				if (!Article.IsNullOrMissing(interwikiArticle) && interwikiArticle.iwlinks != null)
+				Entity entity = GetInterwikiEntity(interwikiLinkMatch.Groups[1].Value, interwikiLinkMatch.Groups[2].Value);
+				if (!Entity.IsNullOrMissing(entity))
 				{
-					string qid = null;
-					PageTitle commonsPage = PageTitle.Empty;
-
-					foreach (InterwikiLink iwlink in interwikiArticle.iwlinks)
+					if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
 					{
-						if (iwlink.prefix == "d" && iwlink.value.StartsWith("Q"))
-						{
-							qid = iwlink.value;
-							Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
-
-							Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
-							if (!Entity.IsNullOrMissing(entity))
-							{
-								if (AuthorIs(authorString, entity))
-								{
-									if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
-									{
-										return entityCreator;
-									}
-								}
-								else
-								{
-									string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
-									ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Can't match '{0}' to '{1}'.", authorString, entityStr);
-								}
-							}
-						}
-						//HACK: does not actually find wikidata link, have to go through commons
-						else if (iwlink.prefix == "commons")
-						{
-							commonsPage = PageTitle.Parse(iwlink.value);
-						}
-					}
-
-					// if no wikidata but yes Commons, try to get WD from Commons
-					if (string.IsNullOrEmpty(qid) && !commonsPage.IsEmpty)
-					{
-						return GetCreatorFromCommonsPage(authorString, commonsPage);
+						return entityCreator;
 					}
 				}
 			}
@@ -969,41 +934,41 @@ namespace Tasks.Commons
 			}
 		}
 
-		private static Article GetInterwikiPage(string wiki, string page)
+		private static Dictionary<string, Entity> s_interwikiCache = new Dictionary<string, Entity>();
+
+		private static Entity GetInterwikiEntity(string prefix, string page)
 		{
-			//TODO: cache
-			switch (wiki.ToLowerInvariant())
+			string cachekey = prefix + ":" + page;
+			if (s_interwikiCache.TryGetValue(cachekey, out Entity cachedEntity))
 			{
-				case "w":
-				case "wikipedia":
-				case "en":
-					return GlobalAPIs.Wikipedia("en").GetPage(page, prop: "info|iwlinks");
-				case "ceb":
-				case "de":
-				case "fr":
-				case "sv":
-				case "nl":
-				case "ru":
-				case "es":
-				case "it":
-				case "pl":
-				case "arz":
-				case "zh":
-				case "ja":
-				case "uk":
-				case "vi":
-				case "war":
-				case "ar":
-				case "ptr":
-				case "fa":
-				case "ca":
-				case "id":
-				case "sr":
-				case "ko":
-					return GlobalAPIs.Wikipedia(wiki).GetPage(page, prop: "info|iwlinks");
-				default:
-					//TODO: implement more wikis
-					return null;
+				return cachedEntity;
+			}
+
+			Article interwikiArticle = GetInterwikiPage(prefix, page);
+			if (!Article.IsNullOrMissing(interwikiArticle) && interwikiArticle.pageprops.TryGetValue("wikibase_item", out string qid))
+			{
+				Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
+				Entity newEntity = GlobalAPIs.Wikidata.GetEntity(qid);
+				s_interwikiCache[cachekey] = newEntity;
+				return newEntity;
+			}
+			else
+			{
+				return null;
+			}
+		}
+
+		private static Article GetInterwikiPage(string prefix, string page)
+		{
+			if (GlobalAPIs.Commons.GetInterwikiMap().TryGetValue(prefix, out InterwikiConfig iw))
+			{
+				Uri uri = new Uri(iw.url);
+				Article newArt = GlobalAPIs.ByHost(uri.Scheme + "://" + uri.Host).GetPage(page, prop: "pageprops", ppprop: "wikibase_item", redirects: true);
+				return newArt;
+			}
+			else
+			{
+				return null;
 			}
 		}
 

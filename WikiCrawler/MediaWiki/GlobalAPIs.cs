@@ -48,6 +48,22 @@ namespace MediaWiki
 				return apinew;
 			}
 		}
-		private static Dictionary<string, Api> s_wikipedias = new Dictionary<string, Api>();
+		private static Dictionary<string, Api> s_wikipedias = new Dictionary<string, Api>(StringComparer.OrdinalIgnoreCase);
+
+		public static Api ByHost(string url)
+		{
+			if (s_byHost.TryGetValue(url, out Api api))
+			{
+				return api;
+			}
+			else
+			{
+				Api apinew = new Api(new Uri(url));
+				apinew.AutoLogIn();
+				s_byHost[url] = apinew;
+				return apinew;
+			}
+		}
+		private static Dictionary<string, Api> s_byHost = new Dictionary<string, Api>(StringComparer.OrdinalIgnoreCase);
 	}
 }

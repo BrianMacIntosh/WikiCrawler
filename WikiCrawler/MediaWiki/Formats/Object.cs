@@ -37,6 +37,7 @@ namespace MediaWiki
 		public string title;
 		public long lastrevid;
 		public InterwikiLink[] iwlinks;
+		public Dictionary<string, string> pageprops;
 		public bool missing = false;
 
 		public Dictionary<string, object> raw;
@@ -73,6 +74,10 @@ namespace MediaWiki
 			{
 				iwlinks = ReadInterwikiLinkArray(json, "iwlinks");
 			}
+			if (json.ContainsKey("pageprops"))
+			{
+				pageprops = ReadPageProps(json, "pageprops");
+			}
 		}
 
 		private static InterwikiLink[] ReadInterwikiLinkArray(Dictionary<string, object> json, string key)
@@ -85,6 +90,16 @@ namespace MediaWiki
 				iwlinks[c] = new InterwikiLink(revJson);
 			}
 			return iwlinks;
+		}
+
+		private static Dictionary<string, string> ReadPageProps(Dictionary<string, object> json, string key)
+		{
+			Dictionary<string, string> pageprops = new Dictionary<string, string>();
+			foreach (var kv in (Dictionary<string, object>)json[key])
+			{
+				pageprops.Add(kv.Key, (string)kv.Value);
+			}
+			return pageprops;
 		}
 
 		/// <summary>

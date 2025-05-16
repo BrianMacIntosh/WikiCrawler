@@ -120,6 +120,7 @@
     <Compile Include="Batch\ProjectConfig.cs" />
     <Compile Include="Batch\UWash\MohaiCreditFix.cs" />
     <Compile Include="MediaWiki\Formats\ImageInfo.cs" />
+    <Compile Include="MediaWiki\Formats\InterwikiConfig.cs" />
     <Compile Include="MediaWiki\Formats\Revision.cs" />
     <Compile Include="MediaWiki\GlobalAPIs.cs" />
     <Compile Include="MediaWiki\PageTitle.cs" />
@@ -130,6 +131,7 @@
     <Compile Include="Tasks\Commons\ContribsSummary.cs" />
     <Compile Include="Tasks\Commons\CreatorPossible.cs" />
     <Compile Include="Tasks\Commons\ImplicitCreatorsHistorical.cs" />
+    <Compile Include="Tasks\Commons\PdArtFixup\PdArtInterwikiRerun.cs" />
     <Compile Include="Tasks\ReplaceInCategories.cs" />
     <Compile Include="Tasks\Wikimedia\NullEditLinks.cs" />
     <Compile Include="Tasks\Commons\PdArtFixup\PdArtDatabaseRerun.cs" />

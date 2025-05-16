@@ -188,9 +188,14 @@ namespace MediaWiki
 			string iiprop = "",
 			int iilimit = Limit.Unspecified,
 			string rvprop = "content",
-			int rvlimit = Limit.Unspecified)
+			int rvlimit = Limit.Unspecified,
+			string ppprop = "",
+			bool redirects = false)
 		{
-			return GetPage(page.title, prop, iiprop, iilimit, rvprop, rvlimit);
+			return GetPage(page.title, redirects: redirects, prop: prop,
+				iiprop: iiprop, iilimit: iilimit,
+				rvprop: rvprop, rvlimit: rvlimit,
+				ppprop: ppprop);
 		}
 
 		/// <summary>
@@ -208,9 +213,13 @@ namespace MediaWiki
 			string clshow = "",
 			int cllimit = Limit.Max,
 			string cldir = "",
-			string iwprefix = "")
+			string iwprefix = "",
+			bool redirects = false)
 		{
-			return GetPages(new string[] { title.ToString() }, prop, iiprop, iilimit, rvprop, rvlimit, rvstart, rvend, rvdir, clshow, cllimit, cldir, iwprefix)[0];
+			return GetPages(new string[] { title.ToString() }, prop: prop, redirects: redirects,
+				iiprop: iiprop, iilimit: iilimit,
+				rvprop: rvprop, rvlimit: rvlimit, rvstart: rvstart, rvend: rvend, rvdir: rvdir,
+				clshow: clshow, cllimit: cllimit, cldir: cldir, iwprefix: iwprefix)[0];
 		}
 
 		/// <summary>
@@ -223,14 +232,21 @@ namespace MediaWiki
 			string rvprop = "content",
 			int rvlimit = Limit.Unspecified,
 			string rvstart = "",
+			string ppprop = "",
 			string rvend = "",
 			string rvdir = "",
 			string clshow = "",
 			int cllimit = Limit.Max,
 			string cldir = "",
-			string iwprefix = "")
+			string iwprefix = "",
+			bool redirects = false)
 		{
-			return GetPages(new string[] { title }, prop, iiprop, iilimit, rvprop, rvlimit, rvstart, rvend, rvdir, clshow, cllimit, cldir, iwprefix)[0];
+			return GetPages(new string[] { title }, prop: prop,
+				iiprop: iiprop, iilimit: iilimit,
+				rvprop: rvprop, rvlimit, rvstart: rvstart, rvend: rvend, rvdir: rvdir,
+				ppprop: ppprop,
+				clshow: clshow, cllimit: cllimit, cldir: cldir, iwprefix: iwprefix,
+				redirects: redirects)[0];
 		}
 
 		/// <summary>
@@ -245,7 +261,9 @@ namespace MediaWiki
 		{
 			return GetPages(
 				articles.Select(art => art.title).ToList(),
-				prop, iiprop, iilimit, rvprop, rvlimit);
+				prop: prop,
+				iiprop: iiprop, iilimit: iilimit,
+				rvprop: rvprop, rvlimit: rvlimit);
 		}
 
 		/// <summary>
@@ -260,10 +278,12 @@ namespace MediaWiki
 			string rvstart = "",
 			string rvend = "",
 			string rvdir = "",
+			string ppprop = "",
 			string clshow = "",
 			int cllimit = Limit.Max,
 			string cldir = "",
-			string iwprefix = "")
+			string iwprefix = "",
+			bool redirects = false)
 		{
 			if (titles.Count == 0) return new Article[0];
 
@@ -303,6 +323,10 @@ namespace MediaWiki
 			{
 				baseQuery += "&rvlimit=" + GetLimitParameter(rvlimit);
 			}
+			if (!string.IsNullOrEmpty(ppprop))
+			{
+				baseQuery += "&ppprop=" + UrlEncode(ppprop);
+			}
 			if (!string.IsNullOrEmpty(clshow))
 			{
 				baseQuery += "&clshow=" + UrlEncode(clshow);
@@ -318,6 +342,10 @@ namespace MediaWiki
 			if (!string.IsNullOrEmpty(iwprefix))
 			{
 				baseQuery += "&iwprefix=" + UrlEncode(iwprefix);
+			}
+			if (redirects)
+			{
+				baseQuery += "&redirects=1";
 			}
 
 			LogApiRequest("query", GetOneOrMany(titles));
@@ -860,6 +888,55 @@ namespace MediaWiki
 				}
 			}
 			while (doContinue);
+		}
+
+		private static Dictionary<string, InterwikiConfig> s_interwikiPrefixMap;
+
+		/// <summary>
+		/// Returns the interwiki map for this wiki.
+		/// </summary>
+		public Dictionary<string, InterwikiConfig> GetInterwikiMap()
+		{
+			if (s_interwikiPrefixMap == null)
+			{
+				s_interwikiPrefixMap = new Dictionary<string, InterwikiConfig>(StringComparer.OrdinalIgnoreCase);
+				foreach (InterwikiConfig iwc in RawGetInterwikiMap())
+				{
+					s_interwikiPrefixMap.Add(iwc.prefix, iwc);
+				}
+			}
+			return s_interwikiPrefixMap;
+		}
+
+		/// <summary>
+		/// Returns the interwiki map for this wiki.
+		/// </summary>
+		private IEnumerable<InterwikiConfig> RawGetInterwikiMap(string sifilteriw = "")
+		{
+			string query = "format=json" +
+				"&action=query" +
+				"&meta=siteinfo" +
+				"&siprop=interwikimap";
+			if (!string.IsNullOrEmpty(sifilteriw))
+			{
+				query += "&sifilteriw=" + UrlEncode(sifilteriw);
+			}
+
+			LogApiRequest("query-interwikimap");
+
+			//Read response
+			string json;
+			using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, query)))
+			{
+				json = read.ReadToEnd();
+			}
+
+			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+			foreach (Dictionary<string, object> iw in (object[])((Dictionary<string, object>)deser["query"])["interwikimap"])
+			{
+				yield return new InterwikiConfig(iw);
+			}
+
 		}
 
 		public bool UploadFromWeb(Article newpage, string url, string summary, bool bot = true)
