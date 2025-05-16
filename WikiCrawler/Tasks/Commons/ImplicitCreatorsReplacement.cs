@@ -227,7 +227,7 @@ namespace Tasks.Commons
 				|| string.Equals(author, "anonymous plate", StringComparison.InvariantCultureIgnoreCase); // don't know what to replace this with
 		}
 
-		private enum CreatorReplaceType
+		public enum CreatorReplaceType
 		{
 			Implicit,
 			Inline,
@@ -238,6 +238,8 @@ namespace Tasks.Commons
 			/// No actual change made.
 			/// </summary>
 			Identity,
+
+			None
 		}
 
 		static ImplicitCreatorsReplacement()
@@ -373,7 +375,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// If the specified string can be definitively mapped to a template (e.g. creator), returns the template.
 		/// </summary>
-		private static string MapAuthorTemplate(CommonsFileWorksheet worksheet, out CreatorReplaceType replaceType)
+		public static string MapAuthorTemplate(CommonsFileWorksheet worksheet, out CreatorReplaceType replaceType)
 		{
 			//TODO: if everything is in a language tag and every language tag comes up with the same result, replace
 
@@ -534,7 +536,7 @@ namespace Tasks.Commons
 			{
 				// not a template
 			}
-			else if (authorTemplate.Equals("c", StringComparison.InvariantCultureIgnoreCase))
+			else if (authorTemplate.Equals("c", StringComparison.OrdinalIgnoreCase))
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    'c' Template");
 
@@ -553,11 +555,41 @@ namespace Tasks.Commons
 					return creator;
 				}
 			}
-			else if (authorTemplate.StartsWith("#property", StringComparison.InvariantCultureIgnoreCase))
+			else if (authorTemplate.Equals("q", StringComparison.OrdinalIgnoreCase))
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    Q template");
+
+				string template = WikiUtils.ExtractTemplate(authorString, authorTemplate);
+				string id = WikiUtils.GetTemplateParameter(1, template);
+				if (Wikidata.TryUnQidify(id, out int authorQid)
+					|| int.TryParse(id, out authorQid))
+				{
+					Entity entity = GlobalAPIs.Wikidata.GetEntity("Q" + authorQid);
+					if (!Entity.IsNullOrMissing(entity) && CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle qidCreator))
+					{
+						replaceType = CreatorReplaceType.Identity;
+						return qidCreator;
+					}
+				}
+			}
+			else if (authorTemplate.StartsWith("#property", StringComparison.OrdinalIgnoreCase))
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    #property invocation");
 
 				//TODO:
+			}
+
+			// literal qid
+			if (Wikidata.TryUnQidify(authorString, out int literalQid))
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    Literal QID");
+
+				Entity entity = GlobalAPIs.Wikidata.GetEntity("Q" + literalQid);
+				if (!Entity.IsNullOrMissing(entity) && CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle literalQidCreator))
+				{
+					replaceType = CreatorReplaceType.Identity;
+					return literalQidCreator;
+				}
 			}
 
 			if (lifespanMatch.Success)
@@ -777,7 +809,7 @@ namespace Tasks.Commons
 		/// </summary>
 		private static CreatorTemplate AutoMapMultiLanguage(CommonsFileWorksheet worksheet, string authorString, out CreatorReplaceType replaceType)
 		{
-			replaceType = CreatorReplaceType.Implicit;
+			replaceType = CreatorReplaceType.None;
 
 			// if all the language templates produce the same creator, the creator
 			CreatorTemplate matchedCreator = new CreatorTemplate();
@@ -789,6 +821,7 @@ namespace Tasks.Commons
 					replaceType = CombineReplaceType(replaceType, subReplaceType);
 					if (!string.IsNullOrWhiteSpace(subCreator.Option))
 					{
+						replaceType = CreatorReplaceType.None;
 						ConsoleUtility.WriteLine(ConsoleColor.Red, "    Creator template with Option.");
 						return new CreatorTemplate();
 					}
@@ -799,6 +832,7 @@ namespace Tasks.Commons
 					else if (matchedCreator != subCreator)
 					{
 						// non-matching parsed creator
+						replaceType = CreatorReplaceType.None;
 						ConsoleUtility.WriteLine(ConsoleColor.Red, "    Multiple non-matching creators.");
 						return new CreatorTemplate();
 					}
@@ -806,6 +840,7 @@ namespace Tasks.Commons
 				else
 				{
 					// unparsed creator
+					replaceType = CreatorReplaceType.None;
 					ConsoleUtility.WriteLine(ConsoleColor.Red, "    Failed to parse component.");
 					return new CreatorTemplate();
 				}

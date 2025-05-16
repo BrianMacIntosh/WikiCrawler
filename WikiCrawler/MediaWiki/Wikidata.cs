@@ -79,40 +79,6 @@ namespace MediaWiki
 		}
 
 		/// <summary>
-		/// Converts an author string to a QID.
-		/// </summary>
-		public static bool TryAuthorToQid(string author, out int outQid)
-		{
-			author = author.Trim();
-
-			//TODO: handle Creator?
-
-			// Q template
-			string q = WikiUtils.ExtractTemplate(author, "Q");
-			if (q == author)
-			{
-				string id = WikiUtils.GetTemplateParameter(1, q);
-				if (TryUnQidify(id, out outQid))
-				{
-					return true;
-				}
-				else if (int.TryParse(id, out outQid))
-				{
-					return true;
-				}
-			}
-
-			// literal qid
-			if (TryUnQidify(author, out outQid))
-			{
-				return true;
-			}
-
-			outQid = 0;
-			return false;
-		}
-
-		/// <summary>
 		/// Gets the Wikidata property id for the specified parameter of Commons "Authority control".
 		/// </summary>
 		/// <param name="authority"></param>

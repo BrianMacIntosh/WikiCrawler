@@ -792,15 +792,6 @@ OtherLicense: {8}",
 						}
 					}
 				}
-				//TODO: remove to MapCreatorTemplate
-				else if (Wikidata.TryAuthorToQid(author, out int authorQid))
-				{
-					CreatorData creator = WikidataCache.GetPersonData(authorQid);
-					if (creator != null)
-					{
-						return creator;
-					}
-				}
 			}
 
 			// D. does author string contain a death date?
