@@ -579,13 +579,24 @@ namespace Tasks.Commons
 				string template = WikiUtils.ExtractTemplate(authorString, authorTemplate);
 				string pageName = WikiUtils.GetTemplateParameter(1, template);
 				string iwPrefix = WikiUtils.GetTemplateParameter(3, template);
-				if (string.IsNullOrWhiteSpace(iwPrefix))
-				{
-					iwPrefix = "en";
-				}
 				string catRequest = WikiUtils.GetTemplateParameter(4, template);
 				if (string.IsNullOrEmpty(catRequest))
 				{
+					if (string.IsNullOrWhiteSpace(iwPrefix))
+					{
+						// check if the page name erroneously contains the prefix
+						string[] pageNameSplit = pageName.Split(new char[] { ':' }, 2);
+						if (pageNameSplit.Length == 2)
+						{
+							iwPrefix = pageNameSplit[0];
+							pageName = pageNameSplit[1];
+						}
+						else
+						{
+							iwPrefix = "en";
+						}
+					}
+
 					Entity entity = GetInterwikiEntity(iwPrefix, pageName);
 					if (!Entity.IsNullOrMissing(entity) && CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle qidCreator))
 					{
