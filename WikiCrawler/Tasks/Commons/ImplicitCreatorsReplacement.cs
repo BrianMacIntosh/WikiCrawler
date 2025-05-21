@@ -572,6 +572,27 @@ namespace Tasks.Commons
 					}
 				}
 			}
+			else if (authorTemplate.Equals("w", StringComparison.OrdinalIgnoreCase))
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    W template");
+
+				string template = WikiUtils.ExtractTemplate(authorString, authorTemplate);
+				string pageName = WikiUtils.GetTemplateParameter(1, template);
+				string iwPrefix = WikiUtils.GetTemplateParameter(3, template);
+				if (string.IsNullOrWhiteSpace(iwPrefix))
+				{
+					iwPrefix = "en";
+				}
+				string catRequest = WikiUtils.GetTemplateParameter(4, template);
+				if (string.IsNullOrEmpty(catRequest))
+				{
+					Entity entity = GetInterwikiEntity(iwPrefix, pageName);
+					if (!Entity.IsNullOrMissing(entity) && CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle qidCreator))
+					{
+						return qidCreator;
+					}
+				}
+			}
 			else if (authorTemplate.StartsWith("#property", StringComparison.OrdinalIgnoreCase))
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    #property invocation");
