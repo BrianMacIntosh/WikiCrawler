@@ -47,7 +47,7 @@ namespace MediaWiki
 			if (json.ContainsKey("descriptions"))
 				descriptions = ParseLanguageValue((Dictionary<string, object>)json["descriptions"]);
 
-			claims = new Dictionary<string, Claim[]>(StringComparer.InvariantCultureIgnoreCase);
+			claims = new Dictionary<string, Claim[]>(StringComparer.OrdinalIgnoreCase);
 			if (json.ContainsKey("claims"))
 			{
 				Dictionary<string, object> claimData = (Dictionary<string, object>)json["claims"];
@@ -63,7 +63,7 @@ namespace MediaWiki
 				}
 			}
 
-			sitelinks = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+			sitelinks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 			if (json.ContainsKey("sitelinks"))
 			{
 				Dictionary<string, object> sitelinkData = (Dictionary<string, object>)json["sitelinks"];

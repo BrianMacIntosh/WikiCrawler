@@ -30,7 +30,7 @@ namespace WikiCrawler
 				{
 					if (typeof(Tasks.BaseTask).IsAssignableFrom(type))
 					{
-						if (type.Name.Equals(taskName, StringComparison.InvariantCultureIgnoreCase))
+						if (type.Name.Equals(taskName, StringComparison.OrdinalIgnoreCase))
 						{
 							taskType = type;
 							break;

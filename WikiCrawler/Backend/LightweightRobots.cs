@@ -85,20 +85,20 @@ namespace LightweightRobots
                 if (line.Length < 2) continue;
                 if (line[0][0] == '#') continue;
 
-                if (string.Equals(line[0], "user-agent:", StringComparison.InvariantCultureIgnoreCase))
+                if (string.Equals(line[0], "user-agent:", StringComparison.OrdinalIgnoreCase))
                 {
                     currentagent = line[1].ToLower();
                     allow[currentagent] = new HashTreeNode(true, "/");
                 }
-                else if (string.Equals(line[0], "disallow:", StringComparison.InvariantCultureIgnoreCase))
+                else if (string.Equals(line[0], "disallow:", StringComparison.OrdinalIgnoreCase))
                 {
                     allow[currentagent].AddPattern(false, line[1]);
                 }
-                else if (string.Equals(line[0], "allow:", StringComparison.InvariantCultureIgnoreCase))
+                else if (string.Equals(line[0], "allow:", StringComparison.OrdinalIgnoreCase))
                 {
                     allow[currentagent].AddPattern(true, line[1]);
                 }
-                else if (string.Equals(line[0], "crawl-delay:", StringComparison.InvariantCultureIgnoreCase))
+                else if (string.Equals(line[0], "crawl-delay:", StringComparison.OrdinalIgnoreCase))
                 {
                     try
                     {
@@ -113,7 +113,7 @@ namespace LightweightRobots
 
                     }
                 }
-                else if (string.Equals(line[0], "sitemap:", StringComparison.InvariantCultureIgnoreCase))
+                else if (string.Equals(line[0], "sitemap:", StringComparison.OrdinalIgnoreCase))
                 {
                     sitemapstemp.Add(line[1]);
                 }

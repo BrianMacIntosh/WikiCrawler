@@ -49,7 +49,7 @@ namespace NPGallery
 
 				Guid key = StringToKey(Path.GetFileNameWithoutExtension(file));
 				string bestFileName = Path.Combine(Path.GetDirectoryName(file), key.ToString() + Path.GetExtension(file));
-				if (!string.Equals(Path.GetFullPath(file), Path.GetFullPath(bestFileName), StringComparison.InvariantCultureIgnoreCase))
+				if (!string.Equals(Path.GetFullPath(file), Path.GetFullPath(bestFileName), StringComparison.OrdinalIgnoreCase))
 				{
 					if (File.Exists(bestFileName))
 					{

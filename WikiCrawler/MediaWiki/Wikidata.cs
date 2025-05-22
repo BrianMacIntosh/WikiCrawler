@@ -294,15 +294,15 @@ namespace MediaWiki
 
 		public static WikidataRank ParseRankChecked(string rank)
 		{
-			if (rank.Equals("deprecated", StringComparison.InvariantCultureIgnoreCase))
+			if (rank.Equals("deprecated", StringComparison.OrdinalIgnoreCase))
 			{
 				return WikidataRank.Deprecated;
 			}
-			else if (rank.Equals("normal", StringComparison.InvariantCultureIgnoreCase))
+			else if (rank.Equals("normal", StringComparison.OrdinalIgnoreCase))
 			{
 				return WikidataRank.Normal;
 			}
-			else if (rank.Equals("preferred", StringComparison.InvariantCultureIgnoreCase))
+			else if (rank.Equals("preferred", StringComparison.OrdinalIgnoreCase))
 			{
 				return WikidataRank.Preferred;
 			}

@@ -240,7 +240,7 @@ namespace Tasks.Commons
 					m = match.Groups["m"].Value;
 					foreach (string key in monthnames.Keys)
 					{
-						if (key.Equals(m, StringComparison.InvariantCultureIgnoreCase))
+						if (key.Equals(m, StringComparison.OrdinalIgnoreCase))
 						{
 							m = monthnames[key];
 							break;

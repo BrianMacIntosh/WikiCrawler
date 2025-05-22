@@ -61,7 +61,7 @@ namespace WikiCrawler
 		/// <summary>
 		/// Tags mapped to Commons categories.
 		/// </summary>
-		private static Dictionary<string, CategoryMappingData> s_categoryMap = new Dictionary<string, CategoryMappingData>(StringComparer.InvariantCultureIgnoreCase);
+		private static Dictionary<string, CategoryMappingData> s_categoryMap = new Dictionary<string, CategoryMappingData>(StringComparer.OrdinalIgnoreCase);
 
 		private static Dictionary<string, Article> s_extantCategories = new Dictionary<string, Article>();
 
