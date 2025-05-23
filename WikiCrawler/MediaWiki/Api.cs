@@ -322,6 +322,7 @@ namespace MediaWiki
 			{
 				baseQuery += "&redirects=1";
 			}
+			baseQuery += "&curtimestamp=1"; //OPT: only needed if we intend to edit the page
 
 			LogApiRequest("query", GetOneOrMany(titles));
 
@@ -346,7 +347,12 @@ namespace MediaWiki
 					Dictionary<string, object> jsonData = (Dictionary<string, object>)page.Value;
 					if (!jsonData.ContainsKey("invalid"))
 					{
-						yield return new Article(jsonData);
+						Article article = new Article(jsonData);
+						if (result.TryGetValue("curtimestamp", out object curtimestamp))
+						{
+							article.starttimestamp = (string)curtimestamp;
+						}
+						yield return article;
 					}
 				}
 			}
