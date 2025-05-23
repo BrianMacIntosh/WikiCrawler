@@ -1344,12 +1344,12 @@ namespace MediaWiki
 
 		private void LogApiRequest(string endpoint)
 		{
-			ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "    API request '{0}' ({1})", endpoint, UrlApi);
+			ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "    API request '{0}' ({1})", endpoint, UrlApi.Host);
 		}
 
 		private void LogApiRequest(string endpoint, object param)
 		{
-			ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "    API request '{0}' ({1}): {2}", endpoint, UrlApi, param);
+			ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "    API request '{0}' ({1}): {2}", endpoint, UrlApi.Host, param);
 		}
 
 		private Dictionary<string, object> ParseResponse(string responseJson)
