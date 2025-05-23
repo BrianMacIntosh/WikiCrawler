@@ -109,7 +109,7 @@ namespace Tasks
                             img = string.Join("/", components);
 
 							Article article = new Article();
-                            article.title = "Last Enemy illustration " + count.ToString("00") + Path.GetExtension(img);
+                            article.title = new PageTitle(PageTitle.NS_File, "Last Enemy illustration " + count.ToString("00") + Path.GetExtension(img));
                             article.revisions = new Revision[1];
                             article.revisions[0] = new Revision();
                             article.revisions[0].text = @"=={{int:filedesc}}==

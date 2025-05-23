@@ -13,11 +13,11 @@ public class WatermarkRemoval
 	/// <summary>
 	/// The category to act on.
 	/// </summary>
-	private string m_commonsCategory;
+	private PageTitle m_commonsCategory;
 
 	private static WebClient s_client = new WebClient();
 
-	public WatermarkRemoval(string commonsCategory)
+	public WatermarkRemoval(PageTitle commonsCategory)
 	{
 		m_commonsCategory = commonsCategory;
 	}
@@ -33,7 +33,7 @@ public class WatermarkRemoval
 		}
 		foreach (Article article in GlobalAPIs.Commons.GetCategoryEntries(m_commonsCategory, cmtype: CMType.file))
 		{
-			string safeTitle = article.GetTitle();
+			string safeTitle = article.title.Name;
 			safeTitle = string.Join("_", safeTitle.Split(Path.GetInvalidFileNameChars()));
 			safeTitle = string.Join("_", safeTitle.Split(Path.GetInvalidPathChars()));
 

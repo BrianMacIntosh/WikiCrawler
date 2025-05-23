@@ -15,13 +15,13 @@ namespace NPGallery
 			string[] allLines = File.ReadAllLines("E:\\WikiData\\npgallery\\temp.txt");
 			foreach (string line in allLines)
 			{
-				if (line.StartsWith("File:Back of \""))
+				PageTitle backFile = PageTitle.Parse(line);
+				if (backFile.IsNamespace(PageTitle.NS_File) && backFile.Name.StartsWith("Back of \""))
 				{
-					string backFile = line;
 					string frontName = ExtractFrontName(backFile);
-					string frontFile = FindFrontFile(frontName, allLines);
+					PageTitle frontFile = FindFrontFile(frontName, allLines);
 
-					if (string.IsNullOrEmpty(frontFile))
+					if (frontFile.IsEmpty)
 					{
 						Console.WriteLine("No front for '" + backFile + "'");
 					}
@@ -29,7 +29,7 @@ namespace NPGallery
 					{
 						Console.WriteLine("Front is '" + frontFile + "'");
 
-						Article[] arts = api.GetPages(new string[] { backFile, frontFile });
+						Article[] arts = api.GetPages(new PageTitle[] { backFile, frontFile });
 						{
 							string backText = arts[0].revisions[0].text;
 							string template = "{{Other|" + frontFile + "|Front side|suppress=yes}}";
@@ -70,11 +70,11 @@ namespace NPGallery
 			}
 		}
 
-		private static Regex m_backFile = new Regex("File:Back of \"([^\"]+)\" \\([A-Za-z0-9\\-]+\\).[A-Za-z]+");
+		private static Regex m_backFile = new Regex("Back of \"([^\"]+)\" \\([A-Za-z0-9\\-]+\\).[A-Za-z]+");
 
-		private static string ExtractFrontName(string backFile)
+		private static string ExtractFrontName(PageTitle backFile)
 		{
-			Match match = m_backFile.Match(backFile);
+			Match match = m_backFile.Match(backFile.Name);
 			if (match.Success)
 			{
 				return match.Groups[1].Value;
@@ -85,17 +85,18 @@ namespace NPGallery
 			}
 		}
 
-		private static string FindFrontFile(string name, string[] allLines)
+		private static PageTitle FindFrontFile(string name, string[] allLines)
 		{
-			string needle = "File:" + name + " (";
+			string needle = name + " (";
 			foreach (string line in allLines)
 			{
-				if (line.StartsWith(needle))
+				PageTitle lineTitle = PageTitle.Parse(line);
+				if (lineTitle.IsNamespace(PageTitle.NS_File) && lineTitle.Name.StartsWith(needle))
 				{
-					return line;
+					return lineTitle;
 				}
 			}
-			return string.Empty;
+			return PageTitle.Empty;
 		}
 	}
 }

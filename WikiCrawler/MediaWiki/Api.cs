@@ -152,7 +152,7 @@ namespace MediaWiki
 			if (redirectMatch.Success)
 			{
 				//TODO: get same props original article asked for
-				return GetPage(redirectMatch.Groups[1].Value);
+				return GetPage(PageTitle.Parse(redirectMatch.Groups[1].Value));
 			}
 			else
 			{
@@ -170,7 +170,7 @@ namespace MediaWiki
 			if (redirectMatch.Success)
 			{
 				//TODO: get same props original article asked for
-				article = GetPage(redirectMatch.Groups[1].Value);
+				article = GetPage(PageTitle.Parse(redirectMatch.Groups[1].Value));
 				return FollowRedirects(article);
 			}
 			else
@@ -210,43 +210,18 @@ namespace MediaWiki
 			string rvstart = "",
 			string rvend = "",
 			string rvdir = "",
+			string ppprop = "",
 			string clshow = "",
 			int cllimit = Limit.Max,
 			string cldir = "",
 			string iwprefix = "",
 			bool redirects = false)
 		{
-			return GetPages(new string[] { title.ToString() }, prop: prop, redirects: redirects,
+			return GetPages(new PageTitle[] { title }, prop: prop, redirects: redirects,
 				iiprop: iiprop, iilimit: iilimit,
 				rvprop: rvprop, rvlimit: rvlimit, rvstart: rvstart, rvend: rvend, rvdir: rvdir,
-				clshow: clshow, cllimit: cllimit, cldir: cldir, iwprefix: iwprefix)[0];
-		}
-
-		/// <summary>
-		/// Returns the Wiki text of the specified page
-		/// </summary>
-		public Article GetPage(string title,
-			string prop = "info|revisions",
-			string iiprop = "",
-			int iilimit = Limit.Unspecified,
-			string rvprop = "content",
-			int rvlimit = Limit.Unspecified,
-			string rvstart = "",
-			string ppprop = "",
-			string rvend = "",
-			string rvdir = "",
-			string clshow = "",
-			int cllimit = Limit.Max,
-			string cldir = "",
-			string iwprefix = "",
-			bool redirects = false)
-		{
-			return GetPages(new string[] { title }, prop: prop,
-				iiprop: iiprop, iilimit: iilimit,
-				rvprop: rvprop, rvlimit, rvstart: rvstart, rvend: rvend, rvdir: rvdir,
 				ppprop: ppprop,
-				clshow: clshow, cllimit: cllimit, cldir: cldir, iwprefix: iwprefix,
-				redirects: redirects)[0];
+				clshow: clshow, cllimit: cllimit, cldir: cldir, iwprefix: iwprefix)[0];
 		}
 
 		/// <summary>
@@ -269,7 +244,7 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns the Wiki text for all of the specified pages
 		/// </summary>
-		public Article[] GetPages(IList<string> titles,
+		public Article[] GetPages(IList<PageTitle> titles,
 			string prop = "info|revisions",
 			string iiprop = "",
 			int iilimit = Limit.Unspecified,
@@ -426,7 +401,7 @@ namespace MediaWiki
 
 			string baseQuery = "format=json"
 				+ "&action=edit"
-				+ "&title=" + UrlEncode(newpage.title)
+				+ "&title=" + UrlEncode(newpage.title.FullTitle)
 				+ "&text=" + UrlEncode(newpage.revisions[0].text)
 				+ "&summary=" + UrlEncode(summary)
 				//+ "&md5=" + UrlEncode(md5)
@@ -528,14 +503,14 @@ namespace MediaWiki
 		/// </summary>
 		public bool PurgePages(IList<Article> inpages)
 		{
-			List<string> pagenames = inpages.Select(page => page.title).ToList();
+			List<PageTitle> pagenames = inpages.Select(page => page.title).ToList();
 			return PurgePages(pagenames);
 		}
 
 		/// <summary>
 		/// Purges the cache for the specified pages.
 		/// </summary>
-		public bool PurgePages(IList<string> inpages)
+		public bool PurgePages(IList<PageTitle> inpages)
 		{
 			if (inpages.Count == 0) return true;
 
@@ -620,7 +595,7 @@ namespace MediaWiki
 		/// <summary>
 		/// Searches for entities with the specified title.
 		/// </summary>
-		public string[] SearchEntities(string search, string language = "en")
+		public IEnumerable<QId> SearchEntities(string search, string language = "en")
 		{
 			string baseQuery = "format=json"
 				+ "&action=wbsearchentities"
@@ -643,13 +618,10 @@ namespace MediaWiki
 			//Parse and read
 			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
 			object[] searchJson = (object[])deser["search"];
-			string[] results = new string[searchJson.Length];
 			for (int c = 0; c < searchJson.Length; c++)
 			{
-				results[c] = (string)((Dictionary<string, object>)searchJson[c])["id"];
+				yield return QId.Parse((string)((Dictionary<string, object>)searchJson[c])["id"]);
 			}
-
-			return results;
 		}
 
 		public bool CreateEntityClaim(Entity entity, string property, string value, string summary, bool bot = true)
@@ -693,19 +665,11 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns the Wiki entity data of the specified page
 		/// </summary>
-		public Entity GetEntity(Article page)
-		{
-			return GetEntity(page.title);
-		}
-
-		/// <summary>
-		/// Returns the Wiki entity data of the specified page
-		/// </summary>
-		public Entity GetEntity(string page)
+		public Entity GetEntity(QId page)
 		{
 			try
 			{
-				Entity[] entities = GetEntities(new string[] { page });
+				Entity[] entities = GetEntities(new QId[] { page });
 				if (entities != null && entities.Length > 0)
 				{
 					return entities[0];
@@ -731,7 +695,7 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns the Wiki entity data for all of the specified pages
 		/// </summary>
-		public Entity[] GetEntities(IList<string> ids = null,
+		public Entity[] GetEntities(IList<QId> ids = null,
 			string sites = "",
 			string titles = "",
 			bool? redirects = null,
@@ -748,7 +712,7 @@ namespace MediaWiki
 			if (ids.Count > maxEntities)
 			{
 				int index = 0;
-				List<string> idBuffer = new List<string>(maxEntities);
+				List<QId> idBuffer = new List<QId>(maxEntities);
 				List<Entity> results = new List<Entity>(maxEntities);
 				while (true)
 				{
@@ -943,7 +907,7 @@ namespace MediaWiki
 		{
 			string baseQuery = "format=json"
 				+ "&action=upload"
-				+ "&filename=" + UrlEncode(newpage.title)
+				+ "&filename=" + UrlEncode(newpage.title.FullTitle)
 				+ "&summary=" + UrlEncode(summary)
 				+ "&url=" + UrlEncode(url)
 				+ "&starttimestamp=" + UrlEncode(newpage.starttimestamp)
@@ -984,16 +948,16 @@ namespace MediaWiki
 		/// <returns>Success</returns>
 		public bool UploadFromLocal(Article newpage, string path, string summary, bool bot = true)
 		{
-			if (!newpage.title.StartsWith("File:"))
+			if (!newpage.title.IsNamespace(PageTitle.NS_File))
 			{
-				newpage.title = "File:" + newpage.title;
+				throw new ArgumentException("Title is not in the File namespace.", "newpage");
 			}
 
 			//Download stream
 			Dictionary<string, string> data = new Dictionary<string, string>();
 			data["format"] = "json";
 			data["action"] = "upload";
-			data["filename"] = newpage.title;
+			data["filename"] = newpage.title.Name;
 			data["token"] = GetCsrfToken();
 			data["ignorewarnings"] = "1";
 			data["summary"] = summary;
@@ -1046,7 +1010,7 @@ namespace MediaWiki
 					Console.Write("0%");
 
 					// do filenames need to be unique?
-					using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, "chunk",
+					using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title.Name, filetype, "chunk",
 						rawfile, fileOffset, thisChunkSize)))
 					{
 						string responseJson = read.ReadToEnd();
@@ -1105,7 +1069,7 @@ namespace MediaWiki
 						//Read response
 						HttpWebRequest request = CreateApiRequest();
 						LogApiRequest("upload", newpage.title);
-						using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title, filetype, "file", rawfile)))
+						using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title.Name, filetype, "file", rawfile)))
 						{
 							finalResponseJson = read.ReadToEnd();
 						}
@@ -1139,8 +1103,8 @@ namespace MediaWiki
 						// attempt to automatically fix extension/mime mismatch
 						string mime = (string)details[2];
 						string actualExt = MimeUtility.GetExtensionFromMime(mime);
-						int extIndex = newpage.title.LastIndexOf('.');
-						newpage.title = newpage.title.Substring(0, extIndex) + actualExt;
+						int extIndex = newpage.title.Name.LastIndexOf('.');
+						newpage.title.Name = newpage.title.Name.Substring(0, extIndex) + actualExt;
 						return UploadFromLocal(newpage, path, summary, bot);
 					}
 				}
@@ -1301,18 +1265,18 @@ namespace MediaWiki
 		/// Returns all entries in the specified category and its descendents (depth-first).
 		/// Page contents are not fetched.
 		/// </summary>
-		public IEnumerable<Article> GetCategoryEntriesRecursive(string category, int maxDepth = int.MaxValue,
+		public IEnumerable<Article> GetCategoryEntriesRecursive(PageTitle category, int maxDepth = int.MaxValue,
 			string cmtype = "",
 			string cmstartsortkeyprefix = "")
 		{
-			return GetCategoryEntriesRecursive(category, maxDepth, new HashSet<string>(), cmtype, cmstartsortkeyprefix);
+			return GetCategoryEntriesRecursive(category, maxDepth, new HashSet<PageTitle>(), cmtype, cmstartsortkeyprefix);
 		}
 
 		/// <summary>
 		/// 
 		/// </summary>
 		/// <param name="cmstartsortkeyprefix">Only applies to the top-level category.</param>
-		private IEnumerable<Article> GetCategoryEntriesRecursive(string category, int maxDepth, HashSet<string> alreadyHandledSubcats,
+		private IEnumerable<Article> GetCategoryEntriesRecursive(PageTitle category, int maxDepth, HashSet<PageTitle> alreadyHandledSubcats,
 			string cmtype = "",
 			string cmstartsortkeyprefix = "")
 		{
@@ -1341,7 +1305,7 @@ namespace MediaWiki
 		/// 
 		/// </summary>
 		public IEnumerable<Article> GetCategoryEntries(
-			string cmtitle,
+			PageTitle cmtitle,
 			string cmtype = "",
 			string cmnamespace = "",
 			int cmlimit = Limit.Max,
@@ -1350,7 +1314,7 @@ namespace MediaWiki
 			string baseQuery = "format=json"
 				+ "&action=query"
 				+ "&list=categorymembers"
-				+ "&cmtitle=" + UrlEncode(cmtitle);
+				+ "&cmtitle=" + UrlEncode(cmtitle.FullTitle);
 			if (!string.IsNullOrEmpty(cmtype))
 			{
 				baseQuery += "&cmtype=" + UrlEncode(cmtype);
@@ -1373,7 +1337,7 @@ namespace MediaWiki
 
 			do
 			{
-				LogApiRequest("query-categorymembers", cmtitle);
+				LogApiRequest("query-categorymembers", cmtitle.FullTitle);
 
 				//Read response
 				string json;
@@ -1415,12 +1379,12 @@ namespace MediaWiki
 			ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "    API request '{0}' ({1})", endpoint, UrlApi);
 		}
 
-		private void LogApiRequest(string endpoint, string param)
+		private void LogApiRequest(string endpoint, object param)
 		{
 			ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "    API request '{0}' ({1}): {2}", endpoint, UrlApi, param);
 		}
 
-		private static string GetOneOrMany(IEnumerable<string> strings)
+		private static string GetOneOrMany<T>(IEnumerable<T> strings)
 		{
 			if (!strings.Any())
 			{
@@ -1432,7 +1396,7 @@ namespace MediaWiki
 			}
 			else
 			{
-				return strings.First();
+				return strings.First().ToString();
 			}
 		}
 	}

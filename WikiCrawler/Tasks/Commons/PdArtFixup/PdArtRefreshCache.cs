@@ -1,4 +1,6 @@
-﻿namespace Tasks.Commons
+﻿using MediaWiki;
+
+namespace Tasks.Commons
 {
 	/// <summary>
 	/// Refreshes the PD-Art files cache for all files in a specified category.
@@ -15,9 +17,9 @@
 			//Parameters["Category"] = "Category:PD-Art (PD-old-70)";
 		}
 
-		public override string GetCategory()
+		public override PageTitle GetCategory()
 		{
-			return Parameters["Category"];
+			return PageTitle.Parse(Parameters["Category"]);
 		}
 	}
 }

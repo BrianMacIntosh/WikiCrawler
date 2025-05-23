@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using WikiCrawler;
@@ -24,20 +25,20 @@ namespace Dsal
 			DateParseMetadata dateMetadata;
 			string date = DateUtility.ParseDate(metadata["Date"], out dateMetadata);
 
-			HashSet<string> categories = new HashSet<string>();
-			categories.Add(m_config.checkCategory);
+			HashSet<PageTitle> categories = new HashSet<PageTitle>();
+			categories.Add(PageTitle.Parse(m_config.checkCategory));
 
 			string location = metadata["Location"];
-			IEnumerable<string> locationCats = CategoryTranslation.TranslateLocationCategory(metadata["Location"]);
-			string locationCat = locationCats == null ? "" : locationCats.FirstOrDefault();
-			if (!string.IsNullOrEmpty(locationCat))
+			IEnumerable<PageTitle> locationCats = CategoryTranslation.TranslateLocationCategory(metadata["Location"]);
+			PageTitle locationCat = locationCats == null ? PageTitle.Empty : locationCats.FirstOrDefault();
+			if (!locationCat.IsEmpty)
 			{
-				location = locationCat.Substring("Category:".Length);
+				location = locationCat.Name;
 
 				if (dateMetadata.IsPrecise)
 				{
-					string yearLocCat = "Category:" + dateMetadata.PreciseYear.ToString() + " in " + location;
-					MediaWiki.Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
+					PageTitle yearLocCat = new PageTitle(PageTitle.NS_Category, dateMetadata.PreciseYear.ToString() + " in " + location);
+					Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
 					if (existingYearLocCat != null)
 					{
 						categories.Add(existingYearLocCat.title);
@@ -55,7 +56,7 @@ namespace Dsal
 
 			foreach (string subject in metadata["Subject"].Trim('"').Split(','))
 			{
-				IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(subject);
+				IEnumerable<PageTitle> mappedCats = CategoryTranslation.TranslateTagCategory(subject);
 				if (mappedCats != null)
 				{
 					categories.AddRange(mappedCats);
@@ -64,7 +65,7 @@ namespace Dsal
 
 			foreach (Creator creator in creators)
 			{
-				if (!string.IsNullOrEmpty(creator.Category))
+				if (!creator.Category.IsEmpty)
 				{
 					categories.Add(creator.Category);
 				}
@@ -106,7 +107,7 @@ namespace Dsal
 
 			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
 
-			foreach (string cat in categories)
+			foreach (PageTitle cat in categories)
 			{
 				page += "[[" + cat + "]]\n";
 			}
@@ -119,9 +120,11 @@ namespace Dsal
 			return new Uri(metadata["ImageUrl"]);
 		}
 
-		public override string GetTitle(string key, Dictionary<string, string> metadata)
+		public override PageTitle GetTitle(string key, Dictionary<string, string> metadata)
 		{
-			return metadata["Title"] + " (" + m_config.filenameSuffix + " " + key.Substring(key.Length - 4, 4) + ")";
+			return new PageTitle(
+				PageTitle.NS_File,
+				metadata["Title"] + " (" + m_config.filenameSuffix + " " + key.Substring(key.Length - 4, 4) + ")");
 		}
 	}
 }

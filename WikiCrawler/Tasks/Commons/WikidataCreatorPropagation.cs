@@ -13,23 +13,22 @@ namespace Tasks.Commons
 	{
 		public override void Execute()
 		{
-			List<string> creators = new List<string>();
+			List<PageTitle> creators = new List<PageTitle>();
 
 			using (StreamReader reader = new StreamReader(new FileStream("authority_in.txt", FileMode.Open), Encoding.Default))
 			{
 				while (!reader.EndOfStream)
 				{
-					creators.Add(reader.ReadLine());
+					creators.Add(PageTitle.Parse(reader.ReadLine()));
 				}
 			}
 
-			foreach (string creatorPage in creators)
+			foreach (PageTitle creatorPage in creators)
 			{
 				Console.WriteLine(creatorPage);
 
 				// not creator? just output authority
-				CreatorTemplate creatorTemplate = CreatorUtility.GetCreatorTemplate(creatorPage);
-				if (creatorTemplate.IsEmpty)
+				if (!creatorPage.IsNamespace(PageTitle.NS_Creator))
 				{
 					Console.WriteLine("FATAL: not a creator");
 					continue;
@@ -51,22 +50,22 @@ namespace Tasks.Commons
 				string wikidataId = WikiUtils.GetTemplateParameter("wikidata", articleText);
 
 				//got it?
-				if (!string.IsNullOrEmpty(wikidataId) && wikidataId[0] == 'Q')
+				if (QId.TryParse(wikidataId, out QId qid))
 				{
-					Entity entity = GlobalAPIs.Wikidata.GetEntity(wikidataId);
+					Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
 					if (entity != null && !entity.missing)
 					{
 						string homecat = WikiUtils.GetTemplateParameter("homecat", articleText);
-						if (!string.IsNullOrEmpty(homecat) && !entity.HasClaim("P373"))
+						if (!string.IsNullOrEmpty(homecat) && !entity.HasClaim(Wikidata.Prop_CommonsCategory))
 						{
 							//propagate homecat
-							GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P373", homecat, "(BOT) propagating Commons category from Creator", true);
+							GlobalAPIs.Wikidata.CreateEntityClaim(entity, Wikidata.Prop_CommonsCategory, homecat, "(BOT) propagating Commons category from Creator", true);
 						}
 
-						if (!entity.HasClaim("P1472"))
+						if (!entity.HasClaim(Wikidata.Prop_CommonsCreator))
 						{
 							//propagate creator
-							GlobalAPIs.Wikidata.CreateEntityClaim(entity, "P1472", creatorTemplate.Template.Name, "(BOT) propagating Commons Creator", true);
+							GlobalAPIs.Wikidata.CreateEntityClaim(entity, Wikidata.Prop_CommonsCreator, creatorPage.Name, "(BOT) propagating Commons Creator", true);
 						}
 
 						// populate creator authority

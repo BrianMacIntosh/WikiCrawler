@@ -11,7 +11,8 @@ namespace Tasks.Commons
 			template = template.TrimStart('{');
 			foreach (string primaryTemplate in WikiUtils.PrimaryInfoTemplates)
 			{
-				if (string.Equals(template, primaryTemplate))
+				//NOTE: intentional case-insensitive comparison of page titles
+				if (string.Equals(template, primaryTemplate, StringComparison.OrdinalIgnoreCase))
 				{
 					return true;
 				}
@@ -24,7 +25,8 @@ namespace Tasks.Commons
 			template = WikiUtils.TrimTemplate(template);
 			foreach (string primaryTemplate in WikiUtils.ArtworkTemplates)
 			{
-				if (string.Equals(template, primaryTemplate, StringComparison.InvariantCultureIgnoreCase))
+				//NOTE: intentional case-insensitive comparison of page titles
+				if (string.Equals(template, primaryTemplate, StringComparison.OrdinalIgnoreCase))
 				{
 					return true;
 				}

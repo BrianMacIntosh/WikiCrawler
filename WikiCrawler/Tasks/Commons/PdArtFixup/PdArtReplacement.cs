@@ -404,9 +404,7 @@ OtherLicense: {8}",
 				}
 			}
 
-			PageTitle articleTitle = PageTitle.Parse(article.title);
-
-			if (SkipCached && IsFileCached(m_filesDatabase, articleTitle))
+			if (SkipCached && IsFileCached(m_filesDatabase, article.title))
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Already cached.");
 				return false;
@@ -414,7 +412,7 @@ OtherLicense: {8}",
 
 			CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article);
 
-			CacheFile(articleTitle, worksheet.Author, worksheet.Date);
+			CacheFile(article.title, worksheet.Author, worksheet.Date);
 
 			// any errors that prevent the replacement from being made
 			List<string> errors = new List<string>();
@@ -502,34 +500,34 @@ OtherLicense: {8}",
 					replaceableInnerLicense = logComponents[1];
 				}
 
-				CacheOldLicense(articleTitle, replaceableLicense, replaceableInnerLicense);
+				CacheOldLicense(article.title, replaceableLicense, replaceableInnerLicense);
 			}
 
-			CacheReplacementStatus(articleTitle, replacementStatus);
-			CacheNewLicense(articleTitle, existingGoodLicense);
+			CacheReplacementStatus(article.title, replacementStatus);
+			CacheNewLicense(article.title, existingGoodLicense);
 
 			// 1. find author death date
 			int creatorDeathYear;
-			int? creatorCountryOfCitizenship;
+			QId creatorCountryOfCitizenship;
 			CreatorData creatorData = GetAuthorData(worksheet);
 			if (creatorData != null)
 			{
 				creatorDeathYear = creatorData.DeathYear;
 				creatorCountryOfCitizenship = creatorData.CountryOfCitizenship;
 
-				CacheAuthorInfo(articleTitle, creatorData.QID, creatorDeathYear);
+				CacheAuthorInfo(article.title, creatorData.QID, creatorDeathYear);
 			}
 			else
 			{
 				creatorDeathYear = 9999;
-				creatorCountryOfCitizenship = null;
+				creatorCountryOfCitizenship = QId.Empty;
 
-				CacheAuthorInfo(articleTitle, null, creatorDeathYear);
+				CacheAuthorInfo(article.title, QId.Empty, creatorDeathYear);
 			}
 
 			int latestYear = GetLatestPublicationYear(worksheet, out MappingDate mappedDate);
 
-			CacheLatestYear(articleTitle, latestYear);
+			CacheLatestYear(article.title, latestYear);
 
 			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorCountryOfCitizenship);
 			Console.WriteLine("  Date: {0}, Deathyear: {1}, PMA: {2}", latestYear, creatorDeathYear, pmaDuration);
@@ -718,7 +716,7 @@ OtherLicense: {8}",
 			if (!string.IsNullOrEmpty(conflictLicenses))
 			{
 				qtyOtherLicense++;
-				CacheIrreplacableLicense(articleTitle, conflictLicenses);
+				CacheIrreplacableLicense(article.title, conflictLicenses);
 			}
 
 			if (errors.Count > 0)
@@ -743,13 +741,13 @@ OtherLicense: {8}",
 				article.Changes.Add(changeText);
 			}
 
-			CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
-			CacheNewLicense(articleTitle, newLicense);
+			CacheReplacementStatus(article.title, ReplacementStatus.Replaced);
+			CacheNewLicense(article.title, newLicense);
 
 			// remove date mapping
 			if (mappedDate != null)
 			{
-				mappedDate.FromPages.Remove(article.title);
+				mappedDate.FromPages.Remove(article.title.FullTitle);
 				m_dateMapping.SetDirty();
 			}
 
@@ -764,7 +762,7 @@ OtherLicense: {8}",
 
 		private CreatorData GetAuthorData(CommonsFileWorksheet worksheet)
 		{
-			PageTitle articleTitle = PageTitle.Parse(worksheet.Article.title);
+			PageTitle articleTitle = worksheet.Article.title;
 			string author = worksheet.Author;
 
 			if (string.IsNullOrEmpty(author))
@@ -806,14 +804,14 @@ OtherLicense: {8}",
 			}
 
 			// check the artwork wikidata, if it exists
-			if (Wikidata.TryUnQidify(worksheet.Wikidata, out int artworkQid))
+			if (QId.TryParse(worksheet.Wikidata, out QId artworkQid))
 			{
 				CacheArtQID(articleTitle, artworkQid);
 
 				ArtworkData artwork = WikidataCache.GetArtworkData(artworkQid);
-				if (artwork.CreatorQid.HasValue)
+				if (!artwork.CreatorQid.IsEmpty)
 				{
-					return WikidataCache.GetPersonData(artwork.CreatorQid.Value);
+					return WikidataCache.GetPersonData(artwork.CreatorQid);
 				}
 			}
 
@@ -841,11 +839,11 @@ OtherLicense: {8}",
 
 		private int GetLatestPublicationYear(CommonsFileWorksheet worksheet, out MappingDate mappedDate)
 		{
-			PageTitle articleTitle = PageTitle.Parse(worksheet.Article.title);
+			PageTitle articleTitle = worksheet.Article.title;
 			mappedDate = null;
 
 			// check the artwork wikidata, if it exists
-			if (Wikidata.TryUnQidify(worksheet.Wikidata, out int artworkQid))
+			if (QId.TryParse(worksheet.Wikidata, out QId artworkQid))
 			{
 				CacheArtQID(articleTitle, artworkQid);
 
@@ -873,7 +871,7 @@ OtherLicense: {8}",
 			}
 
 			// unparseable date
-			mappedDate = m_dateMapping.TryMapValue(worksheet.Date, PageTitle.Parse(worksheet.Article.title));
+			mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle);
 
 			if (!string.IsNullOrEmpty(mappedDate.ReplaceDate))
 			{
@@ -915,11 +913,11 @@ OtherLicense: {8}",
 			CacheTimestamp(title);
 		}
 
-		public void RemoveFromCache(string title)
+		public void RemoveFromCache(PageTitle title)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "DELETE FROM files WHERE pageTitle=$pageTitle";
-			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
@@ -927,7 +925,7 @@ OtherLicense: {8}",
 		{
 			SQLiteCommand command = connection.CreateCommand();
 			command.CommandText = "SELECT COUNT(*) FROM files WHERE pageTitle=$pageTitle";
-			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			using (var reader = command.ExecuteReader())
 			{
 				reader.Read();
@@ -939,7 +937,7 @@ OtherLicense: {8}",
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET pdArtLicense=$pdArtLicense,innerLicense=$innerLicense WHERE pageTitle=$pageTitle";
-			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("pdArtLicense", pdArtLicense);
 			command.Parameters.AddWithValue("innerLicense", innerLicense);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
@@ -957,17 +955,17 @@ OtherLicense: {8}",
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET bLicenseReplaced=$state WHERE pageTitle=$pageTitle";
-			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("state", (int)state);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
-		private void CacheAuthorInfo(PageTitle title, int? qid, int deathyear)
+		private void CacheAuthorInfo(PageTitle title, QId qid, int deathyear)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET authorQid=$authorQid,authorDeathYear=$authorDeathYear WHERE pageTitle=$pageTitle";
-			command.Parameters.AddWithValue("pageTitle", title);
-			command.Parameters.AddWithValue("authorQid", qid);
+			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
+			command.Parameters.AddWithValue("authorQid", (int?)qid);
 			command.Parameters.AddWithValue("authorDeathYear", deathyear);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
@@ -976,7 +974,7 @@ OtherLicense: {8}",
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET latestYear=$latestYear WHERE pageTitle=$pageTitle";
-			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("latestYear", latestYear);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
@@ -985,7 +983,7 @@ OtherLicense: {8}",
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET newLicense=$newLicense WHERE pageTitle=$pageTitle";
-			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("newLicense", newLicense);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
@@ -994,17 +992,17 @@ OtherLicense: {8}",
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET irreplaceableLicenses=$irreplaceableLicenses WHERE pageTitle=$pageTitle";
-			command.Parameters.AddWithValue("pageTitle", title);
+			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("irreplaceableLicenses", irreplaceableLicenses);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
-		private void CacheArtQID(PageTitle title, int artQid)
+		private void CacheArtQID(PageTitle title, QId artQid)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET artQid=$artQid WHERE pageTitle=$pageTitle";
-			command.Parameters.AddWithValue("pageTitle", title);
-			command.Parameters.AddWithValue("artQid", artQid);
+			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
+			command.Parameters.AddWithValue("artQid", (int?)artQid.Id);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 

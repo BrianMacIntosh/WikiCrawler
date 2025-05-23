@@ -11,8 +11,8 @@ namespace Tasks.Commons
 
 		private const string taxonTodoFile = "taxon_todo.txt";
 		private const string catTreeFile = "taxon_category_todo.txt";
-		private static List<string> todoCategories = new List<string>();
-		private static Dictionary<string, List<string>> catTree = new Dictionary<string, List<string>>();
+		private static List<PageTitle> todoCategories = new List<PageTitle>();
+		private static Dictionary<PageTitle, List<PageTitle>> catTree = new Dictionary<PageTitle, List<PageTitle>>();
 
 		//private static MySqlConnection itisConnection;
 
@@ -48,7 +48,7 @@ namespace Tasks.Commons
 			{
 				while (!reader.EndOfStream)
 				{
-					todoCategories.Add(reader.ReadLine());
+					todoCategories.Add(PageTitle.Parse(reader.ReadLine()));
 				}
 			}
 
@@ -57,13 +57,13 @@ namespace Tasks.Commons
 			{
 				while (!reader.EndOfStream)
 				{
-					string key = reader.ReadLine();
+					PageTitle key = PageTitle.Parse(reader.ReadLine());
 					int count = int.Parse(reader.ReadLine());
-					List<string> children = new List<string>();
+					List<PageTitle> children = new List<PageTitle>();
 					catTree[key] = children;
 					for (int c = 0; c < count; c++)
 					{
-						children.Add(reader.ReadLine());
+						children.Add(PageTitle.Parse(reader.ReadLine()));
 					}
 				}
 			}
@@ -84,7 +84,7 @@ namespace Tasks.Commons
 				//save out todo list
 				using (StreamWriter writer = new StreamWriter(new FileStream(taxonTodoFile, FileMode.Create)))
 				{
-					foreach (string s in todoCategories)
+					foreach (PageTitle s in todoCategories)
 					{
 						writer.WriteLine(s);
 					}
@@ -93,11 +93,11 @@ namespace Tasks.Commons
 				//save out cat tree
 				using (StreamWriter writer = new StreamWriter(new FileStream(catTreeFile, FileMode.Create)))
 				{
-					foreach (KeyValuePair<string, List<string>> kv in catTree)
+					foreach (KeyValuePair<PageTitle, List<PageTitle>> kv in catTree)
 					{
 						writer.WriteLine(kv.Key);
 						writer.WriteLine(kv.Value.Count);
-						foreach (string s in kv.Value)
+						foreach (PageTitle s in kv.Value)
 						{
 							writer.WriteLine(s);
 						}
@@ -106,12 +106,12 @@ namespace Tasks.Commons
 			}
 		}
 
-		private static void UpdateCategory(string catname)
+		private static void UpdateCategory(PageTitle catname)
 		{
 			// add to category tree
 			if (!catTree.ContainsKey(catname))
 			{
-				List<string> children = new List<string>();
+				List<PageTitle> children = new List<PageTitle>();
 				foreach (Article article in GlobalAPIs.Commons.GetCategoryEntries(catname, cmtype: CMType.subcat))
 				{
 					children.Add(article.title);

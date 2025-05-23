@@ -12,7 +12,7 @@ namespace MediaWiki
 		/// <summary>
 		/// For each category, its parent categories.
 		/// </summary>
-		private static Dictionary<string, List<string>> s_CategoriesByCategory;
+		private static Dictionary<PageTitle, List<PageTitle>> s_CategoriesByCategory;
 
 		private readonly Api Api;
 
@@ -23,22 +23,22 @@ namespace MediaWiki
 
 		public void Load(string file)
 		{
-			s_CategoriesByCategory = new Dictionary<string, List<string>>();
+			s_CategoriesByCategory = new Dictionary<PageTitle, List<PageTitle>>();
 			if (File.Exists(file))
 			{
 				using (StreamReader reader = new StreamReader(new FileStream(file, FileMode.Open), Encoding.Default))
 				{
 					while (!reader.EndOfStream)
 					{
-						string cat = reader.ReadLine();
-						if (string.IsNullOrEmpty(cat)) continue;
+						PageTitle cat = PageTitle.Parse(reader.ReadLine());
+						if (cat.IsEmpty) continue;
 
-						s_CategoriesByCategory[cat] = new List<string>();
+						s_CategoriesByCategory[cat] = new List<PageTitle>();
 
 						int count = int.Parse(reader.ReadLine());
 						for (int c = 0; c < count; c++)
 						{
-							s_CategoriesByCategory[cat].Add(reader.ReadLine());
+							s_CategoriesByCategory[cat].Add(PageTitle.Parse(reader.ReadLine()));
 						}
 					}
 				}
@@ -49,12 +49,14 @@ namespace MediaWiki
 		{
 			using (StreamWriter writer = new StreamWriter(new FileStream(file, FileMode.Create), Encoding.Default))
 			{
-				foreach (KeyValuePair<string, List<string>> kv in s_CategoriesByCategory)
+				foreach (KeyValuePair<PageTitle, List<PageTitle>> kv in s_CategoriesByCategory)
 				{
 					writer.WriteLine(kv.Key);
 					writer.WriteLine(kv.Value.Count);
-					foreach (string s in kv.Value)
+					foreach (PageTitle s in kv.Value)
+					{
 						writer.WriteLine(s);
+					}
 				}
 			}
 		}
@@ -64,10 +66,8 @@ namespace MediaWiki
 		/// </summary>
 		/// <param name="rootCat"></param>
 		/// <returns>False if the category does not exist.</returns>
-		public bool AddToTree(string rootCat, int maxdepth)
+		public bool AddToTree(PageTitle rootCat, int maxdepth)
 		{
-			rootCat = WikiUtils.GetCategoryCategory(rootCat);
-
 			if (s_CategoriesByCategory.ContainsKey(rootCat)) return true;
 			
 			Console.WriteLine("Begin checking cats: " + rootCat);
@@ -86,7 +86,7 @@ namespace MediaWiki
 				{
 					if (queuedArt.missing)
 					{
-						s_CategoriesByCategory[queuedArt.title] = new List<string>();
+						s_CategoriesByCategory[queuedArt.title] = new List<PageTitle>();
 						continue;
 					}
 
@@ -109,32 +109,31 @@ namespace MediaWiki
 		/// <summary>
 		/// Removes any categories from the list that are just less-specific versions of other categories.
 		/// </summary>
-		public void RemoveLessSpecific(ISet<string> categories)
+		public void RemoveLessSpecific(ISet<PageTitle> categories)
 		{
-			foreach (string s in categories)
+			foreach (PageTitle s in categories)
 				AddToTree(s, 2);
 
-			Queue<string> toCheck = new Queue<string>();
-			HashSet<string> alreadyChecked = new HashSet<string>();
-			foreach (string s in categories) toCheck.Enqueue(s);
+			Queue<PageTitle> toCheck = new Queue<PageTitle>();
+			HashSet<PageTitle> alreadyChecked = new HashSet<PageTitle>();
+			foreach (PageTitle s in categories) toCheck.Enqueue(s);
 
 			while (toCheck.Count > 0)
 			{
-				string checkCat = toCheck.Dequeue();
+				PageTitle checkCat = toCheck.Dequeue();
 
 				if (!s_CategoriesByCategory.ContainsKey(checkCat)) continue;
 
 				//queue this cat's parents, and remove them from the source list if they exist
-				List<string> parents = s_CategoriesByCategory[checkCat];
+				List<PageTitle> parents = s_CategoriesByCategory[checkCat];
 				for (int c = 0; c < parents.Count; c++)
 				{
-					string cat = parents[c];
-					cat = HttpUtility.UrlDecode(cat);
+					PageTitle cat = parents[c];
 					if (!alreadyChecked.Contains(cat))
 					{
 						if (categories.Remove(cat))
 						{
-							Console.WriteLine("Removed less specific cat '" + cat + "'.");
+							Console.WriteLine("Removed less specific cat '{0}'.", cat);
 						}
 						toCheck.Enqueue(cat);
 						alreadyChecked.Add(cat);
@@ -146,19 +145,19 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns true if the specified category has the parent category as a parent.
 		/// </summary>
-		public bool HasParent(string category, string findParent)
+		public bool HasParent(PageTitle category, PageTitle findParent)
 		{
-			Queue<string> toCheck = new Queue<string>();
-			HashSet<string> alreadyChecked = new HashSet<string>();
+			Queue<PageTitle> toCheck = new Queue<PageTitle>();
+			HashSet<PageTitle> alreadyChecked = new HashSet<PageTitle>();
 			toCheck.Enqueue(category);
 
 			while (toCheck.Count > 0)
 			{
-				string checkCat = toCheck.Dequeue();
+				PageTitle checkCat = toCheck.Dequeue();
 
 				if (!s_CategoriesByCategory.ContainsKey(checkCat)) continue;
 
-				foreach (string parent in s_CategoriesByCategory[checkCat])
+				foreach (PageTitle parent in s_CategoriesByCategory[checkCat])
 				{
 					if (!alreadyChecked.Contains(parent))
 					{

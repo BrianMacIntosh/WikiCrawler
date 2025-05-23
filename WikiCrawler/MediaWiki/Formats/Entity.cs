@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -8,7 +7,7 @@ namespace MediaWiki
 	public class Entity : Object
 	{
 		public string modified;
-		public string id;
+		public QId id;
 		public string type;
 
 		//indexed by language
@@ -36,7 +35,7 @@ namespace MediaWiki
 			if (json.ContainsKey("modified"))
 				modified = (string)json["modified"];
 			if (json.ContainsKey("id"))
-				id = (string)json["id"];
+				id = QId.Parse((string)json["id"]);
 			if (json.ContainsKey("type"))
 				type = (string)json["type"];
 
@@ -109,9 +108,6 @@ namespace MediaWiki
 
 		public bool HasExactName(string name, bool caseSensitive)
 		{
-			if (string.Compare(title, name, !caseSensitive) == 0)
-				return true;
-
 			if (aliases != null)
 			{
 				foreach (string[] valueList in aliases.Values)
@@ -153,7 +149,7 @@ namespace MediaWiki
 			{
 				return api.GetEntities(subclaims
 					.Where(c => c.HasValue())
-					.Select(c => "Q" + c.mainSnak.GetValueAsEntityId())
+					.Select(c => c.mainSnak.GetValueAsEntityId())
 					.ToArray());
 			}
 			else
@@ -162,7 +158,7 @@ namespace MediaWiki
 			}
 		}
 
-		public int GetClaimValueAsEntityId(string property)
+		public QId GetClaimValueAsEntityId(string property)
 		{
 			return claims[property][0].mainSnak.GetValueAsEntityId();
 		}

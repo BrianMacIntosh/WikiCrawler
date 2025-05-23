@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,7 +9,7 @@ namespace Tasks
 {
 	public class UWashCats : BaseTask
 	{
-		private static Dictionary<string, string> categoryMap = new Dictionary<string, string>();
+		private static Dictionary<string, PageTitle> categoryMap = new Dictionary<string, PageTitle>();
 
 		private static int completed = 0;
 
@@ -22,24 +23,24 @@ namespace Tasks
 					while (!reader.EndOfStream)
 					{
 						string[] line = reader.ReadLine().Split('|');
-						categoryMap[line[0].ToLower()] = line[1];
+						categoryMap[line[0].ToLower()] = PageTitle.Parse(line[1]);
 					}
 				}
 			}
 
-			MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
+			Api Api = GlobalAPIs.Commons;
 
 			string[] keys = categoryMap.Keys.ToArray();
 			foreach (string key in keys)
 			{
-				if (string.IsNullOrEmpty(categoryMap[key])
+				if (categoryMap[key].IsEmpty
 					//error fixup
-					|| !categoryMap[key].StartsWith("Category:"))
+					|| !categoryMap[key].IsNamespace(PageTitle.NS_Category))
 				{
 					Console.WriteLine(key + "?");
 
-					string automap = CategoryTranslation.TranslateCategory(Api, key);
-					if (!string.IsNullOrEmpty(automap))
+					PageTitle automap = CategoryTranslation.TranslateCategory(Api, key);
+					if (!automap.IsEmpty)
 					{
 						Console.WriteLine("=" + automap);
 						categoryMap[key] = automap;
@@ -75,7 +76,7 @@ namespace Tasks
 			//write to file
 			using (StreamWriter writer = new StreamWriter(new FileStream("uwash_cats.txt", FileMode.Create)))
 			{
-				foreach (KeyValuePair<string, string> kv in categoryMap)
+				foreach (KeyValuePair<string, PageTitle> kv in categoryMap)
 				{
 					writer.WriteLine(kv.Key + "|" + kv.Value);
 				}

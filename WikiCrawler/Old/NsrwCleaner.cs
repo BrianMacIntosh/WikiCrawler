@@ -32,9 +32,8 @@ namespace Tasks.Commons
 						continue;
 					}
 
-					string file = queue[c];
-					if (!file.StartsWith("File:"))
-						file = "File:" + file;
+					PageTitle file = PageTitle.Parse(queue[c]);
+					file.Namespace = PageTitle.NS_File;
 
 					Console.WriteLine(file);
 

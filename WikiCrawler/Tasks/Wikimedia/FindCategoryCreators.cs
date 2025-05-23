@@ -17,7 +17,7 @@ namespace Tasks
 		{
 			Api Api = GlobalAPIs.Commons;
 			
-			foreach (Article article in Api.GetCategoryEntries(Parameters["Category"], cmtype: CMType.subcat))
+			foreach (Article article in Api.GetCategoryEntries(PageTitle.Parse(Parameters["Category"]), cmtype: CMType.subcat))
 			{
 				Article articleContent = Api.GetPage(article);
 				throw new NotImplementedException();

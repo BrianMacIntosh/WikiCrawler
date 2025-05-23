@@ -21,7 +21,7 @@ namespace Tasks
 		/// <summary>
 		/// Returns the names of the categories to affect.
 		/// </summary>
-		public abstract IEnumerable<string> GetCategories();
+		public abstract IEnumerable<PageTitle> GetCategories();
 
 		/// <summary>
 		/// Returns the type of category member to find.
@@ -44,9 +44,9 @@ namespace Tasks
 			return GetPagesHelper(GetCategories(), GetCMType(), startSortkey, IsRecursive());
 		}
 
-		public static IEnumerable<Article> GetPagesHelper(IEnumerable<string> categories, string pageType, string startSortKey, bool recursive)
+		public static IEnumerable<Article> GetPagesHelper(IEnumerable<PageTitle> categories, string pageType, string startSortKey, bool recursive)
 		{
-			foreach (string category in categories)
+			foreach (PageTitle category in categories)
 			{
 				int count = 0;
 				ConsoleUtility.WriteLine(ConsoleColor.Cyan, "ReplaceInCategories on category '{0}'.", category);

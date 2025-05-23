@@ -142,13 +142,13 @@ namespace UWash
 		{
 			public Dictionary<string, string> Metadata;
 
-			public HashSet<string> Categories = new HashSet<string>();
+			public HashSet<PageTitle> Categories = new HashSet<PageTitle>();
 
 			public DateParseMetadata DateParseMetadata;
 
-			public string PublisherLocCategory;
+			public PageTitle PublisherLocCategory;
 
-			public string SureLocationCategory;
+			public PageTitle SureLocationCategory;
 
 			public string Creator;
 			public string Artist;
@@ -192,7 +192,7 @@ namespace UWash
 		/// <summary>
 		/// Returns the title of the uploaded page for the specified metadata.
 		/// </summary>
-		public override string GetTitle(int key, Dictionary<string, string> metadata)
+		public override PageTitle GetTitle(int key, Dictionary<string, string> metadata)
 		{
 			string title;
 			if (!metadata.TryGetValue("Title", out title)
@@ -222,7 +222,7 @@ namespace UWash
 				title = string.Format("{0} ({1} {2})", title, m_config.filenameSuffix, key);
 			}
 
-			return title;
+			return new PageTitle(PageTitle.NS_File, title);
 		}
 
 		/// <summary>
@@ -575,9 +575,9 @@ namespace UWash
 				content.AppendLine("}}");
 			}
 
-			if (!string.IsNullOrEmpty(intermediate.SureLocationCategory))
+			if (!intermediate.SureLocationCategory.IsEmpty)
 			{
-				content.AppendLine("|depicted place=" + WikiUtils.GetCategoryName(intermediate.SureLocationCategory));
+				content.AppendLine("|depicted place=" + intermediate.SureLocationCategory.Name);
 			}
 			else if (metadata.TryGetValue("Location Depicted", out temp))
 			{
@@ -595,12 +595,12 @@ namespace UWash
 			string placeOfCreation;
 			if (metadata.TryGetValue("Place of Publication", out placeOfCreation))
 			{
-				IEnumerable<string> locCats = CategoryTranslation.TranslateLocationCategory(placeOfCreation);
-				string placeOfCreationCat = locCats == null ? "" : locCats.FirstOrDefault();
+				IEnumerable<PageTitle> locCats = CategoryTranslation.TranslateLocationCategory(placeOfCreation);
+				PageTitle placeOfCreationCat = locCats == null ? PageTitle.Empty : locCats.FirstOrDefault();
 				string placeOfCreationContent;
-				if (!string.IsNullOrEmpty(placeOfCreationCat))
+				if (!placeOfCreationCat.IsEmpty)
 				{
-					placeOfCreationContent = WikiUtils.GetCategoryName(placeOfCreationCat);
+					placeOfCreationContent = placeOfCreationCat.Name;
 				}
 				else
 				{
@@ -747,9 +747,9 @@ namespace UWash
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Company/Advertising Agency|value=" + temp + "}}");
 			}
-			if (!string.IsNullOrEmpty(intermediate.PublisherLocCategory))
+			if (!intermediate.PublisherLocCategory.IsEmpty)
 			{
-				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publisher Location|value=" + WikiUtils.GetCategoryName(intermediate.PublisherLocCategory) + "}}");
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Publisher Location|value=" + intermediate.PublisherLocCategory.Name + "}}");
 			}
 			if (metadata.TryGetValue("Publication Source", out temp))
 			{
@@ -861,22 +861,22 @@ namespace UWash
 			}
 			foreach (Creator creator in intermediate.CreatorData)
 			{
-				if (!string.IsNullOrEmpty(creator.Category))
+				if (!creator.Category.IsEmpty)
 				{
 					content.AppendLine("[[" + creator.Category + "]]");
 				}
 			}
 			foreach (Creator creator in intermediate.ArtistData)
 			{
-				if (!string.IsNullOrEmpty(creator.Category))
+				if (!creator.Category.IsEmpty)
 				{
 					content.AppendLine("[[" + creator.Category + "]]");
 				}
 			}
 
-			foreach (string s in intermediate.Categories)
+			foreach (PageTitle t in intermediate.Categories)
 			{
-				content.AppendLine("[[" + WikiUtils.GetCategoryCategory(s) + "]]");
+				content.AppendLine("[[" + t + "]]");
 			}
 
 			if (latestYear == 9999)
@@ -929,7 +929,7 @@ namespace UWash
 		private void ProduceCategories(IntermediateData data)
 		{
 			Dictionary<string, string> metadata = data.Metadata;
-			HashSet<string> categories = data.Categories;
+			HashSet<PageTitle> categories = data.Categories;
 			string outValue;
 
 			// pipe-delimited categories to parse
@@ -994,10 +994,10 @@ namespace UWash
 			}*/
 			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
 			{
-				IEnumerable<string> cats = CategoryTranslation.TranslateTagCategory(s.Trim());
+				IEnumerable<PageTitle> cats = CategoryTranslation.TranslateTagCategory(s.Trim());
 				if (cats != null)
 				{
-					foreach (string catsplit in cats)
+					foreach (PageTitle catsplit in cats)
 					{
 						if (!categories.Contains(catsplit)) categories.Add(catsplit);
 					}
@@ -1015,14 +1015,14 @@ namespace UWash
 					if (nameSplit.Length >= 2 && nameSplit.Length <= 3)
 					{
 						string nameAssembled = nameSplit[1].Trim() + " " + nameSplit[0].Trim();
-						foreach (string cat in CategoryTranslation.TranslatePersonCategory(nameAssembled, false))
+						foreach (PageTitle cat in CategoryTranslation.TranslatePersonCategory(nameAssembled, false))
 						{
 							if (!categories.Contains(cat)) categories.Add(cat);
 						}
 					}
 					else
 					{
-						foreach (string cat in CategoryTranslation.TranslateTagCategory(rawName))
+						foreach (PageTitle cat in CategoryTranslation.TranslateTagCategory(rawName))
 						{
 							if (!categories.Contains(cat)) categories.Add(cat);
 						}
@@ -1042,28 +1042,28 @@ namespace UWash
 			if (metadata.TryGetValue("Additional Glaciers", out outValue)) catparse += "|" + outValue;
 			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
 			{
-				IEnumerable<string> cats = CategoryTranslation.TranslateLocationCategory(s.Trim());
+				IEnumerable<PageTitle> cats = CategoryTranslation.TranslateLocationCategory(s.Trim());
 				if (cats != null)
 				{
-					foreach (string catsplit in cats)
+					foreach (PageTitle catsplit in cats)
 					{
-						if (string.IsNullOrEmpty(data.SureLocationCategory)) data.SureLocationCategory = catsplit;
+						if (data.SureLocationCategory.IsEmpty) data.SureLocationCategory = catsplit;
 						if (!categories.Contains(catsplit)) categories.Add(catsplit);
 					}
 				}
 			}
 			
-			if (metadata.TryGetValue("Publisher Location", out data.PublisherLocCategory))
+			if (metadata.TryGetValue("Publisher Location", out string publisherLocation))
 			{
-				IEnumerable<string> pubLocCats = CategoryTranslation.TranslateLocationCategory(data.PublisherLocCategory);
-				data.PublisherLocCategory = pubLocCats == null ? "" : pubLocCats.FirstOrDefault();
+				IEnumerable<PageTitle> pubLocCats = CategoryTranslation.TranslateLocationCategory(publisherLocation);
+				data.PublisherLocCategory = pubLocCats == null ? PageTitle.Empty : pubLocCats.FirstOrDefault();
 			}
 
 			// advertisement categories
 			if (metadata.ContainsKey("Advertisement") && data.DateParseMetadata.LatestYear != 9999)
 			{
 				string latestYearString = data.DateParseMetadata.LatestYear.ToString();
-				string adYearCat = "Category:" + latestYearString + " advertisements in the United States";
+				PageTitle adYearCat = new PageTitle(PageTitle.NS_Category, latestYearString + " advertisements in the United States");
 				Article existingYearCat = CategoryTranslation.TryFetchCategory(Api, adYearCat);
 				if (existingYearCat == null)
 				{
@@ -1076,10 +1076,9 @@ namespace UWash
 				}
 				categories.Add(adYearCat);
 
-				if (!string.IsNullOrEmpty(data.PublisherLocCategory))
+				if (!data.PublisherLocCategory.IsEmpty)
 				{
-					string pubLocCatName = WikiUtils.GetCategoryName(data.PublisherLocCategory);
-					string adLocCat = "Category:Advertisements in " + pubLocCatName.Split(',')[0];
+					PageTitle adLocCat = new PageTitle(PageTitle.NS_Category, "Advertisements in " + data.PublisherLocCategory.Name.Split(',')[0]);
 					Article existingLocCat = CategoryTranslation.TryFetchCategory(Api, adLocCat);
 					if (existingLocCat != null)
 					{
@@ -1104,18 +1103,18 @@ namespace UWash
 							int decade;
 							if (data.DateParseMetadata.IsPrecise)
 							{
-								categories.Add(string.Format("Category:{0} portrait photographs", data.DateParseMetadata.PreciseYear));
+								categories.Add(new PageTitle(PageTitle.NS_Category, string.Format("{0} portrait photographs", data.DateParseMetadata.PreciseYear)));
 							}
 							else if (DateUtility.GetDecade(data.DateParseMetadata, out decade))
 							{
-								categories.Add(string.Format("Category:{0}s portrait photographs", decade));
+								categories.Add(new PageTitle(PageTitle.NS_Category, string.Format("{0}s portrait photographs", decade)));
 							}
 
 							// occupation
-							foreach (string category in categories)
+							foreach (PageTitle category in categories)
 							{
-								string catname = WikiUtils.GetCategoryName(category);
-								Article existingCat = CategoryTranslation.TryFetchCategory(Api, "Category:Portrait photographs of " + catname.ToLower());
+								PageTitle portraitPhotosCat = new PageTitle(PageTitle.NS_Category, "Portrait photographs of " + category.Name.ToLower());
+								Article existingCat = CategoryTranslation.TryFetchCategory(Api, portraitPhotosCat);
 								if (!Article.IsNullOrMissing(existingCat))
 								{
 									categories.Add(existingCat.title);
@@ -1124,23 +1123,23 @@ namespace UWash
 							}
 
 							//HACK: assume US
-							categories.Add("Category:Portrait photographs of the United States");
+							categories.Add(new PageTitle(PageTitle.NS_Category, "Portrait photographs of the United States"));
 						}
 					}
 				}
 			}
 
 			// some other categories
-			if (!string.IsNullOrEmpty(data.SureLocationCategory))
+			if (!data.SureLocationCategory.IsEmpty)
 			{
-				string sureLocation = WikiUtils.GetCategoryName(data.SureLocationCategory);
+				string sureLocation = data.SureLocationCategory.Name;
 
-				if (m_config.informationTemplate == "Photograph")
+				if (PageNameComparer.Instance.Equals(m_config.informationTemplate, "Photograph"))
 				{
 					//TODO: check that the image is black and white
 					if (false)
 					{
-						string blackAndWhiteCat = "Category:Black and white photographs of " + sureLocation;
+						PageTitle blackAndWhiteCat = new PageTitle(PageTitle.NS_Category, "Black and white photographs of " + sureLocation);
 						Article existingBwCat = CategoryTranslation.TryFetchCategory(Api, blackAndWhiteCat);
 						if (existingBwCat != null)
 						{
@@ -1151,7 +1150,7 @@ namespace UWash
 
 				if (data.DateParseMetadata.IsPrecise)
 				{
-					string yearLocCat = "Category:" + data.DateParseMetadata.PreciseYear.ToString() + " in " + sureLocation;
+					PageTitle yearLocCat = new PageTitle(PageTitle.NS_Category, data.DateParseMetadata.PreciseYear.ToString() + " in " + sureLocation);
 					Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
 					if (existingYearLocCat != null)
 					{
@@ -1167,7 +1166,10 @@ namespace UWash
 			// Public Domain Day
 			if (data.PublicDomainYear == System.DateTime.Now.Year && System.DateTime.Now.Month == 1)
 			{
-				categories.Add(string.Format(m_config.publicDomainDayCategory, "Category:Media uploaded for Public Domain Day {0}", System.DateTime.Now.Year));
+				string nameFormat = string.IsNullOrEmpty(m_config.publicDomainDayCategory)
+					? "Media uploaded for Public Domain Day {0}"
+					: m_config.publicDomainDayCategory;
+				categories.Add(new PageTitle(PageTitle.NS_Category, string.Format(nameFormat, System.DateTime.Now.Year)));
 			}
 		}
 
@@ -1184,7 +1186,7 @@ namespace UWash
 			}
 		}
 
-		protected override bool TryAddDuplicate(string targetPage, int key, Dictionary<string, string> metadata)
+		protected override bool TryAddDuplicate(PageTitle targetPage, int key, Dictionary<string, string> metadata)
 		{
 			Console.WriteLine("Checking to record duplicate {0} with existing page '{1}'", key, targetPage);
 

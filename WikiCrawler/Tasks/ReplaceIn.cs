@@ -105,7 +105,7 @@ namespace Tasks
 				{
 					string text = File.ReadAllText(path, Encoding.UTF8);
 					string[] split = text.Split(filesplitter, 2);
-					Article article = new Article(split[0]);
+					Article article = new Article(PageTitle.Parse(split[0]));
 					article.revisions = new Revision[] { new Revision() { text = split[1] } };
 					yield return article;
 				}

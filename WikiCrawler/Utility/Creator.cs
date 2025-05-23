@@ -1,4 +1,6 @@
-﻿namespace WikiCrawler
+﻿using MediaWiki;
+
+namespace WikiCrawler
 {
 	/// <summary>
 	/// Stores cached data about a particular author string.
@@ -6,7 +8,7 @@
 	public class Creator
 	{
 		public string Author = "";
-		public string Category = "";
+		public PageTitle Category = PageTitle.Empty;
 
 		/// <summary>
 		/// An override license template.
@@ -28,7 +30,7 @@
 			get
 			{
 				return string.IsNullOrEmpty(Author)
-					&& string.IsNullOrEmpty(Category)
+					&& Category.IsEmpty
 					&& string.IsNullOrEmpty(LicenseTemplate)
 					&& DeathYear == 9999;
 			}
@@ -40,7 +42,7 @@
 			{
 				to.Author = from.Author;
 			}
-			if (string.IsNullOrEmpty(to.Category))
+			if (to.Category.IsEmpty)
 			{
 				to.Category = from.Category;
 			}

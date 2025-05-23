@@ -124,6 +124,7 @@
     <Compile Include="MediaWiki\Formats\Revision.cs" />
     <Compile Include="MediaWiki\GlobalAPIs.cs" />
     <Compile Include="MediaWiki\PageTitle.cs" />
+    <Compile Include="MediaWiki\QId.cs" />
     <Compile Include="TaskLogger.cs" />
     <Compile Include="Tasks\BaseReplacement.cs" />
     <Compile Include="Tasks\BaseTask.cs" />

@@ -8,7 +8,7 @@ namespace MediaWiki
 		public int pageid;
 		public int revid;
 		public int ns;
-		public string title;
+		public PageTitle title;
 		public string timestamp;
 		public string comment;
 
@@ -39,7 +39,7 @@ namespace MediaWiki
 			}
 			if (json.TryGetValue("title", out value))
 			{
-				title = (string)value;
+				title = PageTitle.Parse((string)value);
 			}
 			if (json.TryGetValue("timestamp", out value))
 			{

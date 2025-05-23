@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using WikiCrawler;
 
 namespace Tasks
@@ -29,9 +30,9 @@ namespace Tasks
 			Api api = GlobalAPIs.Commons;
 			EasyWeb.SetDelayForDomain(api.Domain, 0.1f);
 
-			List<string> links = new List<string>();
+			List<PageTitle> links = new List<PageTitle>();
 
-			Article article = new Article(Parameters["Page"]);
+			Article article = new Article(PageTitle.Parse(Parameters["Page"]));
 			foreach (Article link in article.GetLinksHere(api))
 			{
 				Article linkpage = api.GetPage(link);
@@ -41,7 +42,7 @@ namespace Tasks
 			}
 
 			string logFile = Path.Combine(ProjectDataDirectory, "log.txt");
-			File.WriteAllLines(logFile, links.ToArray());
+			File.WriteAllLines(logFile, links.Select(pt => pt.FullTitle).ToArray());
 		}
 	}
 }

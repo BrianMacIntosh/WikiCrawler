@@ -32,19 +32,19 @@ namespace Tasks.Commons
 				nsrwDerivedInfobox = reader.ReadToEnd();
 			}
 
-			Dictionary<string, List<string>> sourceMappedImages = new Dictionary<string, List<string>>();
+			Dictionary<PageTitle, List<PageTitle>> sourceMappedImages = new Dictionary<PageTitle, List<PageTitle>>();
 			if (File.Exists("nsrwsource.txt"))
 			{
 				using (StreamReader reader = new StreamReader(new FileStream("nsrwsource.txt", FileMode.Open)))
 				{
 					while (!reader.EndOfStream)
 					{
-						string key = reader.ReadLine();
+						PageTitle key = PageTitle.Parse(reader.ReadLine());
 						int count = int.Parse(reader.ReadLine());
-						List<string> destinations = new List<string>();
+						List<PageTitle> destinations = new List<PageTitle>();
 						for (int c = 0; c < count; c++)
 						{
-							destinations.Add(reader.ReadLine());
+							destinations.Add(PageTitle.Parse(reader.ReadLine()));
 						}
 						sourceMappedImages[key] = destinations;
 					}
@@ -63,9 +63,8 @@ namespace Tasks.Commons
 						continue;
 					}
 
-					string file = queue[c];
-					if (!file.StartsWith("File:"))
-						file = "File:" + file;
+					PageTitle file = PageTitle.SafeParse(queue[c]);
+					file.Namespace = PageTitle.NS_File;
 
 					Console.WriteLine(file);
 
@@ -91,7 +90,8 @@ namespace Tasks.Commons
 					int st = extractedFromIndex + extractedFrom.Length;
 					int d = st;
 					for (; d < text.Length && text[d] != '}'; d++) ;
-					string sourceFile = text.Substring(st, d - st);
+					PageTitle sourceFile = PageTitle.Parse(text.Substring(st, d - st));
+					sourceFile.Namespace = PageTitle.NS_File;
 
 					//Replacements
 					text = text.Replace("{{Extracted from|", "{{ExtractedFromNSRW|");
@@ -104,10 +104,8 @@ namespace Tasks.Commons
 					}
 
 					//Establish source
-					if (!sourceFile.StartsWith("File:"))
-						sourceFile = "File:" + sourceFile;
 					if (!sourceMappedImages.ContainsKey(sourceFile))
-						sourceMappedImages[sourceFile] = new List<string>();
+						sourceMappedImages[sourceFile] = new List<PageTitle>();
 					sourceMappedImages[sourceFile].Add(file);
 
 					text = text.Replace("\r\n", "\n");
@@ -121,8 +119,8 @@ namespace Tasks.Commons
 				}
 
 				//write out source files
-				string[] keys = sourceMappedImages.Keys.ToArray();
-				foreach (string s in keys)
+				PageTitle[] keys = sourceMappedImages.Keys.ToArray();
+				foreach (PageTitle s in keys)
 				{
 					UpdateSource(s, sourceMappedImages[s]);
 					sourceMappedImages.Remove(s);
@@ -140,11 +138,11 @@ namespace Tasks.Commons
 				}
 				using (StreamWriter write = new StreamWriter(new FileStream("nsrwsource.txt", FileMode.Create)))
 				{
-					foreach (KeyValuePair<string, List<string>> kv in sourceMappedImages)
+					foreach (KeyValuePair<PageTitle, List<PageTitle>> kv in sourceMappedImages)
 					{
 						write.WriteLine(kv.Key);
 						write.WriteLine(kv.Value.Count);
-						foreach (string s in kv.Value)
+						foreach (PageTitle s in kv.Value)
 						{
 							write.WriteLine(s);
 						}
@@ -153,10 +151,8 @@ namespace Tasks.Commons
 			}
 		}
 
-		private static void UpdateSource(string sourceFile, List<string> destinationFiles)
+		private static void UpdateSource(PageTitle sourceFile, List<PageTitle> destinationFiles)
 		{
-			sourceFile = sourceFile.Replace("Image:", "");
-
 			Article sourceArticle = Api.GetPage(sourceFile);
 
 			string sourceText = sourceArticle.revisions.First().text;

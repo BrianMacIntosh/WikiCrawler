@@ -104,11 +104,11 @@ namespace NPGallery
 				else
 				{
 					// temporarily redownload metadata
-					int lastParenIndex = article.title.LastIndexOf('(');
+					int lastParenIndex = article.title.Name.LastIndexOf('(');
 					if (lastParenIndex >= 0)
 					{
-						int closeParenIndex = article.title.IndexOf(')', lastParenIndex);
-						string thisId = article.title.Substring(lastParenIndex + 1, closeParenIndex - lastParenIndex - 1);
+						int closeParenIndex = article.title.Name.IndexOf(')', lastParenIndex);
+						string thisId = article.title.Name.Substring(lastParenIndex + 1, closeParenIndex - lastParenIndex - 1);
 						Guid thisKey = StringToKey(thisId);
 						Dictionary<string, string> thisMetadata = downloader.Download(thisKey, false);
 

@@ -20,9 +20,9 @@ namespace Tasks.Commons
 			return CMType.subcat;
 		}
 
-		public override string GetCategory()
+		public override PageTitle GetCategory()
 		{
-			return "Category:Creator template possible";
+			return new PageTitle(PageTitle.NS_Category, "Creator template possible");
 		}
 	}
 
@@ -38,7 +38,7 @@ namespace Tasks.Commons
 		public override bool DoReplacement(Article article)
 		{
 			//OPT: will fetch page again
-			PageTitle creator = ImplicitCreatorsReplacement.GetCreatorFromCommonsPage(null, PageTitle.Parse(article.title));
+			PageTitle creator = ImplicitCreatorsReplacement.GetCreatorFromCommonsPage(null, article.title);
 			if (creator.IsEmpty)
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Red, "  No creator.");
@@ -48,7 +48,7 @@ namespace Tasks.Commons
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Green, "  Found creator, removing template.");
 
-				string entityId = ImplicitCreatorsReplacement.GetEntityIdForCreator(creator);
+				QId entityId = ImplicitCreatorsReplacement.GetEntityIdForCreator(creator);
 				Entity entity = GlobalAPIs.Wikidata.GetEntity(entityId);
 
 				if (entity != null)

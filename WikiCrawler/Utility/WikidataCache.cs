@@ -10,16 +10,16 @@ namespace WikiCrawler
 	//TODO: struct?
 	public class CreatorData
 	{
-		public int? QID = null;
+		public QId QID = QId.Empty;
 
 		public int DeathYear = 9999;
-		public int? CountryOfCitizenship;
-		public string CommonsCategory;
+		public QId CountryOfCitizenship;
+		public PageTitle CommonsCategory;
 	}
 
 	public struct ArtworkData
 	{
-		public int? CreatorQid;
+		public QId CreatorQid;
 		public int LatestYear;
 	}
 
@@ -90,16 +90,16 @@ namespace WikiCrawler
 					isNew = false;
 					return new CreatorData()
 					{
-						QID = reader.GetInt32(0),
+						QID = new QId(reader.GetInt32(0)),
 						DeathYear = reader.GetInt32(1),
-						CountryOfCitizenship = reader.IsDBNull(2) ? null : (int?)reader.GetInt32(2),
-						CommonsCategory = reader.IsDBNull(3) ? null : reader.GetString(3),
+						CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
+						CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
 					};
 				}
 				else
 				{
 					isNew = true;
-					return RecordNewCreator(creatorTemplate);
+					return RecordNewCreator(creator.Template);
 				}
 			}
 		}
@@ -107,11 +107,11 @@ namespace WikiCrawler
 		/// <summary>
 		/// Gets cached information about a person.
 		/// </summary>
-		public static CreatorData GetPersonData(int qid)
+		public static CreatorData GetPersonData(QId qid)
 		{
 			SQLiteCommand command = LocalDatabase.CreateCommand();
 			command.CommandText = "SELECT deathYear,countryOfCitizenship,commonsCategory FROM people WHERE qid=$qid";
-			command.Parameters.AddWithValue("qid", qid);
+			command.Parameters.AddWithValue("qid", qid.Id);
 			using (var reader = command.ExecuteReader())
 			{
 				if (reader.Read())
@@ -120,8 +120,8 @@ namespace WikiCrawler
 					{
 						QID = qid,
 						DeathYear = reader.GetInt32(0),
-						CountryOfCitizenship = reader.IsDBNull(1) ? null : (int?)reader.GetInt32(1),
-						CommonsCategory = reader.IsDBNull(2) ? null : reader.GetString(2),
+						CountryOfCitizenship = reader.IsDBNull(1) ? QId.Empty : new QId(reader.GetInt32(1)),
+						CommonsCategory = reader.IsDBNull(2) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(2)),
 					};
 				}
 				else
@@ -134,9 +134,9 @@ namespace WikiCrawler
 		/// <summary>
 		/// Caches data for a new creator template.
 		/// </summary>
-		private static CreatorData RecordNewCreator(string creatorTemplate)
+		private static CreatorData RecordNewCreator(PageTitle creatorTemplate)
 		{
-			Article article = GlobalAPIs.Commons.GetPage(creatorTemplate.ToString());
+			Article article = GlobalAPIs.Commons.GetPage(creatorTemplate);
 			if (Article.IsNullOrMissing(article))
 			{
 				return null;
@@ -163,8 +163,7 @@ namespace WikiCrawler
 			if (!Article.IsNullOrEmpty(article))
 			{
 				CommonsCreatorWorksheet worksheet = new CommonsCreatorWorksheet(article);
-				string wikidata = worksheet.Wikidata;
-				int? qid = Wikidata.UnQidify(wikidata);
+				QId qid = QId.SafeParse(worksheet.Wikidata);
 
 				// point creator and all redirects at the person qid
 				foreach (Article creatorArticle in creatorArticles)
@@ -173,34 +172,34 @@ namespace WikiCrawler
 					command.CommandText = "INSERT INTO creatortemplates (templateName,qid,timestamp) VALUES ($templateName,$qid,unixepoch()) " +
 						"ON CONFLICT(templateName) DO UPDATE SET qid=$qid,timestamp=unixepoch()";
 					command.Parameters.AddWithValue("templateName", creatorArticle.title);
-					command.Parameters.AddWithValue("qid", qid);
+					command.Parameters.AddWithValue("qid", qid.Id);
 					command.ExecuteNonQuery();
 				}
 
-				if (qid.HasValue)
+				if (!qid.IsEmpty)
 				{
 					// person already cached?
 					{
 						SQLiteCommand command = LocalDatabase.CreateCommand();
 						command.CommandText = "SELECT deathYear,countryOfCitizenship,commonsCategory FROM people WHERE qid=$qid";
-						command.Parameters.AddWithValue("qid", qid.Value);
+						command.Parameters.AddWithValue("qid", qid.Id);
 						using (var reader = command.ExecuteReader())
 						{
 							if (reader.Read())
 							{
 								return new CreatorData()
 								{
-									QID = qid.Value,
+									QID = qid,
 									DeathYear = reader.GetInt32(0),
-									CountryOfCitizenship = reader.IsDBNull(1) ? null : (int?)reader.GetInt32(1),
-									CommonsCategory = reader.IsDBNull(2) ? null : reader.GetString(2),
+									CountryOfCitizenship = reader.IsDBNull(1) ? QId.Empty : new QId(reader.GetInt32(1)),
+									CommonsCategory = reader.IsDBNull(2) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(2)),
 								};
 							}
 						}
 					}
 
 					// person is not yet cached
-					return FetchNewPerson(qid.Value);
+					return FetchNewPerson(qid);
 				}
 			}
 
@@ -210,9 +209,9 @@ namespace WikiCrawler
 		/// <summary>
 		/// 
 		/// </summary>
-		private static CreatorData FetchNewPerson(int qid)
+		private static CreatorData FetchNewPerson(QId qid)
 		{
-			Entity entity = GlobalAPIs.Wikidata.GetEntity("Q" + qid);
+			Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
 			if (entity.missing || entity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) != Wikidata.Entity_Human)
 			{
 				return new CreatorData();
@@ -222,15 +221,15 @@ namespace WikiCrawler
 				//TODO: if no deathdate but another date (e.g. floruit) that is very old, record that (using deathYear 10000)
 
 				int deathYear = GetCreatorDeathYear(entity);
-				int? countryOfCitizenship = GetCreatorCountryOfCitizenship(entity);
-				string commonsCategory = GetCreatorCommonsCategory(entity);
+				QId countryOfCitizenship = GetCreatorCountryOfCitizenship(entity);
+				PageTitle commonsCategory = GetCreatorCommonsCategory(entity);
 
 				SQLiteCommand command = LocalDatabase.CreateCommand();
 				command.CommandText = "INSERT INTO people (qid,deathYear,countryOfCitizenship,commonsCategory,timestamp) " +
 					"VALUES ($qid,$deathYear,$countryOfCitizenship,$commonsCategory,unixepoch());";
-				command.Parameters.AddWithValue("qid", qid);
+				command.Parameters.AddWithValue("qid", qid.Id);
 				command.Parameters.AddWithValue("deathYear", deathYear);
-				command.Parameters.AddWithValue("countryOfCitizenship", countryOfCitizenship);
+				command.Parameters.AddWithValue("countryOfCitizenship", (int?)countryOfCitizenship);
 				command.Parameters.AddWithValue("commonsCategory", commonsCategory);
 				command.ExecuteNonQuery();
 
@@ -254,7 +253,7 @@ namespace WikiCrawler
 			return 9999;
 		}
 
-		public static int? GetCreatorCountryOfCitizenship(Entity entity)
+		public static QId GetCreatorCountryOfCitizenship(Entity entity)
 		{
 			//TODO: respect rank
 			if (entity.HasClaim(Wikidata.Prop_CountryOfCitizenship))
@@ -262,36 +261,28 @@ namespace WikiCrawler
 				return entity.GetClaimValueAsEntityId(Wikidata.Prop_CountryOfCitizenship);
 			}
 
-			return null;
+			return QId.Empty;
 		}
 
-		public static string GetCreatorCommonsCategory(Entity entity)
+		public static PageTitle GetCreatorCommonsCategory(Entity entity)
 		{
 			//TODO: respect rank
 			if (entity.HasClaim(Wikidata.Prop_CommonsCategory))
 			{
-				return entity.GetClaimValueAsString(Wikidata.Prop_CommonsCategory);
+				return new PageTitle(PageTitle.NS_Category, entity.GetClaimValueAsString(Wikidata.Prop_CommonsCategory));
 			}
 
-			return null;
+			return PageTitle.Empty;
 		}
 
 		/// <summary>
 		/// Gets cached information about an artwork.
 		/// </summary>
-		public static ArtworkData GetArtworkData(string qid)
-		{
-			return GetArtworkData(Wikidata.UnQidifyChecked(qid));
-		}
-
-		/// <summary>
-		/// Gets cached information about an artwork.
-		/// </summary>
-		public static ArtworkData GetArtworkData(int qid)
+		public static ArtworkData GetArtworkData(QId qid)
 		{
 			SQLiteCommand command = LocalDatabase.CreateCommand();
 			command.CommandText = "SELECT creatorQid,latestYear,timestamp FROM artwork WHERE qid=$qid";
-			command.Parameters.AddWithValue("qid", qid);
+			command.Parameters.AddWithValue("qid", qid.Id);
 			using (var reader = command.ExecuteReader())
 			{
 				if (reader.Read())
@@ -306,7 +297,7 @@ namespace WikiCrawler
 					{
 						return new ArtworkData()
 						{
-							CreatorQid = reader.IsDBNull(0) ? null : (int?)reader.GetInt32(0),
+							CreatorQid = reader.IsDBNull(0) ? QId.Empty : new QId(reader.GetInt32(0)),
 							LatestYear = reader.IsDBNull(1) ? 9999 : reader.GetInt32(1),
 						};
 					}
@@ -321,9 +312,9 @@ namespace WikiCrawler
 		/// <summary>
 		/// 
 		/// </summary>
-		private static ArtworkData FetchNewArtwork(int qid)
+		private static ArtworkData FetchNewArtwork(QId qid)
 		{
-			Entity entity = GlobalAPIs.Wikidata.GetEntity("Q" + qid);
+			Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
 			if (entity.missing)
 			//TODO: check type: || entity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) != Wikidata.Entity_Human)
 			{
@@ -331,15 +322,15 @@ namespace WikiCrawler
 			}
 			else
 			{
-				int? creatorQid = GetArtworkCreator(entity);
+				QId creatorQid = GetArtworkCreator(entity);
 				int? latestYear = GetArtworkLatestYear(entity);
 
 				SQLiteCommand command = LocalDatabase.CreateCommand();
 				command.CommandText = "INSERT INTO artwork (qid,creatorQid,latestYear,timestamp) " +
 					"VALUES ($qid,$creatorQid,$latestYear,unixepoch()) " +
 					"ON CONFLICT(qid) DO UPDATE SET creatorQid=$creatorQid,latestYear=$latestYear,timestamp=unixepoch();";
-				command.Parameters.AddWithValue("qid", qid);
-				command.Parameters.AddWithValue("creatorQid", creatorQid);
+				command.Parameters.AddWithValue("qid", qid.Id);
+				command.Parameters.AddWithValue("creatorQid", (int?)creatorQid);
 				command.Parameters.AddWithValue("latestYear", latestYear);
 				command.ExecuteNonQuery();
 
@@ -351,7 +342,7 @@ namespace WikiCrawler
 			}
 		}
 
-		public static int? GetArtworkCreator(Entity entity)
+		public static QId GetArtworkCreator(Entity entity)
 		{
 			if (entity.claims.TryGetValue(Wikidata.Prop_Creator, out Claim[] creators))
 			{
@@ -366,7 +357,7 @@ namespace WikiCrawler
 				}
 			}
 
-			return null;
+			return QId.Empty;
 		}
 
 		public static int GetArtworkLatestYear(Entity entity)

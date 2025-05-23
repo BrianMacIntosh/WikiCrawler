@@ -61,6 +61,64 @@ namespace MediaWiki
 	/// </summary>
 	public struct PageTitle : IEquatable<PageTitle>
 	{
+		#region Built-in namespaces
+
+		public const string NS_Main = "";
+		public const int N_Main = 0;
+
+		public const string NS_User = "User";
+		public const int N_User = 2;
+
+		public const string NS_Project = "Project";
+		public const int N_Project = 4;
+
+		public const string NS_File = "File";
+		public const int N_File = 6;
+
+		public const string NS_MediaWiki= "MediaWiki";
+		public const int N_MediaWiki = 8;
+
+		public const string NS_Template = "Template";
+		public const int N_Template = 10;
+
+		public const string NS_Help = "Help";
+		public const int N_Help = 12;
+
+		public const string NS_Category = "Category";
+		public const int N_Category = 14;
+
+		public const string NS_Special = "Special";
+		public const int N_Special = -1;
+
+		public const string NS_Media = "Media";
+		public const int N_Media = -2;
+
+		#endregion
+
+		#region Commons namespaces
+
+		public const string NS_Creator = "Creator";
+		public const int N_Creator = 100;
+
+		#endregion
+
+		public static readonly Dictionary<string, int> s_namespaceMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+		{
+			{ NS_Main, N_Main },
+			{ NS_User, N_User },
+			{ NS_Project, N_Project },
+			{ NS_File, N_File },
+			{ "Image", N_File },
+			{ NS_MediaWiki, N_MediaWiki },
+			{ NS_Template, N_Template },
+			{ "T", N_Template },
+			{ NS_Help, N_Help },
+			{ NS_Category, N_Category },
+			{ NS_Special, N_Special },
+			{ NS_Media, N_Media },
+			{ NS_Creator, N_Creator }
+		};
+
 		public static readonly PageTitle Empty = new PageTitle();
 
 		public string FullTitle
@@ -110,36 +168,49 @@ namespace MediaWiki
 		/// Attempts to parse a string into a <see cref="PageTitle"/>.
 		/// </summary>
 		/// <returns>Empty if parse failed.</returns>
-		public static PageTitle TryParse(string s)
+		public static PageTitle SafeParse(string s)
+		{
+			if (TryParse(s, out PageTitle pageTitle))
+			{
+				return pageTitle;
+			}
+			else
+			{
+				return Empty;
+			}
+		}
+
+		/// <summary>
+		/// Attempts to parse a string into a <see cref="PageTitle"/>.
+		/// </summary>
+		/// <returns>Empty if parse failed.</returns>
+		public static bool TryParse(string s, out PageTitle pageTitle)
 		{
 			string[] split = s.Split(s_namespaceSplitter, 2);
 			if (split.Length < 2)
 			{
-				return Empty;
+				pageTitle = Empty;
+				return false;
 			}
 			if (!IsKnownNamespace(split[0]))
 			{
-				return Empty;
+				pageTitle = Empty;
+				return false;
 			}
-			return new PageTitle(split[0], split[1]);
+			pageTitle = new PageTitle(split[0], split[1]);
+			return true;
 		}
 
 		private static readonly char[] s_namespaceSplitter = new char[] { ':' };
 
 		public static bool IsKnownNamespace(string ns)
 		{
-			return string.Equals("Category", ns, StringComparison.OrdinalIgnoreCase)
-				|| string.Equals("File", ns, StringComparison.OrdinalIgnoreCase)
-				|| string.Equals("Creator", ns, StringComparison.OrdinalIgnoreCase)
-				|| string.Equals("Template", ns, StringComparison.OrdinalIgnoreCase)
-				|| string.Equals("Commons", ns, StringComparison.OrdinalIgnoreCase)
-				|| string.Equals("Special", ns, StringComparison.OrdinalIgnoreCase)
-				|| string.Equals("User", ns, StringComparison.OrdinalIgnoreCase);
+			return s_namespaceMap.ContainsKey(ns);
 		}
 
 		public bool IsNamespace(string ns)
 		{
-			return string.Equals(Namespace, ns, StringComparison.OrdinalIgnoreCase);
+			return s_namespaceMap[ns] == s_namespaceMap[Namespace];
 		}
 
 		public bool IsName(string name)
@@ -164,7 +235,7 @@ namespace MediaWiki
 
 		public override int GetHashCode()
 		{
-			return StringComparer.OrdinalIgnoreCase.GetHashCode(Namespace) * 13 + PageNameComparer.Instance.GetHashCode(Name);
+			return s_namespaceMap[Namespace] * 13 + PageNameComparer.Instance.GetHashCode(Name);
 		}
 
 		public override bool Equals(object obj)

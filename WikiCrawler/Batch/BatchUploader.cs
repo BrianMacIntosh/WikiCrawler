@@ -27,7 +27,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		SkippedSucceeded,
 	}
 
-	protected Api Api = new Api(new Uri("https://commons.wikimedia.org/"));
+	protected Api Api = GlobalAPIs.Commons;
 
 	public string PreviewDirectory
 	{
@@ -173,8 +173,10 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 
 		Dictionary<string, string> metadata = LoadMetadata(key);
 
-		Article art = new Article();
-		art.title = GetTitle(key, metadata).Replace(s_badTitleCharacters, "");
+		PageTitle pageTitle = GetTitle(key, metadata);
+		pageTitle.Name = pageTitle.Name.Replace(s_badTitleCharacters, "");
+
+		Article art = new Article(pageTitle);
 		art.revisions = new Revision[1];
 		art.revisions[0] = new Revision();
 		art.revisions[0].text = BuildPage(key, metadata);
@@ -234,7 +236,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		}
 
 		//TODO: check for existing extension
-		art.title += Path.GetExtension(imagePath);
+		art.title.Name += Path.GetExtension(imagePath);
 
 		// creates any pages that the new page will be dependent on
 		PreUpload(key, art);
@@ -389,7 +391,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	/// <summary>
 	/// Returns the title of the uploaded page for the specified metadata.
 	/// </summary>
-	public abstract string GetTitle(KeyType key, Dictionary<string, string> metadata);
+	public abstract PageTitle GetTitle(KeyType key, Dictionary<string, string> metadata);
 
 	/// <summary>
 	/// Builds the wiki page for the object with the specified metadata.
@@ -401,7 +403,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	/// </summary>
 	/// <param name="targetPage">The existing page to merge into.</param>
 	/// <returns>True on success.</returns>
-	protected virtual bool TryAddDuplicate(string targetPage, KeyType key, Dictionary<string, string> metadata)
+	protected virtual bool TryAddDuplicate(PageTitle targetPage, KeyType key, Dictionary<string, string> metadata)
 	{
 		return false;
 	}

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using WikiCrawler;
@@ -14,6 +15,11 @@ public static class LicenseUtility
 	private const int SafeLifetimeYears = 80;
 
 	private static readonly string[] s_primaryLicenseTemplates;
+
+	private static int CurrentYear
+	{
+		get { return System.DateTime.Now.Year; }
+	}
 
 	static LicenseUtility()
 	{
@@ -93,14 +99,14 @@ public static class LicenseUtility
 		}
 	}
 
-	public static int GetPMADurationByQID(int? qid)
+	public static int GetPMADurationByQID(QId qid)
 	{
-		if (!qid.HasValue)
+		if (qid.IsEmpty)
 		{
 			return 100;
 		}
 
-		switch (qid.Value)
+		switch (qid.Id)
 		{
 			case 683: // Samoa
 			case 774: // Guatemala
@@ -172,7 +178,7 @@ public static class LicenseUtility
 		if (pubCountry == "USA")
 		{
 			pubCountry = "US";
-			if (pubYear < (DateTime.Now.Year - 95))
+			if (pubYear < (CurrentYear - 95))
 			{
 				return "{{PD-US-expired|country=" + pubCountry + "}}";
 			}
@@ -194,7 +200,7 @@ public static class LicenseUtility
 	{
 		if (UseEUNoAuthor(pubCountry))
 		{
-			if (DateTime.Now.Year - pubYear > 70)
+			if (CurrentYear - pubYear > 70)
 			{
 				return "{{PD-EU-no author disclosure}}";
 			}
@@ -205,7 +211,7 @@ public static class LicenseUtility
 		}
 		else if (pubCountry == "USA")
 		{
-			if (pubYear < (DateTime.Now.Year - 95))
+			if (pubYear < (CurrentYear - 95))
 			{
 				return "{{PD-anon-expired}}";
 			}
@@ -233,12 +239,12 @@ public static class LicenseUtility
 		}
 		else if (authorDeathYear.HasValue)
 		{
-			canUsePDOldExpired = (DateTime.Now.Year - authorDeathYear.Value) > GetPMADuration(pubCountry)
+			canUsePDOldExpired = (CurrentYear - authorDeathYear.Value) > GetPMADuration(pubCountry)
 				// estimate for authors with unknown deathyear
-				|| DateTime.Now.Year - (pubYear + SafeLifetimeYears) > GetPMADuration(pubCountry);
+				|| CurrentYear - (pubYear + SafeLifetimeYears) > GetPMADuration(pubCountry);
 		}
 
-		if (canUsePDOldExpired && pubYear < (DateTime.Now.Year - 95))
+		if (canUsePDOldExpired && pubYear < (CurrentYear - 95))
 		{
 			if (authorDeathYear.HasValue && authorDeathYear != 9999)
 			{
@@ -259,7 +265,7 @@ public static class LicenseUtility
 		}
 		else
 		{
-			if (authorDeathYear.HasValue && DateTime.Now.Year - authorDeathYear >= 70)
+			if (authorDeathYear.HasValue && CurrentYear - authorDeathYear >= 70)
 			{
 				return "";// "{{PD-old-auto|deathyear=" + authorDeathYear.ToString() + "}}";
 			}

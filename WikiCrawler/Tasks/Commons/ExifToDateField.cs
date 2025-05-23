@@ -27,7 +27,7 @@ namespace Tasks.Commons
 			Api commonsApi = GlobalAPIs.Commons;
 			int maxEdits = int.MaxValue;
 
-			foreach (Article file in commonsApi.GetCategoryEntries(Parameters["Category"], CMType.file))
+			foreach (Article file in commonsApi.GetCategoryEntries(PageTitle.Parse(Parameters["Category"]), CMType.file))
 			{
 				if (maxEdits <= 0)
 				{

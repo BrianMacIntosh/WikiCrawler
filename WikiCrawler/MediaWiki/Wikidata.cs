@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace MediaWiki
 {
@@ -17,6 +15,7 @@ namespace MediaWiki
 	{
 		public const string Prop_CountryOfCitizenship = "P27";
 		public const string Prop_InstanceOf = "P31";
+		public const string Prop_LocatedInTerritory = "P131";
 		public const string Prop_Creator = "P170";
 		public const string Prop_CommonsCategory = "P373";
 		public const string Prop_DateOfBirth = "P569";
@@ -25,58 +24,7 @@ namespace MediaWiki
 		public const string Prop_PublicationDate = "P577";
 		public const string Prop_CommonsCreator = "P1472";
 
-		public const int Entity_Human = 5;
-
-		private static readonly Regex QidRegex = new Regex("Q([0-9]+)", RegexOptions.IgnoreCase);
-
-		/// <summary>
-		/// Converts a qid like 'Q1000' into an int 1000.
-		/// </summary>
-		public static int? UnQidify(string qid)
-		{
-			if (TryUnQidify(qid, out int outQid))
-			{
-				return outQid;
-			}
-			else
-			{
-				return null;
-			}
-		}
-
-		/// <summary>
-		/// Converts a qid like 'Q1000' into an int 1000.
-		/// </summary>
-		public static int UnQidifyChecked(string qid)
-		{
-			if (TryUnQidify(qid, out int outQid))
-			{
-				return outQid;
-			}
-			else
-			{
-				Debug.Assert(false, string.Format("Failed to UnQidify '{0}'."), qid);
-				return 0;
-			}
-		}
-
-		/// <summary>
-		/// Converts a qid like 'Q1000' into an int 1000.
-		/// </summary>
-		public static bool TryUnQidify(string qid, out int outQid)
-		{
-			Match match = QidRegex.Match(qid);
-			if (match.Success)
-			{
-				outQid = int.Parse(match.Groups[1].Value);
-				return true;
-			}
-			else
-			{
-				outQid = 0;
-				return false;
-			}
-		}
+		public static readonly QId Entity_Human = new QId(5);
 
 		/// <summary>
 		/// Gets the Wikidata property id for the specified parameter of Commons "Authority control".

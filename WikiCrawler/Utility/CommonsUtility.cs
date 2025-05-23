@@ -56,7 +56,7 @@ public static class CommonsUtility
 			dateSplit[2] = int.Parse(dateSplit[2]).ToString("00");
 			date = string.Join("-", dateSplit);
 
-			string takenOnCatTitle = "Category:Photographs taken on " + date;
+			PageTitle takenOnCatTitle = new PageTitle(PageTitle.NS_Category, "Photographs taken on " + date);
 			Article takenOnCatArticle = api.GetPage(takenOnCatTitle);
 			if (takenOnCatArticle == null || takenOnCatArticle.missing)
 			{
@@ -65,7 +65,7 @@ public static class CommonsUtility
 				takenOnCatArticle.revisions[0] = new Revision() { text = "{{Photographs taken on navbox|" + date.Replace('-', '|') + "}}" };
 				api.CreatePage(takenOnCatArticle, "creating new category");
 			}
-			string dateCatTitle = "Category:" + date;
+			PageTitle dateCatTitle = new PageTitle(PageTitle.NS_Category, date);
 			Article dateCatArticle = api.GetPage(dateCatTitle);
 			if (dateCatArticle == null || dateCatArticle.missing)
 			{
@@ -74,7 +74,7 @@ public static class CommonsUtility
 				dateCatArticle.revisions[0] = new Revision() { text = "{{Date navbox|" + date.Replace('-', '|') + "}}" };
 				api.CreatePage(dateCatArticle, "creating new category");
 			}
-			string monthCatTitle = "Category:" + DateUtility.GetMonthName(int.Parse(dateSplit[1])) + " " + dateSplit[0];
+			PageTitle monthCatTitle = new PageTitle(PageTitle.NS_Category, DateUtility.GetMonthName(int.Parse(dateSplit[1])) + " " + dateSplit[0]);
 			Article monthCatArticle = api.GetPage(monthCatTitle);
 			if (monthCatArticle == null || monthCatArticle.missing)
 			{
@@ -86,7 +86,7 @@ public static class CommonsUtility
 				};
 				api.CreatePage(monthCatArticle, "creating new category");
 			}
-			string monthPhotosCatTitle = "Category:" + DateUtility.GetMonthName(int.Parse(dateSplit[1])) + " " + dateSplit[0] + " photographs";
+			PageTitle monthPhotosCatTitle = new PageTitle(PageTitle.NS_Category, DateUtility.GetMonthName(int.Parse(dateSplit[1])) + " " + dateSplit[0] + " photographs");
 			Article monthPhotosCatArticle = api.GetPage(monthPhotosCatTitle);
 			if (monthPhotosCatArticle == null || monthPhotosCatArticle.missing)
 			{

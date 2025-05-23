@@ -69,14 +69,6 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns true if the specified category exists in the text.
 		/// </summary>
-		public static bool HasCategory(string name, string text)
-		{
-			return HasCategory(PageTitle.Parse(name), text);
-		}
-
-		/// <summary>
-		/// Returns true if the specified category exists in the text.
-		/// </summary>
 		public static bool HasCategory(PageTitle name, string text)
 		{
 			if (name.IsEmpty) throw new ArgumentException("Category name cannot be empty.", "name");
@@ -197,7 +189,7 @@ namespace MediaWiki
 			string[] sp1 = text.Split(catOpen, StringSplitOptions.None);
 			for (int c = 1; c < sp1.Length; c++)
 			{
-				yield return new PageTitle("Category", sp1[c].Split(catClose, StringSplitOptions.None)[0].Split('|')[0].Trim());
+				yield return new PageTitle(PageTitle.NS_Category, sp1[c].Split(catClose, StringSplitOptions.None)[0].Split('|')[0].Trim());
 			}
 		}
 
@@ -881,27 +873,12 @@ namespace MediaWiki
 				}
 				else
 				{
-					return article.GetTitle();
+					return article.title.Name;
 				}
 			}
 			else
 			{
 				return "";
-			}
-		}
-
-		/// <summary>
-		/// If the page title starts with "Category:", removes it.
-		/// </summary>
-		public static string GetCategoryName(string category)
-		{
-			if (category.StartsWith("Category:", StringComparison.CurrentCultureIgnoreCase))
-			{
-				return category.Substring("Category:".Length);
-			}
-			else
-			{
-				return category;
 			}
 		}
 

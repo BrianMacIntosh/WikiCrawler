@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using MediaWiki;
+using System.Collections.Generic;
 
 namespace Tasks
 {
@@ -16,9 +17,9 @@ namespace Tasks
 		/// <summary>
 		/// Returns the name of the category to affect.
 		/// </summary>
-		public abstract string GetCategory();
+		public abstract PageTitle GetCategory();
 
-		public override sealed IEnumerable<string> GetCategories()
+		public override sealed IEnumerable<PageTitle> GetCategories()
 		{
 			yield return GetCategory();
 		}

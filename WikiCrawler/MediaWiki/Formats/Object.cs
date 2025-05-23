@@ -34,7 +34,7 @@ namespace MediaWiki
 	{
 		public long pageid;
 		public Namespace ns;
-		public string title;
+		public PageTitle title;
 		public long lastrevid;
 		public InterwikiLink[] iwlinks;
 		public Dictionary<string, string> pageprops;
@@ -56,7 +56,7 @@ namespace MediaWiki
 			}
 			if (json.ContainsKey("title"))
 			{
-				title = (string)json["title"];
+				title = PageTitle.Parse((string)json["title"]);
 			}
 			if (json.ContainsKey("missing"))
 			{
@@ -100,22 +100,6 @@ namespace MediaWiki
 				pageprops.Add(kv.Key, (string)kv.Value);
 			}
 			return pageprops;
-		}
-
-		/// <summary>
-		/// Returns the article title without the namespace.
-		/// </summary>
-		public string GetTitle()
-		{
-			int colon = title.IndexOf(':');
-			if (colon > 0)
-			{
-				return title.Substring(colon + 1);
-			}
-			else
-			{
-				return title;
-			}
 		}
 	}
 }

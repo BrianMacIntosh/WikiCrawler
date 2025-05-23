@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -38,7 +39,7 @@ namespace WikiCrawler
             write2.Close();
             return;*/
 
-			MediaWiki.Api Api = new MediaWiki.Api(new Uri("http://en.wikipedia.org/"));
+            Api Api = GlobalAPIs.Wikipedia("en");
 
             StreamReader re = new StreamReader(new FileStream("C:/pages.txt", FileMode.Open));
 
@@ -47,7 +48,7 @@ namespace WikiCrawler
             string sback = "START";
             bool started = false;
             string text;
-            MediaWiki.Article art;
+			Article art;
             while (!re.EndOfStream)
             {
                 string s = re.ReadLine();
@@ -58,7 +59,7 @@ namespace WikiCrawler
                 }
 
                 sback = s;
-                art = Api.GetPage(s);
+                art = Api.GetPage(PageTitle.Parse(s));
                 Console.WriteLine(s);
 
                 if (art.revisions == null || art.revisions.Length == 0)

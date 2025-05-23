@@ -50,7 +50,7 @@ namespace Tasks.Commons
 				if (!string.IsNullOrEmpty(kv.Value.ReplaceDate)
 					&& PdArtReplacement.ParseDate(kv.Value.ReplaceDate).LatestYear < System.DateTime.Now.Year - 95)
 				{
-					foreach (Article article in kv.Value.FromPages.Select(title => new Article(title)))
+					foreach (Article article in kv.Value.FromPages.Select(title => new Article(PageTitle.Parse(title))))
 					{
 						yield return article;
 					}
@@ -58,7 +58,7 @@ namespace Tasks.Commons
 				else if (kv.Value.LatestYear < System.DateTime.Now.Year - 95
 					|| PdArtReplacement.ParseDate(kv.Key).LatestYear < System.DateTime.Now.Year - 95)
 				{
-					foreach (Article article in kv.Value.FromPages.Select(title => new Article(title)))
+					foreach (Article article in kv.Value.FromPages.Select(title => new Article(PageTitle.Parse(title))))
 					{
 						yield return article;
 					}
@@ -74,7 +74,7 @@ namespace Tasks.Commons
 					|| !string.IsNullOrEmpty(kv.Value.MappedQID))
 				{
 					//TODO: GetPages should automatically break up file lists
-					foreach (Article article in kv.Value.FromPages.Select(title => new Article(title)))
+					foreach (Article article in kv.Value.FromPages.Select(title => new Article(PageTitle.Parse(title))))
 					{
 						yield return article;
 					}

@@ -5,7 +5,7 @@ namespace MediaWiki
 {
 	public class DuplicateFileException : WikimediaException
 	{
-		public readonly string FileName;
+		public readonly PageTitle FileName;
 
 		public readonly object[] Duplicates;
 
@@ -14,7 +14,7 @@ namespace MediaWiki
 			get { return DuplicateTitles.Contains(FileName); }
 		}
 
-		public DuplicateFileException(string fileName, object[] duplicates)
+		public DuplicateFileException(PageTitle fileName, object[] duplicates)
 		{
 			FileName = fileName;
 			Duplicates = duplicates;
@@ -29,13 +29,13 @@ namespace MediaWiki
 			}
 		}
 
-		public IEnumerable<string> DuplicateTitles
+		public IEnumerable<PageTitle> DuplicateTitles
 		{
 			get
 			{
 				foreach (object dupeObj in Duplicates)
 				{
-					yield return (string)((Dictionary<string, object>)Duplicates[0])["title"];
+					yield return PageTitle.Parse((string)((Dictionary<string, object>)Duplicates[0])["title"]);
 				}
 			}
 		}

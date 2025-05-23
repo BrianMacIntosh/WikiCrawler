@@ -1,17 +1,13 @@
-﻿using System;
+﻿using MediaWiki;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WikiCrawler
 {
 	class Tropenmuseum
 	{
-		private static MediaWiki.Api Api = new MediaWiki.Api(new Uri("https://commons.wikimedia.org/"));
-
 		public void Do()
 		{
 			string dataFile = "tropendata.csv";
@@ -27,18 +23,18 @@ namespace WikiCrawler
 					{
 						Console.WriteLine(props[0]);
 						data[columnHead[c]] = props[c];
-						DoUpload(Api, data);
+						DoUpload(GlobalAPIs.Commons, data);
 					}
 				}
 			}
 		}
 
-		public void DoUpload(MediaWiki.Api api, Dictionary<string, string> data)
+		public void DoUpload(Api api, Dictionary<string, string> data)
 		{
-			string title = string.Format(
+			PageTitle title = new PageTitle(PageTitle.NS_File, string.Format(
 				"COLLECTIE STICHTING NATIONAAL MUSEUM VAN WERELDCULTUREN {0} {1}.jpg",
 				!string.IsNullOrEmpty(data["Title EN"]) ? data["Title EN"] : data["Title NL"],
-				data["ObjectNumber"]);
+				data["ObjectNumber"]));
 
 			string titleContent = "";
 			if (!string.IsNullOrEmpty(data["Title NL"]))
@@ -107,12 +103,12 @@ namespace WikiCrawler
 				text += "[[Category:" + data["Commons category 2"] + "]]";
 			}
 
-			MediaWiki.Article art = new MediaWiki.Article();
+			Article art = new Article();
 			art.title = title;
-			art.revisions = new MediaWiki.Revision[1];
+			art.revisions = new Revision[1];
 			art.revisions[0].text = text;
 
-			Api.UploadFromLocal(art, imagePath, "(BOT) batch image upload (see [[Commons:Batch uploading/Tropenmuseum Expeditions]])", true);
+			api.UploadFromLocal(art, imagePath, "(BOT) batch image upload (see [[Commons:Batch uploading/Tropenmuseum Expeditions]])", true);
 		}
 
 		private static string ParseDate(string date)

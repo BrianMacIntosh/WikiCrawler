@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using WikiCrawler;
 
@@ -25,18 +26,18 @@ namespace Tasks
 			string rawPath = Path.Combine(Configuration.DataDirectory, "npsunits.json");
 			RawData[] rawData = JsonConvert.DeserializeObject<RawData[]>(File.ReadAllText(rawPath, Encoding.UTF8));
 
-			List<string> entityIds = new List<string>();
+			List<QId> entityIds = new List<QId>();
 			foreach (RawData raw in rawData)
 			{
-				string qCode = raw.item.Substring(raw.item.LastIndexOf('/') + 1);
-				entityIds.Add(qCode);
+				string qidString = raw.item.Substring(raw.item.LastIndexOf('/') + 1);
+				entityIds.Add(QId.Parse(qidString));
 			}
 
 			// maps q-codes to Commons Categories
-			Dictionary<string, string> commonsCats = new Dictionary<string, string>();
+			Dictionary<QId, PageTitle> commonsCats = new Dictionary<QId, PageTitle>();
 
 			// maps locations to their immediate parents along P131
-			Dictionary<string, List<string>> locationParents = new Dictionary<string, List<string>>();
+			Dictionary<QId, List<QId>> locationParents = new Dictionary<QId, List<QId>>();
 
 			Entity[] entities = GlobalAPIs.Wikidata.GetEntities(entityIds, props: Api.BuildParameterList(WBProp.info, WBProp.claims));
 
@@ -47,32 +48,32 @@ namespace Tasks
 				foreach (Entity entity in entities)
 				{
 					Claim[] locationClaims;
-					if (entity.claims.TryGetValue("P131", out locationClaims))
+					if (entity.claims.TryGetValue(Wikidata.Prop_LocatedInTerritory, out locationClaims))
 					{
 						foreach (Claim claim in locationClaims)
 						{
-							Dictionary<string, object> value = (Dictionary<string, object>)claim.mainSnak.datavalue["value"];
-							string id = (string)value["id"];
+							//TODO: use rank
+							QId id = claim.mainSnak.GetValueAsEntityId();
 							entityIds.AddUnique(id);
 
 							// remember as a parent
-							List<string> parents;
+							List<QId> parents;
 							if (locationParents.TryGetValue(entity.id, out parents))
 							{
 								parents.AddUnique(id);
 							}
 							else
 							{
-								locationParents.Add(entity.id, new List<string>() { id });
+								locationParents.Add(entity.id, new List<QId>() { id });
 							}
 						}
 					}
 
 					Claim[] commonsCat;
-					if (entity.claims.TryGetValue("P373", out commonsCat))
+					if (entity.claims.TryGetValue(Wikidata.Prop_CommonsCategory, out commonsCat))
 					{
-						string catName = (string)commonsCat[0].mainSnak.datavalue["value"];
-						commonsCats[entity.id] = catName;
+						string catName = commonsCat[0].mainSnak.GetValueAsString();
+						commonsCats[entity.id] = new PageTitle(PageTitle.NS_File, catName);
 					}
 				}
 				
@@ -84,21 +85,21 @@ namespace Tasks
 			foreach (RawData raw in rawData)
 			{
 				// collect all parent ids
-				string qCode = raw.item.Substring(raw.item.LastIndexOf('/') + 1);
-				List<string> parentIds = new List<string>() { qCode };
+				QId qCode = QId.Parse(raw.item.Substring(raw.item.LastIndexOf('/') + 1));
+				List<QId> parentIds = new List<QId>() { qCode };
 				for (int i = 0; i < parentIds.Count; i++)
 				{
-					if (locationParents.TryGetValue(parentIds[i], out List<string> thisParents))
+					if (locationParents.TryGetValue(parentIds[i], out List<QId> thisParents))
 					{
 						parentIds.AddRangeUnique(thisParents);
 					}
 				}
 
 				// map IDs to cats
-				List<string> parentCats = new List<string>(parentIds.Count);
-				foreach (string parentId in parentIds)
+				List<PageTitle> parentCats = new List<PageTitle>(parentIds.Count);
+				foreach (QId parentId in parentIds)
 				{
-					if (commonsCats.TryGetValue(parentId, out string commonsCat))
+					if (commonsCats.TryGetValue(parentId, out PageTitle commonsCat))
 					{
 						parentCats.Add(commonsCat);
 					}
@@ -109,7 +110,7 @@ namespace Tasks
 				{
 					Console.WriteLine(raw.value);
 				}
-				unitParents[raw.value] = parentCats;
+				unitParents[raw.value] = parentCats.Select(t => t.Name).ToList();
 			}
 
 			string resultPath = Path.Combine(Configuration.DataDirectory, "npsunit-parents.json");

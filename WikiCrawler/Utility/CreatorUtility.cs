@@ -69,7 +69,7 @@ namespace MediaWiki
 	/// </summary>
 	public static class CreatorUtility
 	{
-		private static Dictionary<string, string> s_creatorHomecats = new Dictionary<string, string>();
+		private static Dictionary<PageTitle, PageTitle> s_creatorHomecats = new Dictionary<PageTitle, PageTitle>();
 
 		public static readonly Regex InlineCreatorTemplateRegex = new Regex(@"^{{\s*[Cc]reator\s*\|\s*[Ww]ikidata\s*=\s*(Q[0-9]+)\s*(?:|\s*[Oo]ption\s*=\s*)?}}$");
 		public static readonly Regex AuthorLifespanRegex = new Regex(@"^([^\(\)]+)\s+\(?([0-9][0-9][0-9][0-9])[\-–—]([0-9][0-9][0-9][0-9])\)?$");
@@ -101,7 +101,7 @@ namespace MediaWiki
 				return false;
 			}
 
-			PageTitle title = PageTitle.TryParse(templateName);
+			PageTitle title = PageTitle.SafeParse(templateName);
 			if (title.IsEmpty 
 				|| !title.IsNamespace("creator")
 				|| string.IsNullOrWhiteSpace(title.Name))
@@ -121,12 +121,14 @@ namespace MediaWiki
 			return true;
 		}
 
-		public static bool TryGetHomeCategory(string creator, out string homeCategory)
+		//TODO: deprecate in favor of WikidataCache
+		public static bool TryGetHomeCategory(PageTitle creator, out PageTitle homeCategory)
 		{
 			return s_creatorHomecats.TryGetValue(creator, out homeCategory);
 		}
 
-		public static void SetHomeCategory(string creator, string homeCategory)
+		//TODO: deprecate in favor of WikidataCache
+		public static void SetHomeCategory(PageTitle creator, PageTitle homeCategory)
 		{
 			s_creatorHomecats[creator] = homeCategory;
 		}

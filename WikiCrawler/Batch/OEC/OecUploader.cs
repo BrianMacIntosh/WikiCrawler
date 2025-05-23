@@ -168,10 +168,10 @@ namespace OEC
 			ParseKey(key, out countryCode, out country, out year);
 
 			// supercede the old image
-			Article oldImage = Api.GetPage("File:" + country + " Export Treemap.jpg");
+			Article oldImage = Api.GetPage(new PageTitle(PageTitle.NS_File, country + " Export Treemap.jpg"));
 			if (oldImage == null || oldImage.missing)
 			{
-				oldImage = Api.GetPage("File:" + country + " Export Treemap.png");
+				oldImage = Api.GetPage(new PageTitle(PageTitle.NS_File, country + " Export Treemap.png"));
 			}
 			if (oldImage == null || oldImage.missing)
 			{
@@ -180,7 +180,7 @@ namespace OEC
 				string temp = Console.ReadLine();
 				if (!string.IsNullOrEmpty(temp))
 				{
-					oldImage = Api.GetPage(temp);
+					oldImage = Api.GetPage(PageTitle.Parse(temp));
 				}
 			}
 			if (oldImage == null || oldImage.missing)
@@ -239,11 +239,11 @@ namespace OEC
 			}
 		}
 
-		public override string GetTitle(string key, Dictionary<string, string> metadata)
+		public override PageTitle GetTitle(string key, Dictionary<string, string> metadata)
 		{
 			string countryCode, country, year;
 			ParseKey(key, out countryCode, out country, out year);
-			return country + " Exports Treemap " + year.ToString();
+			return new PageTitle(PageTitle.NS_File, country + " Exports Treemap " + year.ToString());
 		}
 	}
 }

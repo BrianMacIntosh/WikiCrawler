@@ -21,7 +21,7 @@ namespace Tasks.Commons
 
 				Console.WriteLine(catnameReal);
 
-				Article catpage = GlobalAPIs.Commons.GetPage("Category:" + catnameReal);
+				Article catpage = GlobalAPIs.Commons.GetPage(new PageTitle(PageTitle.NS_Category, catnameReal));
 
 				EasyWeb.crawlDelay = 0.1f;
 

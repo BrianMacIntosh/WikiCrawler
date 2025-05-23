@@ -199,7 +199,7 @@ namespace NPGallery
 
 			string outValue;
 
-			HashSet<string> categories = new HashSet<string>();
+			HashSet<PageTitle> categories = new HashSet<PageTitle>();
 
 			/*if (metadata.TryGetValue("Intended Audience", out outValue))
 			{
@@ -493,13 +493,13 @@ namespace NPGallery
 			}
 			if (!string.IsNullOrEmpty(parkName))
 			{
-				foreach (string category in CategoryTranslation.TranslateLocationCategory(parkName))
+				foreach (PageTitle category in CategoryTranslation.TranslateLocationCategory(parkName))
 				{
-					string definiteLocation = category.Substring("Category:".Length);
+					string definiteLocation = category.Name;
 
 					if (dateMetadata.IsPrecise)
 					{
-						string yearLocCat = "Category:" + dateMetadata.PreciseYear.ToString() + " in " + definiteLocation;
+						PageTitle yearLocCat = new PageTitle("Category:", dateMetadata.PreciseYear.ToString() + " in " + definiteLocation);
 						Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
 						if (existingYearLocCat != null)
 						{
@@ -618,7 +618,7 @@ namespace NPGallery
 			{
 				foreach (Creator creator in creators)
 				{
-					if (!string.IsNullOrEmpty(creator.Category))
+					if (!creator.Category.IsEmpty)
 					{
 						categories.Add(creator.Category);
 					}
@@ -683,7 +683,7 @@ namespace NPGallery
 				}
 			}
 
-			string otherVersions = "";
+			List<PageTitle> otherVersions = new List<PageTitle>();
 
 			List<string> relatedAlbums = new List<string>();
 			if (metadata.TryGetValue("~Related", out outValue) && !string.IsNullOrEmpty(outValue))
@@ -721,10 +721,11 @@ namespace NPGallery
 					{
 						relatedMetadata = m_downloader.Download(relatedKey, false);
 					}
-					string uploadTitle = GetTitle(relatedKey, relatedMetadata).Replace(s_badTitleCharacters, "");
+					PageTitle uploadTitle = GetTitle(relatedKey, relatedMetadata);
+					uploadTitle.Name = uploadTitle.Name.Replace(s_badTitleCharacters, "");
 					string imagePath = GetImageCacheFilename(key, metadata);
-					uploadTitle = uploadTitle + Path.GetExtension(imagePath);
-					otherVersions = StringUtility.Join("\n", otherVersions, uploadTitle);
+					uploadTitle.Name = uploadTitle.Name + Path.GetExtension(imagePath);
+					otherVersions.Add(uploadTitle);
 				}
 			}
 
@@ -835,10 +836,10 @@ namespace NPGallery
 			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
 
 			string catCheckTag = GetCheckCategoriesTag(categories.Count);
-			categories.Add(m_config.checkCategory);
+			categories.Add(PageTitle.Parse(m_config.checkCategory));
 			if (needFopCheck)
 			{
-				categories.Add("Category:Images from NPGallery to check for copyrighted sculptures");
+				categories.Add(new PageTitle(PageTitle.NS_Category, "Images from NPGallery to check for copyrighted sculptures"));
 			}
 
 			metadata.TryGetValue("Publisher", out string publisher);
@@ -899,9 +900,10 @@ namespace NPGallery
 				}
 			}
 
-			if (!string.IsNullOrEmpty(otherVersions))
+			string otherVersionsString = "";
+			if (otherVersions.Count > 0)
 			{
-				otherVersions = "<gallery>" + otherVersions + "</gallery>";
+				otherVersionsString = "<gallery>" + string.Join("\n", otherVersions.Select(t => t.Name).ToArray()) + "</gallery>";
 			}
 
 			page += "|permission=" + licenseTag + "\n";
@@ -917,7 +919,7 @@ namespace NPGallery
 					page += "'''" + copyrightStatement + "'''\n";
 				}
 			}
-			page += "|other_versions=" + otherVersions + "\n"
+			page += "|other_versions=" + otherVersionsString + "\n"
 				+ "|other_fields=" + otherFields + "\n";
 			if (!string.IsNullOrEmpty(photoInfo))
 			{
@@ -925,7 +927,7 @@ namespace NPGallery
 			}
 			page += "}}\n";
 
-			foreach (string cat in categories)
+			foreach (PageTitle cat in categories)
 			{
 				page += "[[" + cat + "]]\n";
 			}
@@ -933,23 +935,23 @@ namespace NPGallery
 			return page;
 		}
 
-		private void CollectCategories(HashSet<string> categories, string tag, IList<string> unitCodes)
+		private void CollectCategories(HashSet<PageTitle> categories, string tag, IList<string> unitCodes)
 		{
-			IEnumerable<string> mappedCats = CategoryTranslation.TranslateTagCategory(tag);
+			IEnumerable<PageTitle> mappedCats = CategoryTranslation.TranslateTagCategory(tag);
 			if (mappedCats != null)
 			{
-				foreach (string mappedCat in mappedCats)
+				foreach (PageTitle mappedCat in mappedCats)
 				{
 					// see if an "in (location)" or "of (location)" subcat exists and use that instead
-					List<string> checkCats = new List<string>();
+					List<PageTitle> checkCats = new List<PageTitle>();
 					foreach (string unitCode in unitCodes)
 					{
 						if (s_unitCodeToCommonsLoc.TryGetValue(unitCode, out string[] parentLocs))
 						{
 							foreach (string parentLoc in parentLocs)
 							{
-								checkCats.Add(mappedCat + " in " + parentLoc);
-								checkCats.Add(mappedCat + " of " + parentLoc);
+								checkCats.Add(new PageTitle(PageTitle.NS_Category, mappedCat + " in " + parentLoc));
+								checkCats.Add(new PageTitle(PageTitle.NS_Category, mappedCat + " of " + parentLoc));
 							}
 						}
 					}
@@ -1039,7 +1041,7 @@ namespace NPGallery
 			NPSDirectoryQuery.SaveOut();
 		}
 
-		protected override bool TryAddDuplicate(string targetPage, Guid key, Dictionary<string, string> metadata)
+		protected override bool TryAddDuplicate(PageTitle targetPage, Guid key, Dictionary<string, string> metadata)
 		{
 			Console.WriteLine("Checking to record duplicate " + key + " with existing page '" + targetPage + "'");
 
@@ -1186,7 +1188,7 @@ namespace NPGallery
 			}
 		}
 
-		public override string GetTitle(Guid key, Dictionary<string, string> metadata)
+		public override PageTitle GetTitle(Guid key, Dictionary<string, string> metadata)
 		{
 			string title = "", outValue;
 			if (metadata.TryGetValue("Title", out outValue))
@@ -1242,7 +1244,7 @@ namespace NPGallery
 			// add unique ID
 			title += " (" + key + ")";
 
-			return title;
+			return new PageTitle(PageTitle.NS_File, title);
 		}
 	}
 }

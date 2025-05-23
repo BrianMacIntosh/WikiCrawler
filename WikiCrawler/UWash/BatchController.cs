@@ -110,17 +110,17 @@ namespace Tasks
 			List<string> succeeded = new List<string>();
 
 			string suffixStart = " (";// + projectConfig.filenameSuffix + " ";
-			foreach (Article article in commonsApi.GetCategoryEntries(projectConfig.masterCategory, cmtype: CMType.file))
+			foreach (Article article in commonsApi.GetCategoryEntries(PageTitle.Parse(projectConfig.masterCategory), cmtype: CMType.file))
 			{
 				Console.WriteLine(article.title);
-				int tagIndex = article.title.LastIndexOf(suffixStart);
+				int tagIndex = article.title.Name.LastIndexOf(suffixStart);
 				if (tagIndex < 0)
 				{
 					continue;
 				}
 				int numStart = tagIndex + suffixStart.Length;
-				int numEnd = article.title.IndexOf(')', numStart);
-				string articleId = article.title.Substring(numStart, numEnd - numStart);
+				int numEnd = article.title.Name.IndexOf(')', numStart);
+				string articleId = article.title.Name.Substring(numStart, numEnd - numStart);
 				succeeded.Add(articleId);
 			}
 

@@ -10,25 +10,26 @@ namespace Tasks.Commons
 	{
 		private const int s_TestLimit = 1;
 
-		private static List<string> s_Categories = new List<string>()
+		private static List<PageTitle> s_Categories = new List<PageTitle>()
 		{
-			"Category:PD-old-50-1923",
-			"Category:PD-old-60-1923",
-			"Category:PD-old-70-1923",
-			"Category:PD-old-75-1923",
-			"Category:PD-old-80-1923",
-			"Category:PD-old-90-1923",
-			"Category:PD-old-100-1923",
-			"Category:PD 1923", "PD-1923",
-			
-			"Category:PD-old-50-1996",
-			"Category:PD-old-60-1996",
-			"Category:PD-old-70-1996",
-			"Category:PD-old-75-1996",
-			"Category:PD-old-80-1996",
-			"Category:PD-old-90-1996",
-			"Category:PD-old-100-1996",
-			"Category:PD 1996",
+			new PageTitle(PageTitle.NS_Category, "PD-old-50-1923"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-60-1923"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-70-1923"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-75-1923"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-80-1923"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-90-1923"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-100-1923"),
+			new PageTitle(PageTitle.NS_Category, "PD 1923"),
+			new PageTitle(PageTitle.NS_Category, "PD-1923"),
+
+			new PageTitle(PageTitle.NS_Category, "PD-old-50-1996"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-60-1996"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-70-1996"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-75-1996"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-80-1996"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-90-1996"),
+			new PageTitle(PageTitle.NS_Category, "PD-old-100-1996"),
+			new PageTitle(PageTitle.NS_Category, "PD 1996"),
 		};
 
 		private static List<string> s_TemplatesOld = new List<string>()
@@ -76,7 +77,7 @@ namespace Tasks.Commons
 		{
 			int successLimit = s_TestLimit;
 
-			foreach (string cat in s_Categories)
+			foreach (PageTitle cat in s_Categories)
 			{
 				Console.WriteLine("CATEGORY '" + cat + "'...");
 

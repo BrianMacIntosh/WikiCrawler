@@ -20,9 +20,9 @@ namespace Tasks.Commons
 
 		public override void Execute()
 		{
-			IEnumerable<string> files = File.ReadAllLines("E:/revert.csv", Encoding.UTF8)
-				.Select(s => s.Trim('"').Replace("\"\"", "\""))
-				.Where(s => !string.IsNullOrWhiteSpace(s));
+			IEnumerable<PageTitle> files = File.ReadAllLines("E:/revert.csv", Encoding.UTF8)
+				.Select(s => PageTitle.Parse(s.Trim('"').Replace("\"\"", "\"")))
+				.Where(t => !t.IsEmpty);
 
 			SQLiteConnection connection = PdArtReplacement.ConnectFilesDatabase(true);
 
@@ -30,7 +30,7 @@ namespace Tasks.Commons
 			{
 				Console.WriteLine(page.title);
 
-				if (page.title.Contains("?"))
+				if (page.title.Name.Contains("?"))
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.Red, "You dummy.");
 				}

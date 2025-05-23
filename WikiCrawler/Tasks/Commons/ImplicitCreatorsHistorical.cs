@@ -1,10 +1,7 @@
 ﻿using MediaWiki;
 using System;
-using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using Tasks.Commons;
 
 namespace Tasks
@@ -34,10 +31,9 @@ namespace Tasks
 
 			foreach (Contribution contrib in Api.GetContributions(Parameters["User"], endTime, startTime))
 			{
-				PageTitle articleTitle = PageTitle.Parse(contrib.title);
-				ConsoleUtility.WriteLine(ConsoleColor.White, contrib.title);
+				ConsoleUtility.WriteLine(ConsoleColor.White, contrib.title.FullTitle);
 
-				if (ImplicitCreatorsReplacement.IsFileCached(database, articleTitle))
+				if (ImplicitCreatorsReplacement.IsFileCached(database, contrib.title))
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Already cached.");
 					continue;
@@ -47,11 +43,11 @@ namespace Tasks
 					|| contrib.comment.Contains("remove redundant creator lifespan")
 					|| contrib.comment.Contains("replace implicit creator")) //TODO: check that this catches all
 				{
-					Article article = Api.GetPage(articleTitle, rvlimit: 2, rvstart: contrib.timestamp, rvdir: Direction.Older);
+					Article article = Api.GetPage(contrib.title, rvlimit: 2, rvstart: contrib.timestamp, rvdir: Direction.Older);
 
 					// find the revision before the contrib
 					CommonsFileWorksheet worksheet = new CommonsFileWorksheet(article, 1);
-					CacheFile(database, articleTitle, worksheet.Author);
+					CacheFile(database, contrib.title, worksheet.Author);
 				}
 			}
 		}

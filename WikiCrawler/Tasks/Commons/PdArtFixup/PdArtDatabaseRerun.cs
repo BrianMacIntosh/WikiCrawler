@@ -37,7 +37,7 @@ namespace Tasks.Commons
 			{
 				while (reader.Read())
 				{
-					results.Add(new Article(reader.GetString(0)));
+					results.Add(new Article(PageTitle.Parse(reader.GetString(0))));
 				}
 			}
 

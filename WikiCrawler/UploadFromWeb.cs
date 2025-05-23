@@ -151,8 +151,7 @@ Caption: " + @"}}
             //Upload
             for (int c = 0; c < images.Length; c++)
             {
-                string title = string.Format(ftitle, c.ToString("00"));
-
+                PageTitle title = new PageTitle(PageTitle.NS_File, string.Format(ftitle, c.ToString("00")));
                 Article art = new Article(title, content);
                 Api.UploadFromLocal(art, "C:/temp", "", false);
             }

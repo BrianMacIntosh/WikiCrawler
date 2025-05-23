@@ -21,30 +21,30 @@ namespace Tasks.Commons
 
 		}
 
-		public override IEnumerable<string> GetCategories()
+		public override IEnumerable<PageTitle> GetCategories()
 		{
-			return new string[]
+			return new PageTitle[]
 			{
-				"Category:PD-Art (PD-US)",
-				"Category:PD-Art (PD-US-expired)",
-				"Category:PD-Art (PD-old-50)",
-				"Category:PD-Art (PD-old-50-expired)",
-				"Category:PD-Art (PD-old-60)",
-				"Category:PD-Art (PD-old-60-expired)",
-				"Category:PD-Art (PD-old-70)",
-				"Category:PD-Art (PD-old-70-expired)",
-				"Category:PD-Art (PD-old-75)",
-				"Category:PD-Art (PD-old-75-expired)",
-				"Category:PD-Art (PD-old-80)",
-				"Category:PD-Art (PD-old-80-expired)",
-				"Category:PD-Art (PD-old-90))",
-				"Category:PD-Art (PD-old-90-expired)",
-				"Category:PD-Art (PD-old-95)",
-				"Category:PD-Art (PD-old-95-expired)",
-				"Category:PD-Art (PD-old-100)",
-				"Category:PD-Art (PD-old)",
-				"Category:PD-Art (PD-old default)",
-				"Category:PD-Art (PD-old-auto)",
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-US)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-US-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-50)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-50-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-60)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-60-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-70)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-70-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-75)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-75-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-80)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-80-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-90))"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-90-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-95)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-95-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-100)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old default)"),
+				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-auto)"),
 			};
 		}
 
@@ -54,7 +54,7 @@ namespace Tasks.Commons
 			{
 				SQLiteConnection connection = PdArtReplacement.ConnectFilesDatabase(false);
 				return LoggedWhere(base.GetPagesToAffectUncached(startSortkey),
-					article => !PdArtReplacement.IsFileCached(connection, PageTitle.Parse(article.title)));
+					article => !PdArtReplacement.IsFileCached(connection, article.title));
 			}
 			else
 			{

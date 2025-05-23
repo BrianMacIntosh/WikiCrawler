@@ -67,12 +67,12 @@ namespace Tasks.Commons
 		/// Caches the qids of entities linked to each category.
 		/// </summary>
 		//TODO: only store entities that are actually saved in s_Entities
-		private static Dictionary<PageTitle, List<string>> s_CategoriesToEntities = new Dictionary<PageTitle, List<string>>();
+		private static Dictionary<PageTitle, List<QId>> s_CategoriesToEntities = new Dictionary<PageTitle, List<QId>>();
 
 		/// <summary>
 		/// Caches entities by qid.
 		/// </summary>
-		private static Dictionary<string, Entity> s_Entities = new Dictionary<string, Entity>();
+		private static Dictionary<QId, Entity> s_Entities = new Dictionary<QId, Entity>();
 
 		/// <summary>
 		/// Set of categories that have been checked for entities so far.
@@ -143,6 +143,8 @@ namespace Tasks.Commons
 				|| string.Equals(author, "non noto", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "non identifié", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "author unknown", StringComparison.InvariantCultureIgnoreCase)
+				|| string.Equals(author, "autor nieznany", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
+				|| string.Equals(author, "nieznany", StringComparison.InvariantCultureIgnoreCase) //TODO: rerun
 				|| string.Equals(author, "{{unknown}}", StringComparison.InvariantCultureIgnoreCase);
 		}
 
@@ -198,6 +200,7 @@ namespace Tasks.Commons
 
 		public static bool IsUnknownAuthor(string author)
 		{
+			//NOTE: intentional case-insensitive comparison of page titles
 			return IsConvertibleUnknownAuthor(author)
 				|| string.Equals(author, "{{unknown|author}}", StringComparison.InvariantCultureIgnoreCase)
 				|| string.Equals(author, "{{unknown|artist}}", StringComparison.InvariantCultureIgnoreCase)
@@ -215,6 +218,7 @@ namespace Tasks.Commons
 		{
 			string onlyTemplateName = WikiUtils.GetOnlyTemplateName(author);
 
+			//NOTE: intentional case-insensitive comparison of page titles
 			return IsConvertibleAnonymousAuthor(author)
 				|| string.Equals(onlyTemplateName, "anonymous", StringComparison.InvariantCultureIgnoreCase)
 				|| (onlyTemplateName != null && onlyTemplateName.StartsWith("Creator:Anonymous", StringComparison.InvariantCultureIgnoreCase))
@@ -285,9 +289,7 @@ namespace Tasks.Commons
 
 		public bool DoReplacement(Article article, Entity suggestedCreator)
 		{
-			PageTitle articleTitle = PageTitle.Parse(article.title);
-
-			if (SkipCached && IsFileCached(m_filesDatabase, articleTitle))
+			if (SkipCached && IsFileCached(m_filesDatabase, article.title))
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Already cached.");
 				return false;
@@ -303,7 +305,7 @@ namespace Tasks.Commons
 
 			Console.WriteLine("  Author string is '{0}'.", worksheet.Author);
 
-			CacheFile(articleTitle, worksheet.Author);
+			CacheFile(article.title, worksheet.Author);
 
 			CreatorReplaceType replaceType;
 
@@ -345,7 +347,7 @@ namespace Tasks.Commons
 			// do not make case-only changes
 			else if (!string.Equals(newAuthor, worksheet.Author, StringComparison.InvariantCultureIgnoreCase))
 			{
-				CacheReplacementStatus(articleTitle, ReplacementStatus.Replaced);
+				CacheReplacementStatus(article.title, ReplacementStatus.Replaced);
 
 				ConsoleUtility.WriteLine(ConsoleColor.Green, "  FixImplicitCreators inserting '{0}'.", newAuthor);
 
@@ -475,7 +477,7 @@ namespace Tasks.Commons
 						//HACK: make sure this file is not still in the creator mappings
 						foreach (var kv in s_creatorMappings)
 						{
-							kv.Value.FromPages.Remove(worksheet.Article.title);
+							kv.Value.FromPages.Remove(worksheet.Article.title.FullTitle);
 							s_creatorMappings.SetDirty();
 						}
 
@@ -514,7 +516,8 @@ namespace Tasks.Commons
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    Inline Template");
 
 				// inline-QID creator
-				Entity entity = GlobalAPIs.Wikidata.GetEntity(inlineCreatorMatch.Groups[1].Value); //TODO: use cache
+				QId entityId = QId.Parse(inlineCreatorMatch.Groups[1].Value);
+				Entity entity = GlobalAPIs.Wikidata.GetEntity(entityId); //TODO: use cache
 				if (!Entity.IsNullOrMissing(entity))
 				{
 					PageTitle creator;
@@ -536,16 +539,16 @@ namespace Tasks.Commons
 			{
 				// not a template
 			}
-			else if (authorTemplate.Equals("c", StringComparison.OrdinalIgnoreCase))
+			else if (PageNameComparer.Instance.Equals(authorTemplate, "c"))
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    'c' Template");
 
 				string template = WikiUtils.ExtractTemplate(authorString, authorTemplate);
 				string category = WikiUtils.GetTemplateParameter(1, template);
-				PageTitle categoryPage = PageTitle.TryParse(category);
+				PageTitle categoryPage = PageTitle.SafeParse(category);
 				if (categoryPage.IsEmpty)
 				{
-					categoryPage = new PageTitle("Category", category);
+					categoryPage = new PageTitle(PageTitle.NS_Category, category);
 				}
 
 				PageTitle creator = GetCreatorFromCategories(null, new PageTitle[] { categoryPage }, 0);
@@ -555,16 +558,16 @@ namespace Tasks.Commons
 					return creator;
 				}
 			}
-			else if (authorTemplate.Equals("q", StringComparison.OrdinalIgnoreCase))
+			else if (PageNameComparer.Instance.Equals(authorTemplate, "q"))
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    Q template");
 
 				string template = WikiUtils.ExtractTemplate(authorString, authorTemplate);
 				string id = WikiUtils.GetTemplateParameter(1, template);
-				if (Wikidata.TryUnQidify(id, out int authorQid)
-					|| int.TryParse(id, out authorQid))
+				QId qid = QId.Parse(id);
+				if (!qid.IsEmpty)
 				{
-					Entity entity = GlobalAPIs.Wikidata.GetEntity("Q" + authorQid);
+					Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
 					if (!Entity.IsNullOrMissing(entity) && CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle qidCreator))
 					{
 						replaceType = CreatorReplaceType.Identity;
@@ -572,7 +575,7 @@ namespace Tasks.Commons
 					}
 				}
 			}
-			else if (authorTemplate.Equals("w", StringComparison.OrdinalIgnoreCase))
+			else if (PageNameComparer.Instance.Equals(authorTemplate, "w"))
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    W template");
 
@@ -597,7 +600,8 @@ namespace Tasks.Commons
 						}
 					}
 
-					Entity entity = GetInterwikiEntity(iwPrefix, pageName);
+					PageTitle pageTitle = PageTitle.Parse(pageName);
+					Entity entity = GetInterwikiEntity(iwPrefix, pageTitle);
 					if (!Entity.IsNullOrMissing(entity) && CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle qidCreator))
 					{
 						return qidCreator;
@@ -612,11 +616,11 @@ namespace Tasks.Commons
 			}
 
 			// literal qid
-			if (Wikidata.TryUnQidify(authorString, out int literalQid))
+			if (QId.TryParse(authorString, out QId literalQid))
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    Literal QID");
 
-				Entity entity = GlobalAPIs.Wikidata.GetEntity("Q" + literalQid);
+				Entity entity = GlobalAPIs.Wikidata.GetEntity(literalQid);
 				if (!Entity.IsNullOrMissing(entity) && CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle literalQidCreator))
 				{
 					replaceType = CreatorReplaceType.Identity;
@@ -638,7 +642,7 @@ namespace Tasks.Commons
 					if (wikidata.TryGetClaimValueAsString(Wikidata.Prop_CommonsCreator, out string[] creators))
 					{
 						//TODO: check exists
-						return new PageTitle("Creator", creators[0]);
+						return new PageTitle(PageTitle.NS_Creator, creators[0]);
 					}
 					else if (CommonsCreatorFromWikidata.TryMakeCreator(wikidata, out PageTitle creator))
 					{
@@ -659,7 +663,8 @@ namespace Tasks.Commons
 
 				authorString = interwikiLinkMatch.Groups[3].Value.Trim();
 
-				Entity entity = GetInterwikiEntity(interwikiLinkMatch.Groups[1].Value, interwikiLinkMatch.Groups[2].Value);
+				PageTitle pageTitle = PageTitle.Parse(interwikiLinkMatch.Groups[2].Value);
+				Entity entity = GetInterwikiEntity(interwikiLinkMatch.Groups[1].Value, pageTitle);
 				if (!Entity.IsNullOrMissing(entity))
 				{
 					if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
@@ -676,8 +681,7 @@ namespace Tasks.Commons
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    wikilink");
 
 				authorString = wikiLinkMatch.Groups[1].Value.Trim();
-				PageTitle authorTitle = PageTitle.TryParse(authorString);
-				if (!authorTitle.IsEmpty)
+				if (PageTitle.TryParse(authorString, out PageTitle authorTitle))
 				{
 					return GetCreatorFromCommonsPage(authorString, authorTitle);
 				}
@@ -694,7 +698,7 @@ namespace Tasks.Commons
 			}
 
 			// manually map
-			MappingCreator mapping = s_creatorMappings.TryMapValue(authorString, PageTitle.Parse(worksheet.Article.title));
+			MappingCreator mapping = s_creatorMappings.TryMapValue(authorString, worksheet.Article.title);
 			if (mapping == null)
 			{
 				// null or empty authorString?
@@ -704,7 +708,7 @@ namespace Tasks.Commons
 			{
 				if (CreatorUtility.TryGetCreatorTemplate(mapping.MappedValue, out CreatorTemplate parsedCreator))
 				{
-					mapping.FromPages.Remove(worksheet.Article.title);
+					mapping.FromPages.Remove(worksheet.Article.title.FullTitle);
 					s_creatorMappings.SetDirty();
 					return parsedCreator;
 				}
@@ -715,7 +719,7 @@ namespace Tasks.Commons
 			}
 			else if (!string.IsNullOrEmpty(mapping.MappedQID))
 			{
-				Entity entity = GlobalAPIs.Wikidata.GetEntity(mapping.MappedQID);
+				Entity entity = GlobalAPIs.Wikidata.GetEntity(QId.Parse(mapping.MappedQID));
 				if (!Entity.IsNullOrMissing(entity))
 				{
 					if (CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle entityCreator))
@@ -968,7 +972,7 @@ namespace Tasks.Commons
 
 		private static Dictionary<string, Entity> s_interwikiCache = new Dictionary<string, Entity>();
 
-		private static Entity GetInterwikiEntity(string prefix, string page)
+		private static Entity GetInterwikiEntity(string prefix, PageTitle page)
 		{
 			string cachekey = prefix + ":" + page;
 			if (s_interwikiCache.TryGetValue(cachekey, out Entity cachedEntity))
@@ -977,10 +981,10 @@ namespace Tasks.Commons
 			}
 
 			Article interwikiArticle = GetInterwikiPage(prefix, page);
-			if (!Article.IsNullOrMissing(interwikiArticle) && interwikiArticle.pageprops.TryGetValue("wikibase_item", out string qid))
+			if (!Article.IsNullOrMissing(interwikiArticle) && interwikiArticle.pageprops.TryGetValue("wikibase_item", out string strqid))
 			{
-				Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
-				Entity newEntity = GlobalAPIs.Wikidata.GetEntity(qid);
+				Console.WriteLine("  Interwiki Wikidata '{0}'.", strqid);
+				Entity newEntity = GlobalAPIs.Wikidata.GetEntity(QId.Parse(strqid));
 				s_interwikiCache[cachekey] = newEntity;
 				return newEntity;
 			}
@@ -990,7 +994,7 @@ namespace Tasks.Commons
 			}
 		}
 
-		private static Article GetInterwikiPage(string prefix, string page)
+		private static Article GetInterwikiPage(string prefix, PageTitle page)
 		{
 			if (GlobalAPIs.Commons.GetInterwikiMap().TryGetValue(prefix, out InterwikiConfig iw))
 			{
@@ -1004,24 +1008,24 @@ namespace Tasks.Commons
 			}
 		}
 
-		public static string GetEntityIdForCreator(PageTitle creator)
+		public static QId GetEntityIdForCreator(PageTitle creator)
 		{
-			Article article = GlobalAPIs.Commons.GetPage(creator.ToString());
+			Article article = GlobalAPIs.Commons.GetPage(creator);
 			if (!Article.IsNullOrEmpty(article))
 			{
 				CommonsCreatorWorksheet worksheet = new CommonsCreatorWorksheet(article);
-				return worksheet.Wikidata;
+				return QId.SafeParse(worksheet.Wikidata);
 			}
 			else
 			{
-				return null;
+				return QId.Empty;
 			}
 			
 		}
 
 		public static PageTitle GetCreatorFromCommonsPage(string authorString, PageTitle pageTitle)
 		{
-			if (pageTitle.IsNamespace("Category"))
+			if (pageTitle.IsNamespace(PageTitle.NS_Category))
 			{
 				return GetCreatorFromCategories(authorString, new PageTitle[] { pageTitle }, 0);
 			}
@@ -1044,12 +1048,12 @@ namespace Tasks.Commons
 		/// </summary>
 		public static PageTitle GetCreatorFromCategories(string authorString, IEnumerable<PageTitle> categories, int remainingDepth)
 		{
-			HashSet<string> outNewEntities = new HashSet<string>();
+			HashSet<QId> outNewEntities = new HashSet<QId>();
 
 			// go searching through cats that haven't been visited yet
 			CacheCategoryEntities(categories, remainingDepth, outNewEntities);
 
-			outNewEntities.Remove("Q000");
+			outNewEntities.Remove(QId.Empty);
 
 			// fetch any new entities
 			foreach (Entity newEntity in GlobalAPIs.Wikidata.GetEntities(outNewEntities.ToList()))
@@ -1077,9 +1081,9 @@ namespace Tasks.Commons
 			// check over all relevant entities
 			foreach (PageTitle category in categories)
 			{
-				if (s_CategoriesToEntities.TryGetValue(category, out List<string> entityIds))
+				if (s_CategoriesToEntities.TryGetValue(category, out List<QId> entityIds))
 				{
-					foreach (string entityId in entityIds)
+					foreach (QId entityId in entityIds)
 					{
 						if (s_Entities.TryGetValue(entityId, out Entity entity))
 						{
@@ -1092,7 +1096,7 @@ namespace Tasks.Commons
 							}
 							else
 							{
-								string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id;
+								string entityStr = entity.labels.ContainsKey("en") ? entity.labels["en"] : entity.id.ToString();
 								ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Can't match '{0}' to '{1}'.", authorString, entityStr);
 							}
 						}
@@ -1106,12 +1110,11 @@ namespace Tasks.Commons
 		/// <summary>
 		/// Caches all <see cref="Entity"/>s related to the specified categories or their parents.
 		/// </summary>
-		private static void CacheCategoryEntities(IEnumerable<PageTitle> categories, int remainingDepth, HashSet<string> outNewEntities)
+		private static void CacheCategoryEntities(IEnumerable<PageTitle> categories, int remainingDepth, HashSet<QId> outNewEntities)
 		{
 			foreach (Article category in GlobalAPIs.Commons.GetPages(
 				categories
 					.Where((cat) => !s_VisitedCats.Contains(cat))
-					.Select((cat) => cat.ToString())
 					.ToList(),
 				prop: "info|revisions|iwlinks", iwprefix: "d"))
 			{
@@ -1122,40 +1125,36 @@ namespace Tasks.Commons
 		/// <summary>
 		/// Caches all Entities related to the specified category or its parents.
 		/// </summary>
-		private static void CacheCategoryEntities(Article category, int remainingDepth, HashSet<string> outNewEntities)
+		private static void CacheCategoryEntities(Article category, int remainingDepth, HashSet<QId> outNewEntities)
 		{
 			if (!Article.IsNullOrEmpty(category))
 			{
 				Console.WriteLine("  Category '{0}'.", category.title);
-				PageTitle categoryTitle = PageTitle.Parse(category.title);
 				string categoryText = category.revisions[0].text;
 
-				s_VisitedCats.Add(categoryTitle);
+				s_VisitedCats.Add(category.title);
 
 				// embedded creator
 				string creatorTemplate = WikiUtils.TrimTemplate(WikiUtils.ExtractTemplate(categoryText, "Creator"));
 				if (!string.IsNullOrEmpty(creatorTemplate))
 				{
-					PageTitle creator = PageTitle.TryParse(creatorTemplate);
-					if (creator.IsNamespace("Creator"))
+					PageTitle creator = PageTitle.SafeParse(creatorTemplate);
+					if (creator.IsNamespace(PageTitle.NS_Creator))
 					{
-						string qid = GetEntityIdForCreator(creator);
-						if (!string.IsNullOrEmpty(qid))
+						QId qid = GetEntityIdForCreator(creator);
+						if (!qid.IsEmpty)
 						{
-							qid = Qidify(qid);
 							Console.WriteLine("  Creator Wikidata '{0}'.", qid);
-							AddCategoryEntity(categoryTitle, qid);
+							AddCategoryEntity(category.title, qid);
 							outNewEntities.Add(qid);
 						}
 					}
 					else
 					{
-						string qid = WikiUtils.GetTemplateParameter("wikidata", creatorTemplate);
-						if (!string.IsNullOrEmpty(qid))
+						if (QId.TryParse(WikiUtils.GetTemplateParameter("wikidata", creatorTemplate), out QId qid))
 						{
-							qid = Qidify(qid);
 							Console.WriteLine("  Creator Wikidata '{0}'.", qid);
-							AddCategoryEntity(categoryTitle, qid);
+							AddCategoryEntity(category.title, qid);
 							outNewEntities.Add(qid);
 						}
 					}
@@ -1166,12 +1165,11 @@ namespace Tasks.Commons
 				{
 					foreach (InterwikiLink iwlink in category.iwlinks)
 					{
-						if (s_qidRegex.IsMatch(iwlink.value))
+						if (QId.TryParse(iwlink.value, out QId iwqid))
 						{
-							string qid = iwlink.value;
-							Console.WriteLine("  Interwiki Wikidata '{0}'.", qid);
-							AddCategoryEntity(categoryTitle, qid);
-							outNewEntities.Add(qid);
+							Console.WriteLine("  Interwiki Wikidata '{0}'.", iwqid);
+							AddCategoryEntity(category.title, iwqid);
+							outNewEntities.Add(iwqid);
 						}
 					}
 				}
@@ -1180,27 +1178,25 @@ namespace Tasks.Commons
 				string infoboxTemplate = WikiUtils.ExtractTemplate(categoryText, "Wikidata Infobox"); //TODO: redirect template names
 				if (!string.IsNullOrEmpty(infoboxTemplate))
 				{
-					string qid = WikiUtils.GetTemplateParameter("qid", infoboxTemplate);
-					if (!string.IsNullOrEmpty(qid))
+					if (QId.TryParse(WikiUtils.GetTemplateParameter("qid", infoboxTemplate), out QId qid))
 					{
-						qid = Qidify(qid);
 						Console.WriteLine("  Explicit Wikidata '{0}'.", qid);
-						AddCategoryEntity(categoryTitle, qid);
+						AddCategoryEntity(category.title, qid);
 						outNewEntities.Add(qid);
 					}
 				}
 
 				// check parent cats
 				if (remainingDepth > 0 ||
-					(remainingDepth > -2 && category.GetTitle().Contains(" by ")))
+					(remainingDepth > -2 && category.title.Name.Contains(" by ")))
 				{
-					HashSet<string> newEntities = new HashSet<string>();
+					HashSet<QId> newEntities = new HashSet<QId>();
 					CacheCategoryEntities(WikiUtils.GetCategories(categoryText), remainingDepth - 1, newEntities);
 
 					// all child entities are also credited to me
-					foreach (string qid in newEntities)
+					foreach (QId qid in newEntities)
 					{
-						AddCategoryEntity(categoryTitle, qid);
+						AddCategoryEntity(category.title, qid);
 					}
 
 					outNewEntities.AddRange(newEntities);
@@ -1208,29 +1204,15 @@ namespace Tasks.Commons
 			}
 		}
 
-		private static Regex s_qidRegex = new Regex("^Q[0-9]+$");
-
-		private static string Qidify(string qid)
+		private static void AddCategoryEntity(PageTitle category, QId qid)
 		{
-			if (qid.StartsWith("Q"))
-			{
-				return qid;
-			}
-			else
-			{
-				return "Q" + qid;
-			}
-		}
-
-		private static void AddCategoryEntity(PageTitle category, string qid)
-		{
-			if (s_CategoriesToEntities.TryGetValue(category, out List<string> qids))
+			if (s_CategoriesToEntities.TryGetValue(category, out List<QId> qids))
 			{
 				qids.AddUnique(qid);
 			}
 			else
 			{
-				s_CategoriesToEntities.Add(category, new List<string> { qid });
+				s_CategoriesToEntities.Add(category, new List<QId> { qid });
 			}
 		}
 	}

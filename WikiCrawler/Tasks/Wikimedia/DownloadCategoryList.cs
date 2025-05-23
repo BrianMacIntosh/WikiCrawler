@@ -23,12 +23,12 @@ namespace Tasks
 		{
 			using (StreamWriter writer = new StreamWriter(Path.Combine(Configuration.DataDirectory, Parameters["OutputFile"])))
 			{
-				foreach (Article page in GlobalAPIs.Commons.GetCategoryEntries(Parameters["Category"], CMType.page))
+				foreach (Article page in GlobalAPIs.Commons.GetCategoryEntries(PageTitle.Parse(Parameters["Category"]), CMType.page))
 				{
-					if (page.title.StartsWith("Template:"))
+					if (page.title.IsNamespace(PageTitle.NS_Template))
 					{
 						Console.WriteLine(page.title);
-						writer.WriteLine(page.title.Substring("Template:".Length));
+						writer.WriteLine(page.title.Name);
 					}
 				}
 			}

@@ -26,13 +26,13 @@ namespace Tasks.Commons
         };
 
 		private static StreamWriter errorLog;
-		private static string currentArticle;
+		private static PageTitle currentTitle;
 
 		private static void LogError(string message)
 		{
 			Console.WriteLine("!!! " + message);
 
-			errorLog.WriteLine(currentArticle);
+			errorLog.WriteLine(currentTitle);
 			errorLog.WriteLine("!!! " + message);
 		}
 
@@ -68,8 +68,9 @@ namespace Tasks.Commons
 						string file = files.ReadLine();
 						if (string.IsNullOrEmpty(file)) continue;
 
-						Article a = new Article() { title = file };
-						currentArticle = a.title;
+						currentTitle = PageTitle.Parse(file);
+						currentTitle.Namespace = PageTitle.NS_File;
+						Article a = new Article(currentTitle);
 						Console.WriteLine(a.title);
 
 						//Fetch it

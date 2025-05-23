@@ -47,7 +47,8 @@ namespace Tasks.Commons
 				//Upload
 				Console.WriteLine(path);
 				Article art = new Article();
-				art.title = title;
+				art.title = PageTitle.Parse(title);
+				art.title.Namespace = PageTitle.NS_File;
 				art.revisions = new Revision[1];
 				art.revisions[0] = new Revision();
 				art.revisions[0].text = content;

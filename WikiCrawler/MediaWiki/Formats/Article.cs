@@ -33,12 +33,12 @@ namespace MediaWiki
 
 		}
 
-		public Article(string title)
+		public Article(PageTitle title)
 		{
 			this.title = title;
 		}
 
-		public Article(string title, string text)
+		public Article(PageTitle title, string text)
 		{
 			this.title = title;
 			revisions = new Revision[1];
@@ -114,7 +114,7 @@ namespace MediaWiki
 			//Download stream
 			string basedata = "format=json" +
 				"&action=query" +
-				"&titles=" + Api.UrlEncode(title) +
+				"&titles=" + Api.UrlEncode(title.FullTitle) +
 				"&prop=linkshere" +
 				"&lhlimit=5000";
 

@@ -18,11 +18,11 @@ namespace Tasks.Commons
 		public override void Execute()
 		{
 			Api Api = GlobalAPIs.Commons;
-			foreach (Article article in Api.GetCategoryEntries(Parameters["ToCategory"], cmtype: CMType.file))
+			foreach (Article article in Api.GetCategoryEntries(PageTitle.Parse(Parameters["ToCategory"]), cmtype: CMType.file))
 			{
 				Console.WriteLine(article.title);
 				Article fullArticle = Api.GetPage(article, rvprop: RVProp.user, rvlimit: Limit.Max);
-				if (!WikiUtils.HasCategory(Parameters["CheckCategory"], fullArticle.revisions[0].text)
+				if (!WikiUtils.HasCategory(PageTitle.Parse(Parameters["CheckCategory"]), fullArticle.revisions[0].text)
 					&& !fullArticle.revisions.Any(rev => rev.user == "Jmabel"))
 				{
 					fullArticle.revisions[0].text = WikiUtils.AddCategory(Parameters["CheckCategory"], fullArticle.revisions[0].text);

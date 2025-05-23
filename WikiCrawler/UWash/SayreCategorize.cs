@@ -1,6 +1,7 @@
 ﻿using MediaWiki;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace UWash
 {
@@ -8,7 +9,7 @@ namespace UWash
 	{
 		public static void ProduceSayreCategories(Api commonsApi,
 			CategoryTree catTree,
-			Dictionary<string, string> metadata, HashSet<string> categories)
+			Dictionary<string, string> metadata, HashSet<PageTitle> categories)
 		{
 			//TODO: only do this for sayre uploads?
 
@@ -29,7 +30,7 @@ namespace UWash
 				string productionName = title.Substring(productionStart, closeIndex - productionStart).Trim().Trim(',');
 
 				// check for the existence of that category
-				Article productionCategory = commonsApi.GetPage("Category:" + productionName);
+				Article productionCategory = commonsApi.GetPage(new PageTitle(PageTitle.NS_Category, productionName));
 				if (!productionCategory.missing)
 				{
 					// check that it's a play or film
@@ -81,7 +82,7 @@ namespace UWash
 			foreach (string name in maybeNames)
 			{
 				string nametrim = name.Trim().TrimStart("Actress ").TrimStart("Actor ");
-				Article personCategory = commonsApi.GetPage("Category:" + nametrim);
+				Article personCategory = commonsApi.GetPage(new PageTitle(PageTitle.NS_Category, nametrim));
 				if (personCategory != null && !personCategory.missing)
 				{
 					// check that it's an actor/ess

@@ -35,15 +35,14 @@ namespace MediaWiki
 
 		public Entity GetValueAsEntity(Api api)
 		{
-			Dictionary<string, object> entityValue = (Dictionary<string, object>)datavalue["value"];
-			string pagename = "Q" + (int)entityValue["numeric-id"];
-			return api.GetEntity(pagename);
+			QId qid = GetValueAsEntityId();
+			return api.GetEntity(qid);
 		}
 
-		public int GetValueAsEntityId()
+		public QId GetValueAsEntityId()
 		{
 			Dictionary<string, object> entityValue = (Dictionary<string, object>)datavalue["value"];
-			return (int)entityValue["numeric-id"];
+			return new QId((int)entityValue["numeric-id"]);
 		}
 
 		public string GetValueAsString()

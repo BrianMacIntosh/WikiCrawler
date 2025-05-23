@@ -20,11 +20,11 @@ namespace UWash
 		{
 			bool skipping = true;
 
-			foreach (Article article in GlobalAPIs.Commons.GetCategoryEntries(Parameters["Category"], CMType.file))
+			foreach (Article article in GlobalAPIs.Commons.GetCategoryEntries(PageTitle.Parse(Parameters["Category"]), CMType.file))
 			{
 				if (skipping)
 				{
-					if (article.title.StartsWith("File:Jitney"))
+					if (article.title.Name.StartsWith("Jitney"))
 					{
 						skipping = false;
 					}
@@ -34,9 +34,9 @@ namespace UWash
 				Console.WriteLine(article.title);
 
 				string accessionIndicator = "(MOHAI ";
-				int accessionStart = article.title.LastIndexOf(accessionIndicator) + accessionIndicator.Length;
-				int accessionPostEnd = article.title.IndexOf(')', accessionStart);
-				string accessionNumberString = article.title.Substring(accessionStart, accessionPostEnd - accessionStart);
+				int accessionStart = article.title.Name.LastIndexOf(accessionIndicator) + accessionIndicator.Length;
+				int accessionPostEnd = article.title.Name.IndexOf(')', accessionStart);
+				string accessionNumberString = article.title.Name.Substring(accessionStart, accessionPostEnd - accessionStart);
 				int accessionNumber = int.Parse(accessionNumberString);
 
 				string trashFile = GetMetadataTrashFilename(accessionNumber);

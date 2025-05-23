@@ -42,7 +42,7 @@ namespace Tasks.Commons
 				{
 					while (reader.Read())
 					{
-						articles.Add(new Article(reader.GetString(0)));
+						articles.Add(new Article(PageTitle.Parse(reader.GetString(0))));
 					}
 				}
 				foreach (Article article in articles)

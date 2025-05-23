@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using MediaWiki;
+using System;
 using System.IO;
 
 namespace WikiCrawler
@@ -10,9 +8,9 @@ namespace WikiCrawler
 	{
 		public static void Harvest()
 		{
-			MediaWiki.Api api = new MediaWiki.Api(new Uri("http://en.wikipedia.org/"));
+			Api api = GlobalAPIs.Wikipedia("en");
 
-			MediaWiki.Article baseArticle = api.GetPage("User:Nyttend/County templates");
+			Article baseArticle = api.GetPage(new PageTitle("User", "Nyttend/County templates"));
 			string section = baseArticle.revisions[0].text
 				.Split(new string[] {"==Ohio=="}, StringSplitOptions.None)[1]
 				.Split(new string[] {"=="}, 2, StringSplitOptions.None)[0];
@@ -27,7 +25,7 @@ namespace WikiCrawler
 				foreach (string county in counties)
 				{
 					Console.WriteLine(county);
-					MediaWiki.Article countyArticle = api.GetPage("Template:" + county);
+					Article countyArticle = api.GetPage(new PageTitle(PageTitle.NS_Template, county));
 
 					string countyFirst = county.Substring(0, county.Length - " County, Ohio".Length);
 
@@ -68,9 +66,9 @@ namespace WikiCrawler
 
 							Console.WriteLine("-- " + settlement);
 
-							MediaWiki.Article article = api.GetPage(settlement);
+							Article article = api.GetPage(new PageTitle(PageTitle.NS_Main, settlement));
 
-							if (article == null || article.missing)
+							if (Article.IsNullOrMissing(article))
 							{
 								log.WriteLine(settlement + ":- article not found");
 							}

@@ -1,4 +1,6 @@
-﻿namespace Tasks.Commons
+﻿using MediaWiki;
+
+namespace Tasks.Commons
 {
 	public class FixImplicitCreators : ReplaceInCategory
 	{
@@ -11,9 +13,9 @@
 			//Parameters["Category"] = "Category:Book template with implicit creator";
 		}
 
-		public override string GetCategory()
+		public override PageTitle GetCategory()
 		{
-			return Parameters["Category"];
+			return PageTitle.Parse(Parameters["Category"]);
 		}
 	}
 }
