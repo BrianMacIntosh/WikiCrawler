@@ -1,6 +1,7 @@
 ﻿using MediaWiki;
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace NPGallery
@@ -29,7 +30,7 @@ namespace NPGallery
 					{
 						Console.WriteLine("Front is '" + frontFile + "'");
 
-						Article[] arts = api.GetPages(new PageTitle[] { backFile, frontFile });
+						Article[] arts = api.GetPages(new PageTitle[] { backFile, frontFile }).ToArray();
 						{
 							string backText = arts[0].revisions[0].text;
 							string template = "{{Other|" + frontFile + "|Front side|suppress=yes}}";

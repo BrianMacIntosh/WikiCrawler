@@ -24,10 +24,13 @@ namespace MediaWiki
 
 		public string Info;
 
+		public object[] Details;
+
 		public WikimediaCodeException(Dictionary<string, object> error)
 		{
 			Code = (string)error["code"];
 			Info = (string)error["info"];
+			Details = (object[])error["details"];
 		}
 
 		public WikimediaCodeException(string code, string info)
@@ -35,6 +38,7 @@ namespace MediaWiki
 		{
 			Code = code;
 			Info = info;
+			Details = null;
 		}
 
 		public override string Message => Code + ": " + Info;

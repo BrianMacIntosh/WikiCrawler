@@ -268,8 +268,7 @@ namespace Tasks.Commons
 		{
 			// search wikidata
 			IEnumerable<QId> search = GlobalAPIs.Wikidata.SearchEntities(name);
-			Entity[] entities = GlobalAPIs.Wikidata.GetEntities(search.ToArray());
-			foreach (Entity entity in entities)
+			foreach (Entity entity in GlobalAPIs.Wikidata.GetEntities(search.ToArray()))
 			{
 				if (!entity.HasClaim(Wikidata.Prop_DateOfBirth)
 					|| !entity.GetClaimValuesAsDates(Wikidata.Prop_DateOfBirth).Any(date => date.GetYear().ToString() == yearOfBirth))

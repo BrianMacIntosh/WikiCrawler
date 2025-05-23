@@ -93,8 +93,8 @@ namespace MediaWiki
 			}
 
 			//Parse and read
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-			Dictionary<string, object> login = (Dictionary<string, object>)deser["login"];
+			Dictionary<string, object> result = ParseResponse(json);
+			Dictionary<string, object> login = (Dictionary<string, object>)result["login"];
 			if (((string)login["result"]).Equals("Success"))
 			{
 				return true;
@@ -221,13 +221,13 @@ namespace MediaWiki
 				iiprop: iiprop, iilimit: iilimit,
 				rvprop: rvprop, rvlimit: rvlimit, rvstart: rvstart, rvend: rvend, rvdir: rvdir,
 				ppprop: ppprop,
-				clshow: clshow, cllimit: cllimit, cldir: cldir, iwprefix: iwprefix)[0];
+				clshow: clshow, cllimit: cllimit, cldir: cldir, iwprefix: iwprefix).FirstOrDefault();
 		}
 
 		/// <summary>
 		/// Returns the Wiki text for all of the specified pages
 		/// </summary>
-		public Article[] GetPages(IList<Article> articles,
+		public IEnumerable<Article> GetPages(IList<Article> articles,
 			string prop = "info|revisions",
 			string iiprop = "",
 			int iilimit = Limit.Unspecified,
@@ -244,7 +244,7 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns the Wiki text for all of the specified pages
 		/// </summary>
-		public Article[] GetPages(IList<PageTitle> titles,
+		public IEnumerable<Article> GetPages(IList<PageTitle> titles,
 			string prop = "info|revisions",
 			string iiprop = "",
 			int iilimit = Limit.Unspecified,
@@ -260,7 +260,7 @@ namespace MediaWiki
 			string iwprefix = "",
 			bool redirects = false)
 		{
-			if (titles.Count == 0) return new Article[0];
+			if (titles.Count == 0) yield break;
 
 			//Download stream
 			string baseQuery = "format=json"
@@ -336,22 +336,24 @@ namespace MediaWiki
 			{
 				//TODO: break up request
 			}
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-			Dictionary<string, object> query = (Dictionary<string, object>)deser["query"];
-			Dictionary<string, object> pages = (Dictionary<string, object>)query["pages"];
-			Article[] ret = new Article[pages.Count];
-			int current = 0;
-			foreach (KeyValuePair<string, object> page in pages)
+			Dictionary<string, object> result = ParseResponse(json);
+			Dictionary<string, object> query = (Dictionary<string, object>)result["query"];
+			if (query.TryGetValue("pages", out object pagesObj))
 			{
-				Dictionary<string, object> jsonData = (Dictionary<string, object>)page.Value;
-				if (jsonData.ContainsKey("invalid"))
+				Dictionary<string, object> pages = (Dictionary<string, object>)pagesObj;
+				foreach (KeyValuePair<string, object> page in pages)
 				{
-					continue;
+					Dictionary<string, object> jsonData = (Dictionary<string, object>)page.Value;
+					if (!jsonData.ContainsKey("invalid"))
+					{
+						yield return new Article(jsonData);
+					}
 				}
-				ret[current++] = new Article(jsonData);
 			}
-
-			return ret;
+			else
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  GetPages returned no pages.");
+			}
 		}
 
 		/// <summary>
@@ -446,12 +448,7 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-			if (deser.ContainsKey("error"))
-			{
-				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
-				throw new WikimediaCodeException(error);
-			}
+			Dictionary<string, object> result = ParseResponse(json);
 
 			newpage.Dirty = false;
 			newpage.Changes.Clear();
@@ -488,12 +485,7 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-			if (deser.ContainsKey("error"))
-			{
-				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
-				throw new WikimediaCodeException(error);
-			}
+			Dictionary<string, object> result = ParseResponse(json);
 
 			return true;
 		}
@@ -528,7 +520,7 @@ namespace MediaWiki
 			}
 
 			//Parse and read
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+			Dictionary<string, object> result = ParseResponse(json);
 
 			return true;
 		}
@@ -572,16 +564,16 @@ namespace MediaWiki
 					json = read.ReadToEnd();
 				}
 
-				Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-				foreach (Dictionary<string, object> page in (object[])((Dictionary<string, object>)deser["query"])["search"])
+				Dictionary<string, object> result = ParseResponse(json);
+				foreach (Dictionary<string, object> page in (object[])((Dictionary<string, object>)result["query"])["search"])
 				{
 					yield return new Article(page);
 				}
 
-				doContinue = deser.ContainsKey("continue");
+				doContinue = result.ContainsKey("continue");
 				if (doContinue)
 				{
-					Dictionary<string, object> continueData = (Dictionary<string, object>)deser["continue"];
+					Dictionary<string, object> continueData = (Dictionary<string, object>)result["continue"];
 					query = baseQuery;
 					foreach (KeyValuePair<string, object> kv in continueData)
 					{
@@ -616,8 +608,8 @@ namespace MediaWiki
 			}
 
 			//Parse and read
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-			object[] searchJson = (object[])deser["search"];
+			Dictionary<string, object> result = ParseResponse(json);
+			object[] searchJson = (object[])result["search"];
 			for (int c = 0; c < searchJson.Length; c++)
 			{
 				yield return QId.Parse((string)((Dictionary<string, object>)searchJson[c])["id"]);
@@ -649,12 +641,7 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-			if (deser.ContainsKey("error"))
-			{
-				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
-				throw new WikimediaCodeException(error);
-			}
+			Dictionary<string, object> result = ParseResponse(json);
 
 			//HACK: create locally in case cached
 			entity.claims.Add(property, new Claim[] { new Claim(value) });
@@ -669,10 +656,10 @@ namespace MediaWiki
 		{
 			try
 			{
-				Entity[] entities = GetEntities(new QId[] { page });
-				if (entities != null && entities.Length > 0)
+				IEnumerable<Entity> entities = GetEntities(new QId[] { page });
+				if (entities != null)
 				{
-					return entities[0];
+					return entities.FirstOrDefault();
 				}
 				else
 				{
@@ -695,7 +682,7 @@ namespace MediaWiki
 		/// <summary>
 		/// Returns the Wiki entity data for all of the specified pages
 		/// </summary>
-		public Entity[] GetEntities(IList<QId> ids = null,
+		public IEnumerable<Entity> GetEntities(IList<QId> ids = null,
 			string sites = "",
 			string titles = "",
 			bool? redirects = null,
@@ -705,31 +692,30 @@ namespace MediaWiki
 			bool? normalize = null,
 			string sitefilter = "")
 		{
-			if (ids.Count == 0) return new Entity[0];
+			if (ids.Count == 0) yield break;
 
 			// maximum simultaneous request is 500 for bots on Wikidata
+			//TODO: retest
 			const int maxEntities = 500;
 			if (ids.Count > maxEntities)
 			{
 				int index = 0;
 				List<QId> idBuffer = new List<QId>(maxEntities);
-				List<Entity> results = new List<Entity>(maxEntities);
-				while (true)
+				while (index < ids.Count)
 				{
 					for (int i = 0; i < maxEntities; i++)
 					{
 						if (index + i >= ids.Count) break;
 						idBuffer.Add(ids[index + i]);
 					}
-					Entity[] intermediateEntities = GetEntities(idBuffer, sites, titles, redirects, props, languages, languageFallback, normalize, sitefilter);
-					results.AddRange(intermediateEntities);
-					if (index >= ids.Count)
+					foreach (Entity intermediateEntity in GetEntities(idBuffer, sites, titles, redirects, props, languages, languageFallback, normalize, sitefilter))
 					{
-						return results.ToArray();
+						yield return intermediateEntity;
 					}
 					index += maxEntities;
 					idBuffer.Clear();
 				}
+				yield break;
 			}
 
 			string baseQuery = "format=json"
@@ -778,26 +764,17 @@ namespace MediaWiki
 			}
 
 			//Parse and read
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-			if (deser.ContainsKey("error"))
+			Dictionary<string, object> result = ParseResponse(json);
+			if (!result.ContainsKey("entities"))
 			{
-				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
-				throw new WikimediaCodeException(error);
+				yield break;
 			}
-			if (!deser.ContainsKey("entities"))
-			{
-				return new Entity[0];
-			}
-			Dictionary<string, object> entities = (Dictionary<string, object>)deser["entities"];
+			Dictionary<string, object> entities = (Dictionary<string, object>)result["entities"];
 
-			Entity[] ret = new Entity[entities.Count];
-			int current = 0;
 			foreach (KeyValuePair<string, object> page in entities)
 			{
-				ret[current++] = new Entity((Dictionary<string, object>)page.Value);
+				yield return new Entity((Dictionary<string, object>)page.Value);
 			}
-
-			return ret;
 		}
 
 		/// <summary>
@@ -834,16 +811,16 @@ namespace MediaWiki
 					json = read.ReadToEnd();
 				}
 
-				Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-				foreach (Dictionary<string, object> page in (object[])((Dictionary<string, object>)deser["query"])["usercontribs"])
+				Dictionary<string, object> result = ParseResponse(json);
+				foreach (Dictionary<string, object> page in (object[])((Dictionary<string, object>)result["query"])["usercontribs"])
 				{
 					yield return new Contribution(page);
 				}
 
-				doContinue = deser.ContainsKey("continue");
+				doContinue = result.ContainsKey("continue");
 				if (doContinue)
 				{
-					Dictionary<string, object> continueData = (Dictionary<string, object>)deser["continue"];
+					Dictionary<string, object> continueData = (Dictionary<string, object>)result["continue"];
 					query = baseQuery;
 					foreach (KeyValuePair<string, object> kv in continueData)
 					{
@@ -895,8 +872,8 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-			foreach (Dictionary<string, object> iw in (object[])((Dictionary<string, object>)deser["query"])["interwikimap"])
+			Dictionary<string, object> result = ParseResponse(json);
+			foreach (Dictionary<string, object> iw in (object[])((Dictionary<string, object>)result["query"])["interwikimap"])
 			{
 				yield return new InterwikiConfig(iw);
 			}
@@ -933,12 +910,8 @@ namespace MediaWiki
 				json = read.ReadToEnd();
 			}
 
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
-			if (deser.ContainsKey("error"))
-			{
-				Dictionary<string, object> error = (Dictionary<string, object>)deser["error"];
-				throw new WikimediaCodeException(error);
-			}
+			Dictionary<string, object> result = ParseResponse(json);
+
 			return true;
 		}
 
@@ -1015,12 +988,7 @@ namespace MediaWiki
 					{
 						string responseJson = read.ReadToEnd();
 
-						Dictionary<string, object> response = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(responseJson);
-						if (response.TryGetValue("error", out object errorObj))
-						{
-							Dictionary<string, object> error = (Dictionary<string, object>)errorObj;
-							throw new WikimediaCodeException(error);
-						}
+						Dictionary<string, object> response = ParseResponse(responseJson);
 
 						Dictionary<string, object> upload = (Dictionary<string, object>)response["upload"];
 						string responseResult = (string)upload["result"];
@@ -1091,17 +1059,18 @@ namespace MediaWiki
 				} while (retry);
 			}
 
-			Dictionary<string, object> finalResponse = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(finalResponseJson);
-			if (finalResponse.ContainsKey("error"))
+			try
 			{
-				Dictionary<string, object> error = (Dictionary<string, object>)finalResponse["error"];
-				if ((string)error["code"] == "verification-error")
+				ParseResponse(finalResponseJson);
+			}
+			catch (WikimediaCodeException e)
+			{
+				if (e.Code == "verification-error")
 				{
-					object[] details = (object[])error["details"];
-					if ((string)details[0] == "filetype-mime-mismatch")
+					if ((string)e.Details[0] == "filetype-mime-mismatch")
 					{
 						// attempt to automatically fix extension/mime mismatch
-						string mime = (string)details[2];
+						string mime = (string)e.Details[2];
 						string actualExt = MimeUtility.GetExtensionFromMime(mime);
 						int extIndex = newpage.title.Name.LastIndexOf('.');
 						newpage.title.Name = newpage.title.Name.Substring(0, extIndex) + actualExt;
@@ -1109,8 +1078,9 @@ namespace MediaWiki
 					}
 				}
 
-				throw new WikimediaCodeException(error);
+				throw e;
 			}
+
 			return true;
 		}
 
@@ -1190,7 +1160,7 @@ namespace MediaWiki
 			}
 
 			//Parse and read
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+			Dictionary<string, object> deser = ParseResponse(json);
 			Dictionary<string, object> query = (Dictionary<string, object>)deser["query"];
 			if (query.ContainsKey("allimages"))
 				return (object[])query["allimages"];
@@ -1211,7 +1181,7 @@ namespace MediaWiki
 			}
 
 			//Parse and read
-			Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+			Dictionary<string, object> deser = ParseResponse(json);
 
 			return (string)((Dictionary<string, object>)((Dictionary<string, object>)deser["query"])["tokens"])["csrftoken"];
 		}
@@ -1239,8 +1209,7 @@ namespace MediaWiki
 					continue;
 				}
 
-				Article[] filesGot = GlobalAPIs.Commons.GetPages(buffer, prop: "info|revisions");
-				foreach (Article file in filesGot)
+				foreach (Article file in GetPages(buffer, prop: "info|revisions"))
 				{
 					yield return file;
 				}
@@ -1253,8 +1222,7 @@ namespace MediaWiki
 			{
 				// pick up the last incomplete batch
 				Array.Resize(ref buffer, bufferPtr);
-				Article[] filesGot = GlobalAPIs.Commons.GetPages(buffer, prop: "info|revisions");
-				foreach (Article file in filesGot)
+				foreach (Article file in GetPages(buffer, prop: "info|revisions"))
 				{
 					yield return file;
 				}
@@ -1346,7 +1314,7 @@ namespace MediaWiki
 					json = read.ReadToEnd();
 				}
 
-				Dictionary<string, object> deser = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(json);
+				Dictionary<string, object> deser = ParseResponse(json);
 				foreach (Dictionary<string, object> page in (object[])((Dictionary<string, object>)deser["query"])["categorymembers"])
 				{
 					yield return new Article(page);
@@ -1382,6 +1350,32 @@ namespace MediaWiki
 		private void LogApiRequest(string endpoint, object param)
 		{
 			ConsoleUtility.WriteLine(ConsoleColor.DarkGray, "    API request '{0}' ({1}): {2}", endpoint, UrlApi, param);
+		}
+
+		private Dictionary<string, object> ParseResponse(string responseJson)
+		{
+			Dictionary<string, object> response = (Dictionary<string, object>)s_jsonSerializer.DeserializeObject(responseJson);
+			HandleErrorsWarnings(response);
+			return response;
+		}
+
+		private void HandleErrorsWarnings(Dictionary<string, object> result)
+		{
+			if (result.ContainsKey("error"))
+			{
+				Dictionary<string, object> error = (Dictionary<string, object>)result["error"];
+				throw new WikimediaCodeException(error);
+			}
+			if (result.ContainsKey("warnings"))
+			{
+				Dictionary<string, object> warnings = (Dictionary<string, object>)result["warnings"];
+				foreach (KeyValuePair<string, object> kv in warnings)
+				{
+					if (kv.Key == "main") continue;
+					Dictionary<string, object> value = (Dictionary<string, object>)kv.Value;
+					ConsoleUtility.WriteLine(ConsoleColor.Yellow, "    API warning: {0}: {1}", kv.Key, value["*"]);
+				}
+			}
 		}
 
 		private static string GetOneOrMany<T>(IEnumerable<T> strings)

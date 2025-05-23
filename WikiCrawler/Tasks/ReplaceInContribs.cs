@@ -27,9 +27,7 @@ namespace Tasks
 					break;
 				}
 
-				Article[] filesGot = GlobalAPIs.Commons.GetPages(theseContribs.Select(c => c.title).ToList(), prop: "info|revisions");
-
-				foreach (Article file in filesGot)
+				foreach (Article file in GlobalAPIs.Commons.GetPages(theseContribs.Select(c => c.title).ToList(), prop: "info|revisions"))
 				{
 					yield return file;
 				}

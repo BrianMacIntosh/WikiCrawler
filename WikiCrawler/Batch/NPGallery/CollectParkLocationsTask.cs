@@ -39,9 +39,9 @@ namespace Tasks
 			// maps locations to their immediate parents along P131
 			Dictionary<QId, List<QId>> locationParents = new Dictionary<QId, List<QId>>();
 
-			Entity[] entities = GlobalAPIs.Wikidata.GetEntities(entityIds, props: Api.BuildParameterList(WBProp.info, WBProp.claims));
+			IEnumerable<Entity> entities = GlobalAPIs.Wikidata.GetEntities(entityIds, props: Api.BuildParameterList(WBProp.info, WBProp.claims));
 
-			while (entities != null && entities.Length > 0)
+			while (entities != null && entities.Any())
 			{
 				entityIds.Clear();
 				
