@@ -688,7 +688,8 @@ namespace Tasks.Commons
 			}
 
 			// go looking for matching creator templates in parent cats
-			if (SlowCategoryWalk)
+			if (SlowCategoryWalk
+				&& !authorString.Contains("{{")) // this will not match anything if it has templates in it
 			{
 				PageTitle catCreator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1);
 				if (!catCreator.IsEmpty)
