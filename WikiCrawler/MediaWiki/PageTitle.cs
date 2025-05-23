@@ -210,7 +210,7 @@ namespace MediaWiki
 
 		public bool IsNamespace(string ns)
 		{
-			return s_namespaceMap[ns] == s_namespaceMap[Namespace];
+			return Namespace != null && s_namespaceMap[ns] == s_namespaceMap[Namespace];
 		}
 
 		public bool IsName(string name)
@@ -252,7 +252,7 @@ namespace MediaWiki
 
 		public override string ToString()
 		{
-			return FullTitle;
+			return IsEmpty ? "" : FullTitle;
 		}
 	}
 }
