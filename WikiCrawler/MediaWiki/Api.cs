@@ -270,53 +270,68 @@ namespace MediaWiki
 			{
 				baseQuery += "&prop=" + UrlEncode(prop);
 			}
-			if (!string.IsNullOrEmpty(iiprop))
+			if (prop.Contains("imageinfo")) //HACK: doesn't respect delimiters
 			{
-				baseQuery += "&iiprop=" + UrlEncode(iiprop);
+				if (!string.IsNullOrEmpty(iiprop))
+				{
+					baseQuery += "&iiprop=" + UrlEncode(iiprop);
+				}
+				if (iilimit != Limit.Unspecified)
+				{
+					baseQuery += "&iilimit=" + GetLimitParameter(iilimit);
+				}
 			}
-			if (iilimit != Limit.Unspecified)
+			if (prop.Contains("revisions")) //HACK: doesn't respect delimiters
 			{
-				baseQuery += "&iilimit=" + GetLimitParameter(iilimit);
+				if (!string.IsNullOrEmpty(rvprop))
+				{
+					baseQuery += "&rvprop=" + UrlEncode(rvprop);
+				}
+				if (!string.IsNullOrEmpty(rvstart))
+				{
+					baseQuery += "&rvstart=" + UrlEncode(rvstart);
+				}
+				if (!string.IsNullOrEmpty(rvend))
+				{
+					baseQuery += "&rvend=" + UrlEncode(rvend);
+				}
+				if (!string.IsNullOrEmpty(rvdir))
+				{
+					baseQuery += "&rvdir=" + UrlEncode(rvdir);
+				}
+				if (rvlimit != Limit.Unspecified)
+				{
+					baseQuery += "&rvlimit=" + GetLimitParameter(rvlimit);
+				}
 			}
-			if (!string.IsNullOrEmpty(rvprop))
+			if (prop.Contains("pageprops")) //HACK: doesn't respect delimiters
 			{
-				baseQuery += "&rvprop=" + UrlEncode(rvprop);
+				if (!string.IsNullOrEmpty(ppprop))
+				{
+					baseQuery += "&ppprop=" + UrlEncode(ppprop);
+				}
 			}
-			if (!string.IsNullOrEmpty(rvstart))
+			if (prop.Contains("categories")) //HACK: doesn't respect delimiters
 			{
-				baseQuery += "&rvstart=" + UrlEncode(rvstart);
+				if (!string.IsNullOrEmpty(clshow))
+				{
+					baseQuery += "&clshow=" + UrlEncode(clshow);
+				}
+				if (cllimit != Limit.Unspecified)
+				{
+					baseQuery += "&cllimit=" + GetLimitParameter(cllimit);
+				}
+				if (!string.IsNullOrEmpty(cldir))
+				{
+					baseQuery += "&cldir=" + UrlEncode(cldir);
+				}
 			}
-			if (!string.IsNullOrEmpty(rvend))
+			if (prop.Contains("iwlinks")) //HACK: doesn't respect delimiters
 			{
-				baseQuery += "&rvend=" + UrlEncode(rvend);
-			}
-			if (!string.IsNullOrEmpty(rvdir))
-			{
-				baseQuery += "&rvdir=" + UrlEncode(rvdir);
-			}
-			if (rvlimit != Limit.Unspecified)
-			{
-				baseQuery += "&rvlimit=" + GetLimitParameter(rvlimit);
-			}
-			if (!string.IsNullOrEmpty(ppprop))
-			{
-				baseQuery += "&ppprop=" + UrlEncode(ppprop);
-			}
-			if (!string.IsNullOrEmpty(clshow))
-			{
-				baseQuery += "&clshow=" + UrlEncode(clshow);
-			}
-			if (cllimit != Limit.Unspecified)
-			{
-				baseQuery += "&cllimit=" + GetLimitParameter(cllimit);
-			}
-			if (!string.IsNullOrEmpty(cldir))
-			{
-				baseQuery += "&cldir=" + UrlEncode(cldir);
-			}
-			if (!string.IsNullOrEmpty(iwprefix))
-			{
-				baseQuery += "&iwprefix=" + UrlEncode(iwprefix);
+				if (!string.IsNullOrEmpty(iwprefix))
+				{
+					baseQuery += "&iwprefix=" + UrlEncode(iwprefix);
+				}
 			}
 			if (redirects)
 			{
