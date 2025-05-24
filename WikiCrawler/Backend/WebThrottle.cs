@@ -54,57 +54,6 @@ public class WebThrottle
 	}
 
 	//TODO: move to WebInterface
-	public Stream Post(Func<HttpWebRequest> requestFactory, Dictionary<string, string> data)
-	{
-		string dataString = "";
-		foreach (KeyValuePair<string, string> pair in data)
-		{
-			if (!string.IsNullOrEmpty(dataString))
-			{
-				dataString += "&";
-			}
-			dataString += pair.Key + "=" + System.Web.HttpUtility.UrlEncode(pair.Value);
-		}
-		return Post(requestFactory, dataString);
-	}
-
-	//TODO: move to WebInterface
-	public Stream Post(Func<HttpWebRequest> requestFactory, string data)
-	{
-		byte[] datainflate = Encoding.UTF8.GetBytes(data);
-	retry:
-		HttpWebRequest request = requestFactory();
-		request.Method = "POST";
-		request.ContentType = "application/x-www-form-urlencoded";
-
-		WaitForDelay();
-
-		int retryCount = 0;
-
-		using (Stream newStream = request.GetRequestStream())
-		{
-			newStream.Write(datainflate, 0, datainflate.Length);
-		}
-
-		try
-		{
-			return request.GetResponse().GetResponseStream();
-		}
-		catch (WebException e)
-		{
-			HttpStatusCode statusCode = ((HttpWebResponse)e.Response).StatusCode;
-			if (retryCount < 5
-				&& (statusCode == HttpStatusCode.BadGateway || statusCode == HttpStatusCode.ServiceUnavailable))
-			{
-				Thread.Sleep(retryCount * 1000);
-				retryCount++;
-				goto retry;
-			}
-			throw;
-		}
-	}
-
-	//TODO: move to WebInterface
 	public Stream Upload(HttpWebRequest request, Dictionary<string, string> data,
 		string filename, string filetype, string filekey, byte[] filedata)
 	{

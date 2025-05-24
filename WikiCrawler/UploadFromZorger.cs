@@ -23,7 +23,7 @@ namespace Tasks
 
             //Read response
             string root;
-            using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(rooturi)))
+            using (StreamReader read = new StreamReader(WebInterface.HttpGet(rooturi)))
             {
                 root = read.ReadToEnd();
             }
@@ -80,7 +80,7 @@ namespace Tasks
             {
                 //Read response
                 string content;
-                using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(new Uri(page))))
+                using (StreamReader read = new StreamReader(WebInterface.HttpGet(new Uri(page))))
                 {
                     content = read.ReadToEnd();
                 }

@@ -16,7 +16,7 @@ public static class Wayback
 	{
 		url = url.Replace(":", "%3A");
 		Uri archiveUri = new Uri(string.Format(ArchiveUrl, url));
-		WebInterface.ReadHttpStream(archiveUri);
+		WebInterface.HttpGet(archiveUri);
 	}
 
 	public static string GetWaybackTemplate(string url, string text, string timestamp)

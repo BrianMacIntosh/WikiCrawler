@@ -124,7 +124,7 @@ namespace Tasks
 						dataString = "d=" + System.Web.HttpUtility.UrlEncode(serialized);
 					}
 
-					using (StreamReader response = new StreamReader(m_heartbeatThrottle.Post(CreateHeartbeatRequest, dataString)))
+					using (StreamReader response = new StreamReader(WebInterface.HttpPost(CreateHeartbeatRequest, dataString, m_heartbeatThrottle)))
 					{
 						//string text = response.ReadToEnd();
 						//Console.WriteLine(text);

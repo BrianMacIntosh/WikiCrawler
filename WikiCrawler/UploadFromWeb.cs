@@ -14,7 +14,7 @@ namespace WikiCrawler
         {
             //step 1: harvest image URLs
             string root;
-            using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(page)))
+            using (StreamReader read = new StreamReader(WebInterface.HttpGet(page)))
             {
                 root = read.ReadToEnd();
             }

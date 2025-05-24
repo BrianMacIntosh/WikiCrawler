@@ -31,7 +31,7 @@ namespace Tasks
 						//Read page
 						Uri pageUri = new Uri(string.Format(url, current.ToString("0000")));
 						string contents;
-						using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(pageUri)))
+						using (StreamReader read = new StreamReader(WebInterface.HttpGet(pageUri)))
 						{
 							contents = read.ReadToEnd();
 						}

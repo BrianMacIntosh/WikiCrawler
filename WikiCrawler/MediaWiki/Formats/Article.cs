@@ -126,7 +126,7 @@ namespace MediaWiki
 			{
 				//Read response
 				string json;
-				using (StreamReader read = new StreamReader(api.ReadThrottle.Post(api.CreateApiRequest, data)))
+				using (StreamReader read = new StreamReader(WebInterface.HttpPost(api.CreateApiRequest, data, api.ReadThrottle)))
 				{
 					json = read.ReadToEnd();
 				}

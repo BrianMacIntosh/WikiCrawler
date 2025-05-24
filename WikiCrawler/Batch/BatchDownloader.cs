@@ -190,7 +190,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		{
 			try
 			{
-				using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(url)))
+				using (StreamReader read = new StreamReader(WebInterface.HttpGet(url)))
 				{
 					return read.ReadToEnd();
 				}

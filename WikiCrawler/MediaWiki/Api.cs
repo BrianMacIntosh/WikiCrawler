@@ -39,7 +39,7 @@ namespace MediaWiki
 			Domain = domain;
 			UrlApi = new Uri(domain, "w/api.php");
 			ReadThrottle = new WebThrottle(domain.Host, 0f);
-			EditThrottle = new WebThrottle(domain.Host, 6f);
+			EditThrottle = new WebThrottle(domain.Host, 10f);
 		}
 
 		internal HttpWebRequest CreateApiRequest()
@@ -91,7 +91,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpPost(CreateApiRequest, baseQuery, ReadThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -110,7 +110,7 @@ namespace MediaWiki
 				LogApiRequest("login-lgtoken", lgname);
 
 				//Read response
-				using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, baseQuery)))
+				using (StreamReader read = new StreamReader(WebInterface.HttpPost(CreateApiRequest, baseQuery, ReadThrottle)))
 				{
 					json = read.ReadToEnd();
 				}
@@ -346,9 +346,19 @@ namespace MediaWiki
 			LogApiRequest("query", GetOneOrMany(titles));
 
 			string json;
-			using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, baseQuery)))
+			if (baseQuery.Length < 2000)
 			{
-				json = read.ReadToEnd();
+				using (StreamReader read = new StreamReader(WebInterface.HttpGet(CreateApiRequest(baseQuery), ReadThrottle)))
+				{
+					json = read.ReadToEnd();
+				}
+			}
+			else
+			{
+				using (StreamReader read = new StreamReader(WebInterface.HttpPost(CreateApiRequest, baseQuery, ReadThrottle)))
+				{
+					json = read.ReadToEnd();
+				}
 			}
 
 			//Parse and read
@@ -468,7 +478,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpPost(CreateApiRequest, baseQuery, EditThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -505,7 +515,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpPost(CreateApiRequest, baseQuery, EditThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -539,7 +549,7 @@ namespace MediaWiki
 			LogApiRequest("purge", GetOneOrMany(inpages));
 
 			string json;
-			using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpPost(CreateApiRequest, baseQuery, EditThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -584,7 +594,7 @@ namespace MediaWiki
 
 				//Read response
 				string json;
-				using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, query)))
+				using (StreamReader read = new StreamReader(WebInterface.HttpGet(CreateApiRequest(query), ReadThrottle)))
 				{
 					json = read.ReadToEnd();
 				}
@@ -623,11 +633,11 @@ namespace MediaWiki
 				baseQuery += "&language=" + UrlEncode(language);
 			}
 
-			HttpWebRequest request = CreateApiRequest(baseQuery);
+		retry:
 			LogApiRequest("wbsearchentities", search);
 
 			string json;
-			using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(request, ReadThrottle)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpGet(CreateApiRequest(baseQuery), ReadThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -661,7 +671,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpPost(CreateApiRequest, baseQuery, EditThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -778,12 +788,11 @@ namespace MediaWiki
 				baseQuery += "&normalize=" + normalize.Value.ToString();
 			}
 
-			HttpWebRequest request = CreateApiRequest(baseQuery);
 			LogApiRequest("wbgetentities", GetOneOrMany(ids));
 
 			// Read response
 			string json;
-			using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(request, ReadThrottle)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpGet(CreateApiRequest(baseQuery), ReadThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -831,7 +840,7 @@ namespace MediaWiki
 
 				//Read response
 				string json;
-				using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, query)))
+				using (StreamReader read = new StreamReader(WebInterface.HttpGet(CreateApiRequest(query), ReadThrottle)))
 				{
 					json = read.ReadToEnd();
 				}
@@ -892,7 +901,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, query)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpGet(CreateApiRequest(query), ReadThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -930,7 +939,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpPost(CreateApiRequest, baseQuery, EditThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -1002,13 +1011,12 @@ namespace MediaWiki
 
 					//TODO: error handling
 
-					HttpWebRequest request = CreateApiRequest();
 					LogApiRequest("upload-chunked", newpage.title);
 
 					Console.Write("0%");
 
 					// do filenames need to be unique?
-					using (StreamReader read = new StreamReader(EditThrottle.Upload(request, data, newpage.title.Name, filetype, "chunk",
+					using (StreamReader read = new StreamReader(EditThrottle.Upload(CreateApiRequest(), data, newpage.title.Name, filetype, "chunk",
 						rawfile, fileOffset, thisChunkSize)))
 					{
 						string responseJson = read.ReadToEnd();
@@ -1044,7 +1052,7 @@ namespace MediaWiki
 					data.Remove("stash");
 					data.Remove("offset");
 					LogApiRequest("upload-finish", newpage.title);
-					using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, data)))
+					using (StreamReader read = new StreamReader(WebInterface.HttpPost(CreateApiRequest, data, EditThrottle)))
 					{
 						finalResponseJson = read.ReadToEnd();
 					}
@@ -1060,9 +1068,8 @@ namespace MediaWiki
 					try
 					{
 						//Read response
-						HttpWebRequest request = CreateApiRequest();
 						LogApiRequest("upload", newpage.title);
-						using (StreamReader read = new StreamReader(EditThrottle.Upload(request, data, newpage.title.Name, filetype, "file", rawfile)))
+						using (StreamReader read = new StreamReader(EditThrottle.Upload(CreateApiRequest(), data, newpage.title.Name, filetype, "file", rawfile)))
 						{
 							finalResponseJson = read.ReadToEnd();
 						}
@@ -1175,11 +1182,10 @@ namespace MediaWiki
 				baseQuery += "&prop=" + prop;
 			}
 
-			HttpWebRequest request = CreateApiRequest(baseQuery);
 			LogApiRequest("query-dupes");
 
 			string json;
-			using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(request, ReadThrottle)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpGet(CreateApiRequest(baseQuery), ReadThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -1196,11 +1202,10 @@ namespace MediaWiki
 		private string GetCsrfToken()
 		{
 			string baseQuery = "format=json&action=query&meta=tokens&type=csrf";
-			HttpWebRequest request = CreateApiRequest(baseQuery);
 			LogApiRequest("query-csrf");
 
 			string json;
-			using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(request, ReadThrottle)))
+			using (StreamReader read = new StreamReader(WebInterface.HttpGet(CreateApiRequest(baseQuery), ReadThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -1334,7 +1339,7 @@ namespace MediaWiki
 
 				//Read response
 				string json;
-				using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, query)))
+				using (StreamReader read = new StreamReader(WebInterface.HttpGet(CreateApiRequest(query), ReadThrottle)))
 				{
 					json = read.ReadToEnd();
 				}
