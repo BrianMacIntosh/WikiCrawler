@@ -182,7 +182,7 @@ namespace MediaWiki
 				return article;
 			}
 		}
-		private static readonly Regex s_redirectRegex = new Regex(@"#REDIRECT\s*\[\[(.+)\]\]\s*");
+		private static readonly Regex s_redirectRegex = new Regex(@"^\w*#REDIRECT\s*\[\[(.+)\]\]\s*");
 
 		/// <summary>
 		/// Returns the Wiki text of the specified page
