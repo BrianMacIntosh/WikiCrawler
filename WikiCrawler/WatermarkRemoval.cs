@@ -51,7 +51,7 @@ public class WatermarkRemoval
 				string url = imageInfo.imageinfo.Last().url;
 
 				Console.WriteLine(article.title);
-				EasyWeb.WaitForDelay(new Uri(url));
+				GlobalAPIs.Commons.EditThrottle.WaitForDelay();
 				s_client.DownloadFile(url, targetPath);
 			}
 		}

@@ -1,4 +1,4 @@
-﻿using System.Net;
+﻿using System;
 
 /// <summary>
 /// Contains utility functions for interacting with the Wayback Machine.
@@ -15,9 +15,8 @@ public static class Wayback
 	public static void SavePage(string url)
 	{
 		url = url.Replace(":", "%3A");
-		HttpWebRequest request = (HttpWebRequest)WebRequest.Create(string.Format(ArchiveUrl, url));
-		request.UserAgent = "BMacZeroBot (wikimedia)";
-		EasyWeb.GetResponseStream(request);
+		Uri archiveUri = new Uri(string.Format(ArchiveUrl, url));
+		WebInterface.ReadHttpStream(archiveUri);
 	}
 
 	public static string GetWaybackTemplate(string url, string text, string timestamp)

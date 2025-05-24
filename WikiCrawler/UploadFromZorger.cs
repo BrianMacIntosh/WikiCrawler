@@ -22,9 +22,11 @@ namespace Tasks
             request.UserAgent = "BMacZeroBot (wikimedia)";
 
             //Read response
-            StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request));
-            string root = read.ReadToEnd();
-            read.Close();
+            string root;
+            using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(rooturi)))
+            {
+                root = read.ReadToEnd();
+            }
 
             //NOTE: refactored and utested
             //Get page links
@@ -76,13 +78,12 @@ namespace Tasks
             int count = 0;
             foreach (string page in pages)
             {
-                request = (HttpWebRequest)WebRequest.Create(new Uri(page));
-                request.UserAgent = "BMacZeroBot (wikimedia)";
-
                 //Read response
-                read = new StreamReader(EasyWeb.GetResponseStream(request));
-                string content = read.ReadToEnd();
-                read.Close();
+                string content;
+                using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(new Uri(page))))
+                {
+                    content = read.ReadToEnd();
+                }
 
                 string imageStart = "<img src=";
                 string imageEnd = @" 

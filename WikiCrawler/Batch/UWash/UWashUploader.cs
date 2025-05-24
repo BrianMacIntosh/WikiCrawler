@@ -180,8 +180,7 @@ namespace UWash
 			m_config = JsonConvert.DeserializeObject<UWashProjectConfig>(
 				File.ReadAllText(Path.Combine(ProjectDataDirectory, "config.json")));
 
-			EasyWeb.SetDelayForDomain(new Uri(ImageUrlFormat), 15f);
-			EasyWeb.SetDelayForDomain(new Uri("https://commons.wikimedia.org/"), 0.5f);
+			WebThrottle.Get(new Uri(ImageUrlFormat)).CrawlDelay = 15f;
 		}
 
 		public override Uri GetImageUri(int key, Dictionary<string, string> metadata)

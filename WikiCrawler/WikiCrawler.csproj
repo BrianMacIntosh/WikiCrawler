@@ -98,6 +98,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Backend\ImageUtils.cs" />
+    <Compile Include="Backend\WebInterface.cs" />
     <Compile Include="Batch\BatchDownloader.cs" />
     <Compile Include="Batch\BatchTask.cs" />
     <Compile Include="Batch\BatchTaskKeyed.cs" />
@@ -202,7 +203,7 @@
     <Compile Include="MediaWiki\Formats\Contribution.cs" />
     <Compile Include="MediaWiki\Formats\Date.cs" />
     <Compile Include="Old\Dsea.cs" />
-    <Compile Include="Backend\EasyWeb.cs" />
+    <Compile Include="Backend\WebThrottle.cs" />
     <Compile Include="Tasks\Commons\ImplicitCreatorsReplacement.cs" />
     <Compile Include="Backend\LightweightRobots.cs" />
     <Compile Include="Backend\MultipartUpload.cs" />

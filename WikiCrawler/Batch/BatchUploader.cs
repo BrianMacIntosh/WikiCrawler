@@ -314,7 +314,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 			{
 				Console.WriteLine("Downloading image: " + key);
 				Uri uri = GetImageUri(key, metadata);
-				EasyWeb.WaitForDelay(uri);
+				WebThrottle.Get(uri).WaitForDelay();
 				WebClient.Headers.Add("user-agent", Api.UserAgent);
 				WebClient.DownloadFile(uri, imagepath);
 				try

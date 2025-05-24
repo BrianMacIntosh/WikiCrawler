@@ -51,7 +51,7 @@ namespace Tasks
 					continue;
 				}
 
-				EasyWeb.WaitForDelay(uri);
+				WebThrottle.Get(uri).WaitForDelay();
 				WebClient.Headers.Add("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8");
 				WebClient.Headers.Add("Accept-Encoding", "gzip, deflate, br, zstd");
 				WebClient.Headers.Add("Accept-Language", "en-US,en;q=0.9");

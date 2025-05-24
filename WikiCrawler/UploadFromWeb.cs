@@ -13,14 +13,11 @@ namespace WikiCrawler
         public static void Download()
         {
             //step 1: harvest image URLs
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(page);
-            request.UserAgent = "BMacZeroBot (wikimedia)";
-
-            //Read response
-			Stream responseStream = EasyWeb.GetResponseStream(request);
-            StreamReader read = new StreamReader(responseStream);
-            string root = read.ReadToEnd();
-            read.Close();
+            string root;
+            using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(page)))
+            {
+                root = read.ReadToEnd();
+            }
 
             List<string> images = new List<string>();
 			List<string> captions = new List<string>();

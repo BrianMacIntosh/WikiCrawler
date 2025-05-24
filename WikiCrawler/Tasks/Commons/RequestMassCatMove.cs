@@ -23,8 +23,6 @@ namespace Tasks.Commons
 
 				Article catpage = GlobalAPIs.Commons.GetPage(new PageTitle(PageTitle.NS_Category, catnameReal));
 
-				EasyWeb.crawlDelay = 0.1f;
-
 				if (!catpage.missing && catpage.revisions != null && !catpage.revisions[0].text.Contains("{{Category redirect|"))
 				{
 					output.Add("{{move cat|" + catnameReal + "|" + catnameReal.Replace("revival", "Revival") +

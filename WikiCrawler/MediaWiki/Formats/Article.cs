@@ -126,7 +126,7 @@ namespace MediaWiki
 			{
 				//Read response
 				string json;
-				using (StreamReader read = new StreamReader(EasyWeb.Post(api.CreateApiRequest, data)))
+				using (StreamReader read = new StreamReader(api.ReadThrottle.Post(api.CreateApiRequest, data)))
 				{
 					json = read.ReadToEnd();
 				}

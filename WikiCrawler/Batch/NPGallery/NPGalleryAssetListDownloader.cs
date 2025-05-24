@@ -22,8 +22,6 @@ namespace NPGallery
 		public NPGalleryAssetListDownloader(string key)
 			: base(key)
 		{
-			EasyWeb.SetDelayForDomain(new Uri(MetadataUriFormat), 6f);
-
 			// load existing assetlist
 			string assetlistFile = Path.Combine(ProjectDataDirectory, "assetlist.json");
 			string json = File.ReadAllText(assetlistFile);

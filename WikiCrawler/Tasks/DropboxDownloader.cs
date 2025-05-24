@@ -28,7 +28,8 @@ namespace Tasks
 			WebClient client = new WebClient();
 
 			Uri dropboxUri = new Uri("http://www.dropbox.com/");
-			EasyWeb.SetDelayForDomain(dropboxUri, 10f);
+			WebThrottle throttle = WebThrottle.Get(dropboxUri);
+			throttle.CrawlDelay = 10f;
 			
 			for (int i = 0; i < components.Length; i++)
 			{
@@ -58,8 +59,8 @@ namespace Tasks
 
 								Console.WriteLine("DOWNLOADING...");
 
+								throttle.WaitForDelay();
 								client.DownloadFile(href, localPath);
-								EasyWeb.WaitForDelay(dropboxUri);
 							}
 						}
 					}

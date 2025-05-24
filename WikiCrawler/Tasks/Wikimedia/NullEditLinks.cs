@@ -28,7 +28,6 @@ namespace Tasks
 		public override void Execute()
 		{
 			Api api = GlobalAPIs.Commons;
-			EasyWeb.SetDelayForDomain(api.Domain, 0.1f);
 
 			List<PageTitle> links = new List<PageTitle>();
 

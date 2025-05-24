@@ -188,11 +188,9 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		//Read HTML data
 		do
 		{
-			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-			request.UserAgent = "brian@brianmacintosh.com (Wikimedia Commons) - bot";
 			try
 			{
-				using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
+				using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(url)))
 				{
 					return read.ReadToEnd();
 				}

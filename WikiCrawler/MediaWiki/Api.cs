@@ -20,6 +20,8 @@ namespace MediaWiki
 		public readonly Uri Domain;
 		public readonly Uri UrlApi;
 
+		public readonly WebThrottle ReadThrottle;
+		public readonly WebThrottle EditThrottle;
 		private CookieContainer m_cookies;
 
 		private static JavaScriptSerializer s_jsonSerializer;
@@ -36,6 +38,8 @@ namespace MediaWiki
 		{
 			Domain = domain;
 			UrlApi = new Uri(domain, "w/api.php");
+			ReadThrottle = new WebThrottle(domain.Host, 0f);
+			EditThrottle = new WebThrottle(domain.Host, 6f);
 		}
 
 		internal HttpWebRequest CreateApiRequest()
@@ -87,7 +91,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, baseQuery)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -106,7 +110,7 @@ namespace MediaWiki
 				LogApiRequest("login-lgtoken", lgname);
 
 				//Read response
-				using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, baseQuery)))
+				using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, baseQuery)))
 				{
 					json = read.ReadToEnd();
 				}
@@ -342,7 +346,7 @@ namespace MediaWiki
 			LogApiRequest("query", GetOneOrMany(titles));
 
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, baseQuery)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -464,7 +468,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, baseQuery)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -501,7 +505,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, baseQuery)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -535,7 +539,7 @@ namespace MediaWiki
 			LogApiRequest("purge", GetOneOrMany(inpages));
 
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, baseQuery)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -580,7 +584,7 @@ namespace MediaWiki
 
 				//Read response
 				string json;
-				using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, query)))
+				using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, query)))
 				{
 					json = read.ReadToEnd();
 				}
@@ -623,7 +627,7 @@ namespace MediaWiki
 			LogApiRequest("wbsearchentities", search);
 
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
+			using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(request, ReadThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -657,7 +661,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, baseQuery)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -779,7 +783,7 @@ namespace MediaWiki
 
 			// Read response
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
+			using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(request, ReadThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -827,7 +831,7 @@ namespace MediaWiki
 
 				//Read response
 				string json;
-				using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, query)))
+				using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, query)))
 				{
 					json = read.ReadToEnd();
 				}
@@ -888,7 +892,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, query)))
+			using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, query)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -926,7 +930,7 @@ namespace MediaWiki
 
 			//Read response
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, baseQuery)))
+			using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, baseQuery)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -1004,7 +1008,7 @@ namespace MediaWiki
 					Console.Write("0%");
 
 					// do filenames need to be unique?
-					using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title.Name, filetype, "chunk",
+					using (StreamReader read = new StreamReader(EditThrottle.Upload(request, data, newpage.title.Name, filetype, "chunk",
 						rawfile, fileOffset, thisChunkSize)))
 					{
 						string responseJson = read.ReadToEnd();
@@ -1040,7 +1044,7 @@ namespace MediaWiki
 					data.Remove("stash");
 					data.Remove("offset");
 					LogApiRequest("upload-finish", newpage.title);
-					using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, data)))
+					using (StreamReader read = new StreamReader(EditThrottle.Post(CreateApiRequest, data)))
 					{
 						finalResponseJson = read.ReadToEnd();
 					}
@@ -1058,7 +1062,7 @@ namespace MediaWiki
 						//Read response
 						HttpWebRequest request = CreateApiRequest();
 						LogApiRequest("upload", newpage.title);
-						using (StreamReader read = new StreamReader(EasyWeb.Upload(request, data, newpage.title.Name, filetype, "file", rawfile)))
+						using (StreamReader read = new StreamReader(EditThrottle.Upload(request, data, newpage.title.Name, filetype, "file", rawfile)))
 						{
 							finalResponseJson = read.ReadToEnd();
 						}
@@ -1175,7 +1179,7 @@ namespace MediaWiki
 			LogApiRequest("query-dupes");
 
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
+			using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(request, ReadThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -1196,7 +1200,7 @@ namespace MediaWiki
 			LogApiRequest("query-csrf");
 
 			string json;
-			using (StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request)))
+			using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(request, ReadThrottle)))
 			{
 				json = read.ReadToEnd();
 			}
@@ -1330,7 +1334,7 @@ namespace MediaWiki
 
 				//Read response
 				string json;
-				using (StreamReader read = new StreamReader(EasyWeb.Post(CreateApiRequest, query)))
+				using (StreamReader read = new StreamReader(ReadThrottle.Post(CreateApiRequest, query)))
 				{
 					json = read.ReadToEnd();
 				}

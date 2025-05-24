@@ -25,8 +25,6 @@ namespace Tasks
 			string startTime = Parameters["StartTime"];
 			string endTime = Parameters["EndTime"];
 
-			EasyWeb.SetDelayForDomain(Api.Domain, 0);
-
 			SQLiteConnection database = ImplicitCreatorsReplacement.ConnectFilesDatabase(true);
 
 			foreach (Contribution contrib in Api.GetContributions(Parameters["User"], endTime, startTime))

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Web;
@@ -12,6 +13,8 @@ namespace WikiCrawler
 
 		private const string API_URL = "http://ws.detectlanguage.com/0.2/detect";
 		private static readonly string API_KEY;
+
+		private static readonly WebThrottle m_throttle = WebThrottle.Get(new Uri(API_URL));
 
 		/// <summary>
 		/// Directory where task-specific data is stored.
@@ -34,7 +37,7 @@ namespace WikiCrawler
 		public static string Detect(string text)
 		{
 			using (StreamReader reader = new StreamReader(
-				EasyWeb.Post(CreateRequest, "q=" + HttpUtility.UrlEncode(text) + "&key=" + API_KEY)))
+				m_throttle.Post(CreateRequest, "q=" + HttpUtility.UrlEncode(text) + "&key=" + API_KEY)))
 			{
 				string json = reader.ReadToEnd();
 				Dictionary<string, object> deser = (Dictionary<string, object>)new JavaScriptSerializer().DeserializeObject(json);
@@ -55,7 +58,7 @@ namespace WikiCrawler
 
 			using (StreamReader reader = new StreamReader(
 				//new FileStream("lang_response.json", FileMode.Open)))
-				EasyWeb.Post(CreateRequest, q + "key=" + API_KEY)))
+				m_throttle.Post(CreateRequest, q + "key=" + API_KEY)))
 			{
 				string json = reader.ReadToEnd();
 				/*using (StreamWriter writer = new StreamWriter(new FileStream("lang_response.json", FileMode.Create)))

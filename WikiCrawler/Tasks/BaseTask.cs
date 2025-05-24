@@ -34,6 +34,8 @@ namespace Tasks
 	public abstract class BaseTask
 	{
 		private Uri m_heartbeatEndpoint;
+		private WebThrottle m_heartbeatThrottle;
+
 		private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(60f);
 		private Thread m_heartbeatThread;
 
@@ -51,8 +53,10 @@ namespace Tasks
 			if (File.Exists(HeartbeatEndpointPath))
 			{
 				m_heartbeatEndpoint = new Uri(File.ReadAllText(HeartbeatEndpointPath));
-				EasyWeb.SetDelayForDomain(m_heartbeatEndpoint, 0f);
 			}
+
+			m_heartbeatThrottle = WebThrottle.Get(m_heartbeatEndpoint);
+			m_heartbeatThrottle.CrawlDelay = 0f;
 		}
 
 		protected HeartbeatData AddHeartbeatTask(string taskKey)
@@ -120,7 +124,7 @@ namespace Tasks
 						dataString = "d=" + System.Web.HttpUtility.UrlEncode(serialized);
 					}
 
-					using (StreamReader response = new StreamReader(EasyWeb.Post(CreateHeartbeatRequest, dataString)))
+					using (StreamReader response = new StreamReader(m_heartbeatThrottle.Post(CreateHeartbeatRequest, dataString)))
 					{
 						//string text = response.ReadToEnd();
 						//Console.WriteLine(text);

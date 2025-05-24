@@ -19,8 +19,6 @@ namespace Tasks
 		{
 			int maxEdits = int.MaxValue;
 
-			EasyWeb.SetDelayForDomain(GlobalAPIs.Commons.Domain, 0.5f);
-
 			IEnumerable<Article> allFiles = GlobalAPIs.Commons.GetCategoryEntries(PageTitle.Parse(Parameters["Category"]), Parameters["CMType"]);
 			foreach (Article file in GlobalAPIs.Commons.FetchArticles(allFiles))
 			{

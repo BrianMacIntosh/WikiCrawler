@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Net;
 
 namespace Tasks
 {
@@ -29,13 +28,13 @@ namespace Tasks
 					{
 						Console.WriteLine(current);
 
-						//Upload stream
-						HttpWebRequest request = (HttpWebRequest)WebRequest.Create(new Uri(string.Format(url, current.ToString("0000"))));
-						request.UserAgent = "Brian MacIntosh (Wikimedia Commons) - bot";
-
-						//Read response
-						StreamReader read = new StreamReader(EasyWeb.GetResponseStream(request));
-						string contents = read.ReadToEnd();
+						//Read page
+						Uri pageUri = new Uri(string.Format(url, current.ToString("0000")));
+						string contents;
+						using (StreamReader read = new StreamReader(WebInterface.ReadHttpStream(pageUri)))
+						{
+							contents = read.ReadToEnd();
+						}
 
 						writer.WriteLine(string.Format("http://dsal.uchicago.edu/images/keagle/images/large/{0}.jpg", current.ToString("0000")));
 
