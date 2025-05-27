@@ -190,7 +190,7 @@ namespace WikiCrawler
 								return new CreatorData()
 								{
 									QID = qid,
-									DeathYear = MediaWiki.DateTime.FromYear(reader.GetInt32(0).ToString(), reader.GetInt32(1)),
+									DeathYear = reader.IsDBNull(0) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(0).ToString(), reader.GetInt32(1)),
 									CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
 									CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
 								};
