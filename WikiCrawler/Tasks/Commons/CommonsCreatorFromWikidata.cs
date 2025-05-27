@@ -266,17 +266,20 @@ namespace Tasks.Commons
 
 		public static Entity GetWikidataUncached(string name, string yearOfBirth, string yearOfDeath)
 		{
+			int yob = int.Parse(yearOfBirth);
+			int yod = int.Parse(yearOfDeath);
+
 			// search wikidata
 			IEnumerable<QId> search = GlobalAPIs.Wikidata.SearchEntities(name);
 			foreach (Entity entity in GlobalAPIs.Wikidata.GetEntities(search.ToArray()))
 			{
 				if (!entity.HasClaim(Wikidata.Prop_DateOfBirth)
-					|| !entity.GetClaimValuesAsDates(Wikidata.Prop_DateOfBirth).Any(date => date.GetYear().ToString() == yearOfBirth))
+					|| !entity.GetClaimValuesAsDates(Wikidata.Prop_DateOfBirth).Any(date => date.Precision >= MediaWiki.DateTime.YearPrecision && date.GetYear() == yob))
 				{
 					continue;
 				}
 				if (!entity.HasClaim(Wikidata.Prop_DateOfDeath)
-					|| !entity.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath).Any(date => date.GetYear().ToString() == yearOfDeath))
+					|| !entity.GetClaimValuesAsDates(Wikidata.Prop_DateOfDeath).Any(date => date.Precision >= MediaWiki.DateTime.YearPrecision && date.GetYear() == yod))
 				{
 					continue;
 				}
