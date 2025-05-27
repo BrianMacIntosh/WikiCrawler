@@ -163,18 +163,21 @@ namespace MediaWiki
 			return claims[property][0].mainSnak.GetValueAsEntityId();
 		}
 
-		public IEnumerable<string> GetClaimValuesAsEntityIds(string property)
+		public IEnumerable<QId> GetClaimValuesAsEntityIds(string property)
 		{
-			if (claims.TryGetValue(property, out var subclaims))
+			if (claims.TryGetValue(property, out Claim[] subclaims))
 			{
-				return subclaims
-					.Where(c => c.HasValue())
-					.Select(c => "Q" + c.mainSnak.GetValueAsEntityId())
-					.ToArray();
+				foreach (Claim subclaim in subclaims)
+				{
+					if (subclaim.HasValue()) //TODO: return null?
+					{
+						yield return subclaim.mainSnak.GetValueAsEntityId();
+					}
+				}
 			}
 			else
 			{
-				return new string[0];
+				yield break;
 			}
 		}
 

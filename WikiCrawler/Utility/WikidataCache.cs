@@ -212,7 +212,7 @@ namespace WikiCrawler
 		private static CreatorData FetchNewPerson(QId qid)
 		{
 			Entity entity = GlobalAPIs.Wikidata.GetEntity(qid);
-			if (entity.missing || entity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) != Wikidata.Entity_Human)
+			if (entity.missing || !entity.GetClaimValuesAsEntityIds(Wikidata.Prop_InstanceOf).Any(q => q == Wikidata.Entity_Human))
 			{
 				return new CreatorData();
 			}
