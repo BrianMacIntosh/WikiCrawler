@@ -120,7 +120,7 @@ namespace Tasks.Commons
 
 			List<Tuple<string, string>> replacements = new List<Tuple<string, string>>();
 
-			int deathyear = 9999;
+			MediaWiki.DateTime deathyear = null;
 			if (worksheet.Author.StartsWith("{{Creator:"))
 			{
 				int creatorEnd = WikiUtils.GetTemplateEnd(worksheet.Author, 0);
@@ -128,13 +128,17 @@ namespace Tasks.Commons
 				deathyear = WikidataCache.GetCreatorData(creator).DeathYear;
 			}
 
-			if (deathyear == 9999)
+			if (deathyear == null)
 			{
 				Console.WriteLine("PdOldAuto: FATAL: No deathyear found.");
 			}
+			else if (deathyear.Precision < MediaWiki.DateTime.YearPrecision)
+			{
+				Console.WriteLine("PdOldAuto: FATAL: Deathyear is too imprecise.");
+			}
 			else
 			{
-				Console.WriteLine("PdOldAuto: deathyear is '" + deathyear + "'.");
+				Console.WriteLine("PdOldAuto: deathyear is '" + deathyear.GetYearString() + "'.");
 
 				// search for auto templates missing deathdate
 				//TODO:
@@ -142,33 +146,33 @@ namespace Tasks.Commons
 				// search for non-auto templates to replace
 				foreach (string template in s_TemplatesOld)
 				{
-					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto", deathyear.ToString()))
+					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto", deathyear.GetYearString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto"));
 					}
-					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto", deathyear.ToString()))
+					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto", deathyear.GetYearString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto"));
 					}
 				}
 				foreach (string template in s_Templates1923)
 				{
-					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto-1923", deathyear.ToString()))
+					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto-1923", deathyear.GetYearString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto-1923"));
 					}
-					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto-1923", deathyear.ToString()))
+					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto-1923", deathyear.GetYearString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto-1923"));
 					}
 				}
 				foreach (string template in s_Templates1996)
 				{
-					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto-1996", deathyear.ToString()))
+					if (ReplaceLicenseTemplate(ref text, template, "PD-old-auto-1996", deathyear.GetYearString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto-1996"));
 					}
-					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto-1996", deathyear.ToString()))
+					if (ReplaceLicenseTemplate(ref text, "PD-Art|" + template, "PD-Art|PD-old-auto-1996", deathyear.GetYearString()))
 					{
 						replacements.Add(new Tuple<string, string>(template, "PD-old-auto-1996"));
 					}

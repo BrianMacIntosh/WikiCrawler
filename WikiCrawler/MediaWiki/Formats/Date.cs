@@ -21,6 +21,16 @@
 			Precision = precision;
 		}
 
+		public static DateTime FromYear(int year, int precision)
+		{
+			return FromYear(year.ToString(), precision);
+		}
+
+		public static DateTime FromYear(string year, int precision)
+		{
+			return new DateTime(string.Format("+{0:0000}-00-00-T00:00:00Z", year), precision);
+		}
+
 		public string GetString(int maxPrecision)
 		{
 			int precision = Precision;
@@ -29,15 +39,15 @@
 
 			if (precision <= MilleniumPrecision)
 			{
-				return Data.Substring(0, 2) + "000";
+				return Data.Substring(0, 2) + "XXX";
 			}
 			else if (precision <= CenturyPrecision)
 			{
-				return Data.Substring(0, 3) + "00";
+				return Data.Substring(0, 3) + "XX";
 			}
 			else if (precision <= DecadePrecision)
 			{
-				return Data.Substring(0, 4) + "0";
+				return Data.Substring(0, 4) + "X";
 			}
 			else if (precision <= YearPrecision)
 			{
@@ -58,6 +68,39 @@
 			}
 		}
 
+		public string GetYearString()
+		{
+			return GetString(YearPrecision);
+		}
+
+		public static string GetYearStringSafe(DateTime dateTime)
+		{
+			return dateTime == null ? "<none>" : dateTime.GetYearString();
+		}
+
+		/// <summary>
+		/// Returns the latest possible year this Date could be in.
+		/// </summary>
+		public int GetLatestYear()
+		{
+			if (Precision <= MilleniumPrecision)
+			{
+				return int.Parse(Data.Substring(0, 2)) * 1000 + 999;
+			}
+			else if (Precision <= CenturyPrecision)
+			{
+				return int.Parse(Data.Substring(0, 3)) * 100 + 99;
+			}
+			else if (Precision <= DecadePrecision)
+			{
+				return int.Parse(Data.Substring(0, 4)) * 10 + 9;
+			}
+			else
+			{
+				return int.Parse(Data.Substring(0, 5));
+			}
+		}
+
 		public int GetYear()
 		{
 			return int.Parse(GetString(YearPrecision));
@@ -66,6 +109,11 @@
 		public int GetCentury()
 		{
 			return int.Parse(Data.Substring(1, 2)) + 1;
+		}
+
+		public override string ToString()
+		{
+			return GetString(SecondPrecision);
 		}
 	}
 }

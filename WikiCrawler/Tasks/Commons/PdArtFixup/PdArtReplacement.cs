@@ -507,7 +507,7 @@ OtherLicense: {8}",
 			CacheNewLicense(article.title, existingGoodLicense);
 
 			// 1. find author death date
-			int creatorDeathYear;
+			MediaWiki.DateTime creatorDeathYear;
 			QId creatorCountryOfCitizenship;
 			CreatorData creatorData = GetAuthorData(worksheet);
 			if (creatorData != null)
@@ -519,7 +519,7 @@ OtherLicense: {8}",
 			}
 			else
 			{
-				creatorDeathYear = 9999;
+				creatorDeathYear = null;
 				creatorCountryOfCitizenship = QId.Empty;
 
 				CacheAuthorInfo(article.title, QId.Empty, creatorDeathYear);
@@ -530,7 +530,7 @@ OtherLicense: {8}",
 			CacheLatestYear(article.title, latestYear);
 
 			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorCountryOfCitizenship);
-			Console.WriteLine("  Date: {0}, Deathyear: {1}, PMA: {2}", latestYear, creatorDeathYear, pmaDuration);
+			Console.WriteLine("  Date: {0}, Deathyear: {1}, PMA: {2}", latestYear, MediaWiki.DateTime.GetYearStringSafe(creatorDeathYear), pmaDuration);
 
 			if (latestYear == 9999)
 			{
@@ -538,13 +538,14 @@ OtherLicense: {8}",
 				qtyDateParseFail++;
 			}
 
-			// is pub date old enough to assume 100 PMA?
-			bool bReallyOldUnknownAuthor = IsUnknownOrAnonymousAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175;
+			// actual death date cannot be determined but it is certainly at least 100 years ago
+			bool allowPd100 = false;
 
-			if (creatorDeathYear == 9999)
+			if (creatorDeathYear == null)
 			{
-				if (bReallyOldUnknownAuthor)
+				if (IsUnknownOrAnonymousAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175)
 				{
+					allowPd100 = true;
 					Console.WriteLine("  Unknown author and date older than 175.");
 				}
 				else
@@ -553,12 +554,9 @@ OtherLicense: {8}",
 					qtyNoDeathYear++;
 				}
 			}
-			else if (creatorDeathYear == 10000)
+			else if (creatorDeathYear.GetLatestYear() >= System.DateTime.Now.Year - pmaDuration) 
 			{
-				Console.WriteLine("  Unknown author deathyear older than 100.");
-			}
-			else if (creatorDeathYear >= System.DateTime.Now.Year - pmaDuration) 
-			{
+				// latest death year is inside PMA
 				if (bAlreadyHasPMA)
 				{
 					// If the license already has some kind of PMA, go ahead and replace it regardless of the duration
@@ -566,8 +564,17 @@ OtherLicense: {8}",
 				}
 				else
 				{
-					errors.Add(string.Format("Death year {0} is inside max PMA.", creatorDeathYear));
+					errors.Add(string.Format("Latest death year {0} is inside max PMA.", creatorDeathYear.GetYearString()));
 					qtyInsufficientPMA++;
+				}
+			}
+			else
+			{
+				// latest death year is outside PMA
+				if (creatorDeathYear.Precision < MediaWiki.DateTime.YearPrecision)
+				{
+					allowPd100 = true;
+					Console.WriteLine("  Imprecise but old enough death year.");
 				}
 			}
 
@@ -576,7 +583,7 @@ OtherLicense: {8}",
 			if (latestYear >= usExpiredYear)
 			{
 				// Exception: post-2004 dates are very likely to be upload dates instead of pub dates
-				if ((latestYear != 9999 && latestYear >= 2004) && creatorDeathYear < System.DateTime.Now.Year - 120)
+				if ((latestYear != 9999 && latestYear >= 2004) && creatorDeathYear != null && creatorDeathYear.GetLatestYear() < System.DateTime.Now.Year - 120)
 				{
 					Console.WriteLine("  Scan/upload date, death year older than 120.");
 				}
@@ -597,7 +604,7 @@ OtherLicense: {8}",
 				newLicense = existingGoodLicense;
 				changeText = "consolidating redundant PD licenses";
 			}
-			else if (bReallyOldUnknownAuthor || creatorDeathYear == 10000)
+			else if (allowPd100)
 			{
 				if (!string.IsNullOrEmpty(licenseCountry))
 				{
@@ -607,7 +614,7 @@ OtherLicense: {8}",
 				{
 					newLicense = string.Format("{{{{PD-Art|PD-old-100-expired}}}}");
 				}
-				changeText = "improving PD-art license: date older than 175 yrs and author unknown";
+				changeText = "improving PD-art license: date older than 175 yrs and author deathyear unknown or imprecise";
 			}
 			else if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
 			{
@@ -616,29 +623,39 @@ OtherLicense: {8}",
 					Debug.Assert(false); //TODO:
 					newLicense = "ERROR";
 				}
-				else if (creatorDeathYear != 9999)
+				else if (creatorDeathYear == null)
 				{
-					newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear, licensedPdArtOtherLicense);
+					newLicense = null;
+				}
+				else if (creatorDeathYear.Precision < MediaWiki.DateTime.YearPrecision)
+				{
+					newLicense = null;
+					errors.Add("Death year is imprecise.");
 				}
 				else
 				{
-					newLicense = null;
+					newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear.GetYear(), licensedPdArtOtherLicense);
 				}
 				changeText = "improving PD-art license with more information based on file data";
 			}
 			else
 			{
-				if (creatorDeathYear == 9999)
+				if (creatorDeathYear == null)
 				{
 					newLicense = null;
 				}
+				else if (creatorDeathYear.Precision < MediaWiki.DateTime.YearPrecision)
+				{
+					newLicense = null;
+					errors.Add("Death year is imprecise.");
+				}
 				else if (!string.IsNullOrEmpty(licenseCountry))
 				{
-					newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}|country={1}}}}}", creatorDeathYear, licenseCountry);
+					newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}|country={1}}}}}", creatorDeathYear.GetYear(), licenseCountry);
 				}
 				else
 				{
-					newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear);
+					newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear.GetYear());
 				}
 				changeText = "improving PD-art license with more information based on file data";
 			}
@@ -799,7 +816,7 @@ OtherLicense: {8}",
 				int deathYear = int.Parse(match.Groups[3].Value);
 				if (deathYear <= System.DateTime.Now.Year)
 				{
-					return new CreatorData() { DeathYear = deathYear };
+					return new CreatorData() { DeathYear = MediaWiki.DateTime.FromYear(deathYear, MediaWiki.DateTime.YearPrecision) };
 				}
 			}
 
@@ -819,7 +836,7 @@ OtherLicense: {8}",
 			MappingCreator mapping = m_creatorMappings.TryMapValue(author, articleTitle);
 			if (mapping != null && mapping.MappedDeathyear != 9999)
 			{
-				return new CreatorData() { DeathYear = mapping.MappedDeathyear };
+				return new CreatorData() { DeathYear = MediaWiki.DateTime.FromYear(mapping.MappedDeathyear, MediaWiki.DateTime.YearPrecision) };
 			}
 
 			return null;
@@ -960,13 +977,14 @@ OtherLicense: {8}",
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
-		private void CacheAuthorInfo(PageTitle title, QId qid, int deathyear)
+		private void CacheAuthorInfo(PageTitle title, QId qid, MediaWiki.DateTime deathyear)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
-			command.CommandText = "UPDATE files SET authorQid=$authorQid,authorDeathYear=$authorDeathYear WHERE pageTitle=$pageTitle";
+			command.CommandText = "UPDATE files SET authorQid=$authorQid,authorDeathYear=$authorDeathYear,authorDeathYearPrecision=$authorDeathYearPrecision WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("authorQid", (int?)qid);
-			command.Parameters.AddWithValue("authorDeathYear", deathyear);
+			command.Parameters.AddWithValue("authorDeathYear", deathyear == null ? null : (int?)deathyear.GetLatestYear());
+			command.Parameters.AddWithValue("authorDeathYearPrecision", deathyear == null ? 0 : deathyear.Precision);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 

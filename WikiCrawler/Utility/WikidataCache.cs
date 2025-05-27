@@ -12,7 +12,7 @@ namespace WikiCrawler
 	{
 		public QId QID = QId.Empty;
 
-		public int DeathYear = 9999;
+		public MediaWiki.DateTime DeathYear = null;
 		public QId CountryOfCitizenship;
 		public PageTitle CommonsCategory;
 	}
@@ -81,7 +81,7 @@ namespace WikiCrawler
 			creatorTemplate = creator.Template.ToString();
 
 			SQLiteCommand command = LocalDatabase.CreateCommand();
-			command.CommandText = "SELECT p.qid,p.deathYear,p.countryOfCitizenship,p.commonsCategory FROM people p, creatortemplates c WHERE p.qid=c.qid AND c.templateName=$templateName";
+			command.CommandText = "SELECT p.qid,p.deathYear,p.countryOfCitizenship,p.commonsCategory,p.deathYearPrecision FROM people p, creatortemplates c WHERE p.qid=c.qid AND c.templateName=$templateName";
 			command.Parameters.AddWithValue("templateName", creatorTemplate);
 			using (var reader = command.ExecuteReader())
 			{
@@ -91,7 +91,7 @@ namespace WikiCrawler
 					return new CreatorData()
 					{
 						QID = new QId(reader.GetInt32(0)),
-						DeathYear = reader.GetInt32(1),
+						DeathYear = reader.IsDBNull(1) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(1).ToString(), reader.GetInt32(4)),
 						CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
 						CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
 					};
@@ -110,7 +110,7 @@ namespace WikiCrawler
 		public static CreatorData GetPersonData(QId qid)
 		{
 			SQLiteCommand command = LocalDatabase.CreateCommand();
-			command.CommandText = "SELECT deathYear,countryOfCitizenship,commonsCategory FROM people WHERE qid=$qid";
+			command.CommandText = "SELECT deathYear,deathYearPrecision,countryOfCitizenship,commonsCategory FROM people WHERE qid=$qid";
 			command.Parameters.AddWithValue("qid", qid.Id);
 			using (var reader = command.ExecuteReader())
 			{
@@ -119,9 +119,9 @@ namespace WikiCrawler
 					return new CreatorData()
 					{
 						QID = qid,
-						DeathYear = reader.GetInt32(0),
-						CountryOfCitizenship = reader.IsDBNull(1) ? QId.Empty : new QId(reader.GetInt32(1)),
-						CommonsCategory = reader.IsDBNull(2) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(2)),
+						DeathYear = reader.IsDBNull(0) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(0).ToString(), reader.GetInt32(1)),
+						CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
+						CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
 					};
 				}
 				else
@@ -181,7 +181,7 @@ namespace WikiCrawler
 					// person already cached?
 					{
 						SQLiteCommand command = LocalDatabase.CreateCommand();
-						command.CommandText = "SELECT deathYear,countryOfCitizenship,commonsCategory FROM people WHERE qid=$qid";
+						command.CommandText = "SELECT deathYear,deathYearPrecision,countryOfCitizenship,commonsCategory FROM people WHERE qid=$qid";
 						command.Parameters.AddWithValue("qid", qid.Id);
 						using (var reader = command.ExecuteReader())
 						{
@@ -190,9 +190,9 @@ namespace WikiCrawler
 								return new CreatorData()
 								{
 									QID = qid,
-									DeathYear = reader.GetInt32(0),
-									CountryOfCitizenship = reader.IsDBNull(1) ? QId.Empty : new QId(reader.GetInt32(1)),
-									CommonsCategory = reader.IsDBNull(2) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(2)),
+									DeathYear = MediaWiki.DateTime.FromYear(reader.GetInt32(0).ToString(), reader.GetInt32(1)),
+									CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
+									CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
 								};
 							}
 						}
@@ -220,15 +220,16 @@ namespace WikiCrawler
 			{
 				//TODO: if no deathdate but another date (e.g. floruit) that is very old, record that (using deathYear 10000)
 
-				int deathYear = GetCreatorDeathYear(entity);
+				MediaWiki.DateTime deathYear = GetCreatorDeathYear(entity);
 				QId countryOfCitizenship = GetCreatorCountryOfCitizenship(entity);
 				PageTitle commonsCategory = GetCreatorCommonsCategory(entity);
 
 				SQLiteCommand command = LocalDatabase.CreateCommand();
-				command.CommandText = "INSERT INTO people (qid,deathYear,countryOfCitizenship,commonsCategory,timestamp) " +
-					"VALUES ($qid,$deathYear,$countryOfCitizenship,$commonsCategory,unixepoch());";
+				command.CommandText = "INSERT INTO people (qid,deathYear,deathYearPrecision,countryOfCitizenship,commonsCategory,timestamp) " +
+					"VALUES ($qid,$deathYear,$deathYearPrecision,$countryOfCitizenship,$commonsCategory,unixepoch());";
 				command.Parameters.AddWithValue("qid", qid.Id);
-				command.Parameters.AddWithValue("deathYear", deathYear);
+				command.Parameters.AddWithValue("deathYear", deathYear == null ? null : (int?)deathYear.GetLatestYear());
+				command.Parameters.AddWithValue("deathYearPrecision", deathYear == null ? 0 : deathYear.Precision);
 				command.Parameters.AddWithValue("countryOfCitizenship", (int?)countryOfCitizenship);
 				command.Parameters.AddWithValue("commonsCategory", commonsCategory);
 				command.ExecuteNonQuery();
@@ -243,14 +244,14 @@ namespace WikiCrawler
 			}
 		}
 
-		public static int GetCreatorDeathYear(Entity entity)
+		public static MediaWiki.DateTime GetCreatorDeathYear(Entity entity)
 		{
 			if (entity.claims.TryGetValue(Wikidata.Prop_DateOfDeath, out Claim[] deathDates))
 			{
-				return GetLatestYear(deathDates);
+				return GetLatestDateTime(deathDates);
 			}
 
-			return 9999;
+			return null;
 		}
 
 		public static QId GetCreatorCountryOfCitizenship(Entity entity)
@@ -375,6 +376,24 @@ namespace WikiCrawler
 		}
 
 		/// <summary>
+		/// Returns the latest possible date time from a set of date values. This may not be the most precise.
+		/// </summary>
+		public static MediaWiki.DateTime GetLatestDateTime(Claim[] dateClaims)
+		{
+			IEnumerable<Claim> bestClaims = Wikidata.KeepBestRank(dateClaims);
+			if (bestClaims.Any())
+			{
+				IEnumerable<MediaWiki.DateTime> bestDateTimes = bestClaims.Select(claim => claim.mainSnak.GetValueAsDate());
+				int maxYear = bestDateTimes.Max(date => GetLatestYear(date));
+				return bestDateTimes.Where(date => GetLatestYear(date) == maxYear).FirstOrDefault();
+			}
+			else
+			{
+				return null;
+			}
+		}
+
+		/// <summary>
 		/// Returns the latest possible year represented by a set of date values.
 		/// </summary>
 		/// <returns></returns>
@@ -401,33 +420,10 @@ namespace WikiCrawler
 			{
 				return 9999;
 			}
-			else if (time.Precision >= MediaWiki.DateTime.YearPrecision)
-			{
-				return time.GetYear();
-			}
-			else if (time.Precision == MediaWiki.DateTime.DecadePrecision)
-			{
-				return GetLatestYear(time.GetYear(), 1);
-			}
-			else if (time.Precision == MediaWiki.DateTime.CenturyPrecision)
-			{
-				return GetLatestYear(time.GetYear(), 2);
-			}
-			else if (time.Precision == MediaWiki.DateTime.MilleniumPrecision)
-			{
-				return GetLatestYear(time.GetYear(), 3);
-			}
 			else
 			{
-				return 9999;
+				return time.GetLatestYear();
 			}
-		}
-
-		public static int GetLatestYear(int value, int impreciseDigits)
-		{
-			int quanta = (int)Math.Pow(10, impreciseDigits);
-			int significantDigits = (int)Math.Ceiling(value / (double)quanta);
-			return (significantDigits + 1) * quanta - 1;
 		}
 	}
 }
