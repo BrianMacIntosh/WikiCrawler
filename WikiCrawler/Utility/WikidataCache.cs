@@ -91,7 +91,7 @@ namespace WikiCrawler
 					return new CreatorData()
 					{
 						QID = new QId(reader.GetInt32(0)),
-						DeathYear = reader.IsDBNull(1) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(1).ToString(), reader.GetInt32(4)),
+						DeathYear = reader.IsDBNull(1) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(1), reader.GetInt32(4)),
 						CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
 						CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
 					};
@@ -119,7 +119,7 @@ namespace WikiCrawler
 					return new CreatorData()
 					{
 						QID = qid,
-						DeathYear = reader.IsDBNull(0) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(0).ToString(), reader.GetInt32(1)),
+						DeathYear = reader.IsDBNull(0) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(0), reader.GetInt32(1)),
 						CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
 						CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
 					};
@@ -190,7 +190,7 @@ namespace WikiCrawler
 								return new CreatorData()
 								{
 									QID = qid,
-									DeathYear = reader.IsDBNull(0) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(0).ToString(), reader.GetInt32(1)),
+									DeathYear = reader.IsDBNull(0) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(0), reader.GetInt32(1)),
 									CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
 									CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
 								};

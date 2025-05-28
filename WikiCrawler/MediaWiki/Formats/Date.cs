@@ -23,12 +23,7 @@
 
 		public static DateTime FromYear(int year, int precision)
 		{
-			return FromYear(year.ToString(), precision);
-		}
-
-		public static DateTime FromYear(string year, int precision)
-		{
-			return new DateTime(string.Format("+{0:0000}-00-00-T00:00:00Z", year), precision);
+			return new DateTime(string.Format("{0:\\+0000;-0000}-00-00-T00:00:00Z", year), precision);
 		}
 
 		public string GetString(int maxPrecision)
