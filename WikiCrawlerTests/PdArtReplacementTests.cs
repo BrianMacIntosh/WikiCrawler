@@ -16,7 +16,7 @@ public class PdArtReplacementTests
 	private static Article CreateArticle(string title, string content)
 	{
 		Article article = new Article();
-		article.title = title;
+		article.title = PageTitle.Parse(title);
 		article.revisions = new Revision[1] { new Revision() { text = content } };
 		return article;
 	}
