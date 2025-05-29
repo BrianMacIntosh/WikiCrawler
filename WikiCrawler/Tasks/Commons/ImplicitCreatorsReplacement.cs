@@ -427,16 +427,16 @@ namespace Tasks.Commons
 		/// <summary>
 		/// Tries to map an author string that is already known to not be a template to a creator template.
 		/// </summary>
-		private static bool TryMapCreatorTemplate(CommonsFileWorksheet worksheet, string authorString, out CreatorTemplate creator, out CreatorReplaceType replaceType)
+		private static bool TryMapAuthorComponent(CommonsFileWorksheet worksheet, string authorString, out CreatorTemplate creator, out CreatorReplaceType replaceType)
 		{
-			creator = AutoMapNonTemplateAuthor(worksheet, authorString, out replaceType);
+			creator = MapAuthorComponent(worksheet, authorString, out replaceType);
 			return !creator.IsEmpty;
 		}
 
 		/// <summary>
 		/// Tries to map a raw author string to a creator template.
 		/// </summary>
-		private static CreatorTemplate AutoMapNonTemplateAuthor(CommonsFileWorksheet worksheet, string authorString, out CreatorReplaceType replaceType)
+		private static CreatorTemplate MapAuthorComponent(CommonsFileWorksheet worksheet, string authorString, out CreatorReplaceType replaceType)
 		{
 			ConsoleUtility.WriteLine(ConsoleColor.Gray, "  Component '{0}'", authorString);
 
@@ -450,7 +450,7 @@ namespace Tasks.Commons
 			}
 
 			// extract lifespan from author string
-			Match lifespanMatch = s_lifespanRegex.Match(authorString);
+			Match lifespanMatch = s_authorLifespanRegex.Match(authorString);
 			if (lifespanMatch.Success)
 			{
 				authorString = lifespanMatch.Groups[1].Value.Trim();
@@ -497,7 +497,7 @@ namespace Tasks.Commons
 						authorString = creatorTemplate.Template.Name;
 					}
 
-					if (TryMapCreatorTemplate(worksheet, authorString, out CreatorTemplate mappedRedlinkAuthor, out replaceType))
+					if (TryMapAuthorComponent(worksheet, authorString, out CreatorTemplate mappedRedlinkAuthor, out replaceType))
 					{
 						if (string.IsNullOrWhiteSpace(mappedRedlinkAuthor.Option)
 							&& string.IsNullOrWhiteSpace(creatorTemplate.Option))
@@ -635,6 +635,11 @@ namespace Tasks.Commons
 				string dob = lifespanMatch.Groups[2].Value.Trim();
 				string dod = lifespanMatch.Groups[3].Value.Trim();
 				Entity wikidata = CommonsCreatorFromWikidata.GetWikidata(authorString, dob, dod);
+				if (Entity.IsNullOrMissing(wikidata) && TryReversePersonName(authorString, out string reversedCurrentAuthor))
+				{
+					wikidata = CommonsCreatorFromWikidata.GetWikidata(reversedCurrentAuthor, dob, dod);
+				}
+
 				if (!Entity.IsNullOrMissing(wikidata))
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "    Search matched");
@@ -818,7 +823,12 @@ namespace Tasks.Commons
 
 			foreach (string innerText in StripLanguageTemplates(authorString))
 			{
-				if (TryMapCreatorTemplate(worksheet, innerText, out CreatorTemplate subCreator, out CreatorReplaceType subReplaceType))
+				if (IsIgnoreableComponent(innerText))
+				{
+					continue;
+				}
+
+				if (TryMapAuthorComponent(worksheet, innerText, out CreatorTemplate subCreator, out CreatorReplaceType subReplaceType))
 				{
 					replaceType = CombineReplaceType(replaceType, subReplaceType);
 					if (!string.IsNullOrWhiteSpace(subCreator.Option))
@@ -849,6 +859,17 @@ namespace Tasks.Commons
 			}
 
 			return matchedCreator;
+		}
+
+		private static bool IsIgnoreableComponent(string text)
+		{
+			// check if the component is actually just a lifespan
+			if (s_lifespanRegex.IsMatch(text))
+			{
+				return true;
+			}
+
+			return false;
 		}
 
 		private static string GetEditSummary(CreatorReplaceType replaceType)
@@ -908,10 +929,26 @@ namespace Tasks.Commons
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
-		private static readonly char[] s_authorTrim = new char[] { ' ', '[', ']', '.', ',', ';' };
-		private static readonly Regex s_lifespanRegex = new Regex(@"^([^\(\n]+)\s*\(?([0-9][0-9][0-9][0-9]) ?[\-– ] ?([0-9][0-9][0-9][0-9])\)?$");
+		private static readonly char[] s_authorMatchTrim = new char[] { ' ', '[', ']', '.', ',', ';' };
+		private static readonly Regex s_authorLifespanRegex = new Regex(@"^([^\(\n]+)\s*\(?([0-9][0-9][0-9][0-9]) ?[\-– ] ?([0-9][0-9][0-9][0-9])\)?$");
+		private static readonly Regex s_lifespanRegex = new Regex(@"^\s*\(?([0-9][0-9][0-9][0-9]) ?[\-– ] ?([0-9][0-9][0-9][0-9])\)?$");
 		private static readonly Regex s_interwikiLinkRegex = new Regex(@"^\[\[:?(?:w:)?([a-zA-Z]+):([^\|:]+)(?:\|([^\]]+))?\]\]$");
 		private static readonly Regex s_wikiLinkRegex = new Regex(@"^\[\[([^\|]+)(?:\|(.+))?\]\]$");
+
+		private static bool TryReversePersonName(string name, out string reverseName)
+		{
+			string[] currentAuthorCommaSplit = name.Split(',');
+			if (currentAuthorCommaSplit.Length == 2)
+			{
+				reverseName = currentAuthorCommaSplit[1].Trim() + " " + currentAuthorCommaSplit[0].Trim();
+				return true;
+			}
+			else
+			{
+				reverseName = name;
+				return false;
+			}
+		}
 
 		/// <summary>
 		/// Returns true if the currentAuthor string is an acceptable match against specified entity.
@@ -921,14 +958,9 @@ namespace Tasks.Commons
 			// trim sirs and trailing "letters"?
 			//TODO:
 
-			currentAuthor = currentAuthor.Trim(s_authorTrim);
+			currentAuthor = currentAuthor.Trim(s_authorMatchTrim);
 
-			string[] currentAuthorCommaSplit = currentAuthor.Split(',');
-			string reversedCurrentAuthor = "";
-			if (currentAuthorCommaSplit.Length == 2)
-			{
-				reversedCurrentAuthor = currentAuthorCommaSplit[1].Trim() + " " + currentAuthorCommaSplit[0].Trim();
-			}
+			TryReversePersonName(currentAuthor, out string reversedCurrentAuthor);
 
 			foreach (var kv in entity.labels)
 			{
