@@ -30,7 +30,10 @@ namespace MediaWiki
 		{
 			Code = (string)error["code"];
 			Info = (string)error["info"];
-			Details = (object[])error["details"];
+			if (error.TryGetValue("details", out object details))
+			{
+				Details = (object[])details;
+			}
 		}
 
 		public WikimediaCodeException(string code, string info)
