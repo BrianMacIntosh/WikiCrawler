@@ -410,6 +410,7 @@ namespace Tasks.Commons
 			else if (IsUnknownAuthor(authorString) || IsAnonymousAuthor(authorString))
 			{
 				// already an anon/unknown template - do nothing
+				replaceType = CreatorReplaceType.Identity;
 				ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  Already a template");
 				return "";
 			}
