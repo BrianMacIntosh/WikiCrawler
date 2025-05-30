@@ -20,7 +20,7 @@ namespace Tasks.Commons
 	/// 1745684896 Artwork wikidata is now being looked up and used for latestYear
 	/// 1746288973 authorQid was not cached at all before this
 	/// 
-	/// For counting: there are 16063 replacements that are not bLicenseReplaced=1 in the database.
+	/// For counting: there are 16063 replacements that are not replaced=1 in the database.
 	/// </remarks>
 	public class PdArtReplacement : BaseReplacement
 	{
@@ -971,7 +971,7 @@ OtherLicense: {8}",
 		private void CacheReplacementStatus(PageTitle title, ReplacementStatus state)
 		{
 			SQLiteCommand command = m_filesDatabase.CreateCommand();
-			command.CommandText = "UPDATE files SET bLicenseReplaced=$state WHERE pageTitle=$pageTitle";
+			command.CommandText = "UPDATE files SET replaced=$state WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("state", (int)state);
 			Debug.Assert(command.ExecuteNonQuery() == 1);

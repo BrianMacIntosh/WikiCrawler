@@ -40,7 +40,7 @@ namespace Tasks.Commons
 					GlobalAPIs.Commons.UndoRevision((int)page.pageid, page.revisions[0].revid, "", true);
 
 					SQLiteCommand command = connection.CreateCommand();
-					command.CommandText = "UPDATE files SET bLicenseReplaced=0 WHERE pageTitle=$pageTitle";
+					command.CommandText = "UPDATE files SET replaced=0 WHERE pageTitle=$pageTitle";
 					command.Parameters.AddWithValue("pageTitle", page.title);
 					int result = command.ExecuteNonQuery();
 					Console.WriteLine(result);

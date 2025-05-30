@@ -11,19 +11,20 @@ namespace Tasks.Commons
 	{
 		public PdArtDatabaseRerun()
 			: base(
-				  //new ImplicitCreatorsReplacement("FixImplicitCreators"),
+				  new ImplicitCreatorsReplacement("FixImplicitCreators"),
 				  new LocalizeDateReplacement(),
 				  new PdArtReplacement())
 		{
+			ImplicitCreatorsReplacement.SkipCached = false;
 			PdArtReplacement.SkipCached = false;
 			ImplicitCreatorsReplacement.SlowCategoryWalk = false; // already tried last time
 
-			//TODO: SELECT * from files WHERE irreplaceableLicenses LIKE "PD-US-unpublished" AND bLicenseReplaced!=1
-			//Parameters["Query"] = "SELECT pageTitle from files WHERE irreplaceableLicenses LIKE \"PD-US-unpublished\" AND bLicenseReplaced!=1";
+			//TODO: SELECT * from files WHERE irreplaceableLicenses LIKE "PD-US-unpublished" AND replaced!=1
+			//Parameters["Query"] = "SELECT pageTitle from files WHERE irreplaceableLicenses LIKE \"PD-US-unpublished\" AND replaced!=1";
 
-			Parameters["Query"] = "SELECT * FROM files where authorString=\"\" AND dateString=\"\" and artQid IS NULL and touchTimeUnix<1745687521 AND bLicenseReplaced!=1";
+			Parameters["Query"] = "SELECT* FROM files WHERE pdArtLicense LIKE \"{{PD-art}}\" and replaced=0 and touchTimeUnix<1748465572";
 
-			//Parameters["Query"] = "SELECT pageTitle FROM files where pdArtLicense LIKE \"{{pd-art}}\" AND bLicenseReplaced=0";
+			//Parameters["Query"] = "SELECT pageTitle FROM files where pdArtLicense LIKE \"{{pd-art}}\" AND replaced=0";
 		}
 
 		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)

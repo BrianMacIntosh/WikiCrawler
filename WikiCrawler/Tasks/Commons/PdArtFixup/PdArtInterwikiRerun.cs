@@ -35,7 +35,7 @@ namespace Tasks.Commons
 				ConsoleUtility.WriteLine(System.ConsoleColor.White, kv.Key);
 
 				SQLiteCommand query = connection.CreateCommand();
-				query.CommandText = string.Format("SELECT * FROM files WHERE bLicenseReplaced=0 AND (authorString LIKE \"%[[:{0}:%\" OR authorString LIKE \"%[[{0}:%\")", kv.Key);
+				query.CommandText = string.Format("SELECT * FROM files WHERE replaced=0 AND (authorString LIKE \"%[[:{0}:%\" OR authorString LIKE \"%[[{0}:%\")", kv.Key);
 
 				List<Article> articles = new List<Article>();
 				using (SQLiteDataReader reader = query.ExecuteReader())
