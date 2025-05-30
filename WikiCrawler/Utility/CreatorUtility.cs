@@ -6,10 +6,16 @@ namespace MediaWiki
 {
 	public struct CreatorTemplate : IEquatable<CreatorTemplate>
 	{
-		public CreatorTemplate(PageTitle InTemplate)
+		public CreatorTemplate(PageTitle inTemplate)
 		{
-			Template = InTemplate;
+			Template = inTemplate;
 			Option = null;
+		}
+
+		public CreatorTemplate(PageTitle inTemplate, string inOption)
+		{
+			Template = inTemplate;
+			Option = inOption;
 		}
 
 		public static implicit operator CreatorTemplate(PageTitle template)

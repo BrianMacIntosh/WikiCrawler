@@ -692,6 +692,21 @@ namespace Tasks.Commons
 				}
 			}
 
+			string creatorOption = "";
+
+			if (s_circleOfRegex.MatchOut(authorString, out Match circleOfMatch))
+			{
+				// literal "circle of X"
+				creatorOption = "circle of";
+				authorString = circleOfMatch.Groups[1].Value;
+			}
+			else if (s_afterRegex.MatchOut(authorString, out Match afterMatch))
+			{
+				// literal "after X"
+				creatorOption = "after";
+				authorString = afterMatch.Groups[1].Value;
+			}
+
 			// go looking for matching creator templates in parent cats
 			if (SlowCategoryWalk
 				&& !authorString.Contains("{{")) // this will not match anything if it has templates in it
@@ -699,8 +714,14 @@ namespace Tasks.Commons
 				PageTitle catCreator = GetCreatorFromCategories(authorString, WikiUtils.GetCategories(worksheet.Text), 1);
 				if (!catCreator.IsEmpty)
 				{
-					return catCreator;
+					return new CreatorTemplate(catCreator, creatorOption);
 				}
+			}
+
+			//TODO: implement creator option for mappings below
+			if (!string.IsNullOrEmpty(creatorOption))
+			{
+				return new CreatorTemplate();
 			}
 
 			// manually map
@@ -831,13 +852,7 @@ namespace Tasks.Commons
 				if (TryMapAuthorComponent(worksheet, innerText, out CreatorTemplate subCreator, out CreatorReplaceType subReplaceType))
 				{
 					replaceType = CombineReplaceType(replaceType, subReplaceType);
-					if (!string.IsNullOrWhiteSpace(subCreator.Option))
-					{
-						replaceType = CreatorReplaceType.None;
-						ConsoleUtility.WriteLine(ConsoleColor.Red, "    Creator template with Option.");
-						return new CreatorTemplate();
-					}
-					else if (matchedCreator.IsEmpty)
+					if (matchedCreator.IsEmpty)
 					{
 						matchedCreator = subCreator;
 					}
@@ -934,6 +949,9 @@ namespace Tasks.Commons
 		private static readonly Regex s_lifespanRegex = new Regex(@"^\s*\(?([0-9][0-9][0-9][0-9]|\?+) ?[\-– ] ?([0-9][0-9][0-9][0-9]|\?+)\)?$");
 		private static readonly Regex s_interwikiLinkRegex = new Regex(@"^\[\[:?(?:w:)?([a-zA-Z]+):([^\|:]+)(?:\|([^\]]+))?\]\]$");
 		private static readonly Regex s_wikiLinkRegex = new Regex(@"^\[\[([^\|]+)(?:\|(.+))?\]\]$");
+
+		private static readonly Regex s_circleOfRegex = new Regex(@"^\s*circle of\s+(.+)$", RegexOptions.IgnoreCase);
+		private static readonly Regex s_afterRegex = new Regex(@"^\s*after\s+(.+)$", RegexOptions.IgnoreCase);
 
 		private static bool TryReversePersonName(string name, out string reverseName)
 		{
