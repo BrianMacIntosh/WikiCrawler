@@ -1,4 +1,7 @@
-﻿namespace MediaWiki
+﻿using System;
+using System.Diagnostics;
+
+namespace MediaWiki
 {
 	public class DateTime
 	{
@@ -78,21 +81,43 @@
 		/// </summary>
 		public int GetLatestYear()
 		{
-			if (Precision <= MilleniumPrecision)
+			int year = int.Parse(Data.Substring(0, 5));
+
+			if (Precision < MilleniumPrecision)
 			{
-				return int.Parse(Data.Substring(0, 2)) * 1000 + 999;
+				Debug.Assert(false, "Precision less than millenium");
+				return year;
 			}
-			else if (Precision <= CenturyPrecision)
+			else if (Precision == MilleniumPrecision)
 			{
-				return int.Parse(Data.Substring(0, 3)) * 100 + 99;
+				// millenia go from 1001-2000
+				float yearFloat = year / 1000f;
+				if (yearFloat < 0)
+					year = (int)Math.Floor(yearFloat);
+				else
+					year = (int)Math.Ceiling(yearFloat);
+				return year * 1000 - 1;
 			}
-			else if (Precision <= DecadePrecision)
+			else if (Precision == CenturyPrecision)
 			{
-				return int.Parse(Data.Substring(0, 4)) * 10 + 9;
+				// centuries go from 101-200
+				float yearFloat = year / 100f;
+				if (yearFloat < 0)
+					year = (int)Math.Floor(yearFloat);
+				else
+					year = (int)Math.Ceiling(yearFloat);
+				return year * 100 - 1;
+			}
+			else if (Precision == DecadePrecision)
+			{
+				// decades go from 10-19
+				float yearFloat = year / 10f;
+				year = (int)Math.Floor(yearFloat);
+				return year * 10 + 9;
 			}
 			else
 			{
-				return int.Parse(Data.Substring(0, 5));
+				return year;
 			}
 		}
 
