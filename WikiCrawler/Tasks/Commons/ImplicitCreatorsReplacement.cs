@@ -1031,6 +1031,15 @@ namespace Tasks.Commons
 				return cachedEntity;
 			}
 
+			// is it an entity
+			if (QId.TryParse(page.FullTitle, out QId qid))
+			{
+				Console.WriteLine("  Interwiki direct Wikidata '{0}'.", qid);
+				Entity newEntity = GlobalAPIs.Wikidata.GetEntity(qid);
+				s_interwikiCache[cachekey] = newEntity;
+				return newEntity;
+			}
+
 			Article interwikiArticle = GetInterwikiPage(prefix, page);
 			if (!Article.IsNullOrMissing(interwikiArticle) && interwikiArticle.pageprops.TryGetValue("wikibase_item", out string strqid))
 			{
