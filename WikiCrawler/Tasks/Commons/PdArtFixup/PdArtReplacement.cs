@@ -1382,6 +1382,12 @@ OtherLicense: {8}",
 			date = date.Trim();
 			date = date.Trim('[', ']', '(', ')');
 
+			// range
+			if (new Regex(@"^([0-9][0-9][0-9][0-9])\s*[-—]\s*([0-9][0-9][0-9][0-9])$").MatchOut(date, out Match rangeMatch))
+			{
+				date = rangeMatch.Groups[2].Value;
+			}
+
 			// check for '0000s'
 			{
 				Match match = s_sRegex.Match(date);
