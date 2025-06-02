@@ -442,6 +442,7 @@ namespace Tasks.Commons
 			ConsoleUtility.WriteLine(ConsoleColor.Gray, "  Component '{0}'", authorString);
 
 			replaceType = CreatorReplaceType.Implicit;
+			bool isUnwrapped = false;
 
 			if (IsUnknownOrAnonymousAuthor(authorString))
 			{
@@ -451,10 +452,15 @@ namespace Tasks.Commons
 			}
 
 			// extract lifespan from author string
-			Match lifespanMatch = s_authorLifespanRegex.Match(authorString);
-			if (lifespanMatch.Success)
+			if (CreatorUtility.AuthorLifespanRegex.MatchOut(authorString, out Match lifespanMatch))
 			{
 				authorString = lifespanMatch.Groups[1].Value.Trim();
+				isUnwrapped = true;
+			}
+			else if (CreatorUtility.AuthorDiedRegex.MatchOut(authorString, out Match diedMatch))
+			{
+				authorString = diedMatch.Groups[1].Value.Trim();
+				isUnwrapped = true;
 			}
 
 			if (CreatorUtility.TryGetCreatorTemplate(authorString, out CreatorTemplate creatorTemplate))
@@ -668,6 +674,7 @@ namespace Tasks.Commons
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    iwlink");
 
 				authorString = interwikiLinkMatch.Groups[3].Value.Trim();
+				isUnwrapped = true;
 
 				PageTitle pageTitle = PageTitle.Parse(interwikiLinkMatch.Groups[2].Value);
 				Entity entity = GetInterwikiEntity(interwikiLinkMatch.Groups[1].Value, pageTitle);
@@ -687,6 +694,7 @@ namespace Tasks.Commons
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    wikilink");
 
 				authorString = wikiLinkMatch.Groups[1].Value.Trim();
+				isUnwrapped = true;
 				if (PageTitle.TryParse(authorString, out PageTitle authorTitle))
 				{
 					return GetCreatorFromCommonsPage(authorString, authorTitle);
@@ -700,12 +708,14 @@ namespace Tasks.Commons
 				// literal "circle of X"
 				creatorOption = "circle of";
 				authorString = circleOfMatch.Groups[1].Value;
+				isUnwrapped = true;
 			}
 			else if (s_afterRegex.MatchOut(authorString, out Match afterMatch))
 			{
 				// literal "after X"
 				creatorOption = "after";
 				authorString = afterMatch.Groups[1].Value;
+				isUnwrapped = true;
 			}
 
 			// go looking for matching creator templates in parent cats
@@ -946,7 +956,6 @@ namespace Tasks.Commons
 		}
 
 		private static readonly char[] s_authorMatchTrim = new char[] { ' ', '[', ']', '.', ',', ';' };
-		private static readonly Regex s_authorLifespanRegex = new Regex(@"^([^\(\n]+)\s*\(?([0-9][0-9][0-9][0-9])\?? ?[\-– ] ?([0-9][0-9][0-9][0-9])\??\)?$");
 		private static readonly Regex s_lifespanRegex = new Regex(@"^\s*\(?([0-9][0-9][0-9][0-9]|\?+) ?[\-– ] ?([0-9][0-9][0-9][0-9]|\?+)\)?$");
 		private static readonly Regex s_interwikiLinkRegex = new Regex(@"^\[\[:?(?:w:)?([a-zA-Z]+):([^\|:]+)(?:\|([^\]]+))?\]\]$");
 		private static readonly Regex s_wikiLinkRegex = new Regex(@"^\[\[([^\|]+)(?:\|(.+))?\]\]$");

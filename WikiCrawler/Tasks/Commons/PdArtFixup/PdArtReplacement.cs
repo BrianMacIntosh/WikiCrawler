@@ -810,10 +810,17 @@ OtherLicense: {8}",
 			}
 
 			// D. does author string contain a death date?
-			Match match = CreatorUtility.AuthorLifespanRegex.Match(author);
-			if (match.Success)
+			if (CreatorUtility.AuthorLifespanRegex.MatchOut(author, out Match matchLifespan))
 			{
-				int deathYear = int.Parse(match.Groups[3].Value);
+				int deathYear = int.Parse(matchLifespan.Groups[3].Value);
+				if (deathYear <= System.DateTime.Now.Year)
+				{
+					return new CreatorData() { DeathYear = MediaWiki.DateTime.FromYear(deathYear, MediaWiki.DateTime.YearPrecision) };
+				}
+			}
+			if (CreatorUtility.AuthorDiedRegex.MatchOut(author, out Match matchDied))
+			{
+				int deathYear = int.Parse(matchDied.Groups[2].Value);
 				if (deathYear <= System.DateTime.Now.Year)
 				{
 					return new CreatorData() { DeathYear = MediaWiki.DateTime.FromYear(deathYear, MediaWiki.DateTime.YearPrecision) };

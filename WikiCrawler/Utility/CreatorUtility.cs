@@ -78,7 +78,8 @@ namespace MediaWiki
 		private static Dictionary<PageTitle, PageTitle> s_creatorHomecats = new Dictionary<PageTitle, PageTitle>();
 
 		public static readonly Regex InlineCreatorTemplateRegex = new Regex(@"^{{\s*[Cc]reator\s*\|\s*[Ww]ikidata\s*=\s*(Q[0-9]+)\s*(?:|\s*[Oo]ption\s*=\s*)?}}$");
-		public static readonly Regex AuthorLifespanRegex = new Regex(@"^([^\(\)]+)\s+\(?([0-9][0-9][0-9][0-9])[\-–—]([0-9][0-9][0-9][0-9])\)?$");
+		public static readonly Regex AuthorLifespanRegex = new Regex(@"^([^\(\n]+)\s*\(?([0-9][0-9][0-9][0-9])\??[\-– ]([0-9][0-9][0-9][0-9])\??\)?$");
+		public static readonly Regex AuthorDiedRegex = new Regex(@"^([^\(\)]+)\s+\(?died\s+([0-9][0-9][0-9][0-9])\)?$", RegexOptions.IgnoreCase);
 
 		/// <summary>
 		/// If the string represents a creator template, returns that template's page title.
