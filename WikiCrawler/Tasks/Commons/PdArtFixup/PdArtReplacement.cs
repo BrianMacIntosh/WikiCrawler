@@ -235,8 +235,8 @@ namespace Tasks.Commons
 		{
 			Directory.CreateDirectory(ProjectDataDirectory);
 			m_dateMapping = new ManualMapping<MappingDate>(DateMappingFile);
-			m_creatorMappings = new ManualMapping<MappingCreator>(ImplicitCreatorsReplacement.GetCreatorMappingFile(ProjectDataDirectory));
-
+			m_creatorMappings = new ManualMapping<MappingCreator>(ImplicitCreatorsReplacement.CreatorMappingFile);
+			
 			m_filesDatabase = ConnectFilesDatabase(true);
 		}
 
@@ -270,6 +270,7 @@ OtherLicense: {8}",
 			File.WriteAllText(Path.Combine(ProjectDataDirectory, "stats.txt"), statsText, Encoding.UTF8);
 
 			m_dateMapping.Serialize();
+			m_creatorMappings.Serialize();
 		}
 
 		/// <summary>
@@ -773,8 +774,19 @@ OtherLicense: {8}",
 
 		private bool IsUnknownOrAnonymousAuthor(string author)
 		{
-			return ImplicitCreatorsReplacement.IsUnknownOrAnonymousAuthor(author)
-				|| author.StartsWith("{{anonymous}}", StringComparison.InvariantCultureIgnoreCase);
+			if (ImplicitCreatorsReplacement.IsUnknownOrAnonymousAuthor(author)
+				|| author.StartsWith("{{anonymous}}", StringComparison.InvariantCultureIgnoreCase))
+			{
+				return true;
+			}
+
+			MappingCreator mapping = m_creatorMappings.TryGetValue(author);
+			if (mapping != null && mapping.IsUnknown)
+			{
+				return true;
+			}
+
+			return false;
 		}
 
 		private CreatorData GetAuthorData(CommonsFileWorksheet worksheet)

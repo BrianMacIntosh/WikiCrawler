@@ -101,6 +101,24 @@ public class ManualMapping<MappingType> : IEnumerable<KeyValuePair<string, Mappi
 		m_mappings.Remove(key);
 	}
 
+	public MappingType TryGetValue(string input)
+	{
+		if (string.IsNullOrEmpty(input))
+		{
+			return null;
+		}
+
+		MappingType mapping;
+		if (m_mappings.TryGetValue(input, out mapping))
+		{
+			return mapping;
+		}
+		else
+		{
+			return default;
+		}
+	}
+
 	public MappingType TryMapValue(string input, PageTitle onPage)
 	{
 		if (string.IsNullOrEmpty(input))

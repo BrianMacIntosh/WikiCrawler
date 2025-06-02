@@ -17,6 +17,7 @@ namespace Tasks.Commons
 		public string MappedValue;
 		public string MappedQID;
 		public int MappedDeathyear = 9999;
+		public bool IsUnknown = false;
 	}
 
 	/// <summary>

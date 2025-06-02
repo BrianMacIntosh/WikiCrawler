@@ -1,8 +1,6 @@
 ﻿using MediaWiki;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using WikiCrawler;
 
 namespace Tasks.Commons
 {
@@ -41,10 +39,10 @@ namespace Tasks.Commons
 			PdArtReplacement.SkipCached = false;
 			ImplicitCreatorsReplacement.SlowCategoryWalk = false; // already tried last time
 
-			string pdArtDirectory = Path.Combine(Configuration.DataDirectory, "PdArtReplacement");
-			ManualMapping<MappingCreator> creatorMapping = new ManualMapping<MappingCreator>(ImplicitCreatorsReplacement.GetCreatorMappingFile(pdArtDirectory));
+			ManualMapping<MappingCreator> creatorMapping = new ManualMapping<MappingCreator>(ImplicitCreatorsReplacement.CreatorMappingFile);
 			ManualMapping<MappingDate> dateMapping = new ManualMapping<MappingDate>(PdArtReplacement.DateMappingFile);
 
+#if false
 			foreach (var kv in dateMapping)
 			{
 				if (!string.IsNullOrEmpty(kv.Value.ReplaceDate)
@@ -71,7 +69,8 @@ namespace Tasks.Commons
 			{
 				if (kv.Value.MappedDeathyear != 9999
 					|| !string.IsNullOrEmpty(kv.Value.MappedValue)
-					|| !string.IsNullOrEmpty(kv.Value.MappedQID))
+					|| !string.IsNullOrEmpty(kv.Value.MappedQID)
+					|| kv.Value.IsUnknown)
 				{
 					//TODO: GetPages should automatically break up file lists
 					foreach (Article article in kv.Value.FromPages.Select(title => new Article(PageTitle.Parse(title))))
