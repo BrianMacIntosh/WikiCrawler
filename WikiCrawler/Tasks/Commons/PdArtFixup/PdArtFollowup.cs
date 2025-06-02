@@ -61,9 +61,15 @@ namespace Tasks.Commons
 						yield return article;
 					}
 				}
+				else if (PdArtReplacement.ParseDate(kv.Key).LatestYear < System.DateTime.Now.Year - 95)
+				{
+					foreach (Article article in kv.Value.FromPages.Select(title => new Article(PageTitle.Parse(title))))
+					{
+						yield return article;
+					}
+				}
 			}
-
-			yield break;
+#endif
 
 			foreach (var kv in creatorMapping)
 			{
