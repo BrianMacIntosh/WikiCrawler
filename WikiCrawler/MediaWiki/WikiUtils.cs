@@ -266,6 +266,7 @@ namespace MediaWiki
 		public static int GetTemplateStart(string text, string templateName, int startAt = 0)
 		{
 			//TODO: proper case-sensitivity
+			//TODO: use PageNameComparer
 			Regex regex = new Regex(@"{{\s*:?\s*(?:Template:)?\s*" + Regex.Escape(templateName) + @"\s*[\|}]", RegexOptions.IgnoreCase);
 			foreach (Match match in regex.Matches(text, startAt))
 			{
@@ -491,11 +492,60 @@ namespace MediaWiki
 		/// 
 		/// </summary>
 		/// <param name="text">The content of the template (with or without {{}}).</param>
-		/// <returns></returns>
 		public static string GetTemplateParameter(int param, string text)
 		{
 			int eat;
 			return GetTemplateParameter(param, text, out eat);
+		}
+
+		/// <summary>
+		/// Returns the value of the first specified parameter that has one.
+		/// </summary>
+		/// <param name="text">The content of the template (with or without {{}}).</param>
+		public static string GetTemplateParameter(string param, int paramIndex, string text)
+		{
+			int eat;
+			string value = GetTemplateParameter(param, text, out eat);
+			if (!string.IsNullOrEmpty(value))
+			{
+				return value;
+			}
+
+			return GetTemplateParameter(paramIndex, text);
+		}
+
+		/// <summary>
+		/// Returns the value of the first specified parameter that has one.
+		/// </summary>
+		/// <param name="text">The content of the template (with or without {{}}).</param>
+		public static string GetTemplateParameter(string[] paramAliases, string text)
+		{
+			int eat;
+			foreach (string alias in paramAliases)
+			{
+				string value = GetTemplateParameter(alias, text, out eat);
+				if (!string.IsNullOrEmpty(value))
+				{
+					return value;
+				}
+			}
+
+			return "";
+		}
+
+		/// <summary>
+		/// Returns the value of the first specified parameter that has one.
+		/// </summary>
+		/// <param name="text">The content of the template (with or without {{}}).</param>
+		public static string GetTemplateParameter(string[] paramAliases, int paramIndex, string text)
+		{
+			string value = GetTemplateParameter(paramAliases, text);
+			if (!string.IsNullOrEmpty(value))
+			{
+				return value;
+			}
+
+			return GetTemplateParameter(paramIndex, text);
 		}
 
 		/// <summary>

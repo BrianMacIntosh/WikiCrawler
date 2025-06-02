@@ -1049,6 +1049,23 @@ OtherLicense: {8}",
 				;
 		}
 
+		private static DateParseMetadata Century(string century)
+		{
+			if (int.TryParse(century, out int result))
+			{
+				return Century(result);
+			}
+			else
+			{
+				return DateParseMetadata.Unknown;
+			}
+		}
+
+		private static DateParseMetadata Century(int century)
+		{
+			return new DateParseMetadata(0, (century - 1) * 100, century * 100 - 1);
+		}
+
 		public static DateParseMetadata ParseDate(string date)
 		{
 			date = date.Trim().TrimEnd('.');
@@ -1058,6 +1075,11 @@ OtherLicense: {8}",
 			if (!otherDateSpan.IsValid)
 			{
 				otherDateSpan = WikiUtils.GetTemplateLocation(date, "otherdate");
+			}
+			if (!otherDateSpan.IsValid)
+			{
+				//TODO: handle this at a lower level
+				otherDateSpan = WikiUtils.GetTemplateLocation(date, "other_date");
 			}
 			if (otherDateSpan.IsValid)
 			{
@@ -1079,10 +1101,7 @@ OtherLicense: {8}",
 				else if (dateClass == "century")
 				{
 					string century = WikiUtils.GetTemplateParameter(2, otherDate);
-					if (int.TryParse(century, out int centuryInt))
-					{
-						return new DateParseMetadata(0, (centuryInt - 1) * 100, centuryInt * 100 - 1);
-					}
+					return Century(century);
 				}
 				else if (dateClass == "decade")
 				{
@@ -1155,6 +1174,17 @@ OtherLicense: {8}",
 				}
 			}
 
+			// check for "century" template
+			{
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "century");
+				if (span.IsValid)
+				{
+					string centuryTemplate = date.Substring(span);
+					string century1 = WikiUtils.GetTemplateParameter(1, centuryTemplate);
+					return Century(century1);
+				}
+			}
+
 			// check for "date" template
 			{
 				StringSpan span = WikiUtils.GetTemplateLocation(date, "date");
@@ -1219,13 +1249,58 @@ OtherLicense: {8}",
 
 			// check for "complex date" template
 			{
-				//TODO:
+				StringSpan span = WikiUtils.GetTemplateLocation(date, "complex date");
+				if (span.IsValid)
+				{
+					string dateTemplate = date.Substring(span);
+					string conj = WikiUtils.GetTemplateParameter("conj", 1, dateTemplate);
+					string date1 = WikiUtils.GetTemplateParameter(new string[] { "date", "date1" }, 2, dateTemplate);
+					string adj1 = WikiUtils.GetTemplateParameter(new string[] { "adj", "adj1" }, dateTemplate);
+					string precision1 = WikiUtils.GetTemplateParameter(new string[] { "precision1", "units1" }, dateTemplate);
+					string era1 = WikiUtils.GetTemplateParameter("era1", dateTemplate);
+					string date2 = WikiUtils.GetTemplateParameter("date2", 3, dateTemplate);
+					string adj2 = WikiUtils.GetTemplateParameter("adj2", dateTemplate);
+					string precision2 = WikiUtils.GetTemplateParameter(new string[] { "precision2", "units2" }, dateTemplate);
+					string era2 = WikiUtils.GetTemplateParameter("era2", dateTemplate);
+					string precision = WikiUtils.GetTemplateParameter(new string[] { "precision", "units" }, dateTemplate);
+					string certainty = WikiUtils.GetTemplateParameter("certainty", dateTemplate);
+
+					if (conj.Equals("century", StringComparison.OrdinalIgnoreCase))
+					{
+						return Century(date1);
+					}
+				}
 			}
 
 			// explicit strings
 			if (date.Equals("Edo Period", StringComparison.InvariantCultureIgnoreCase))
 			{
 				return new DateParseMetadata(9999, 1603, 1868);
+			}
+			else if (date.Equals("Ming Dynasty", StringComparison.InvariantCultureIgnoreCase))
+			{
+				return new DateParseMetadata(9999, 1368, 1644);
+			}
+			else if (date.Equals("Qing Dynasty", StringComparison.InvariantCultureIgnoreCase)
+				|| date.Equals("[[Qing Dynasty]]", StringComparison.InvariantCultureIgnoreCase))
+			{
+				return new DateParseMetadata(9999, 1644, 1912);
+			}
+			else if (date.Equals("Pre-Columbian", StringComparison.InvariantCultureIgnoreCase))
+			{
+				return new DateParseMetadata(9999, -9999, 1492);
+			}
+			else if (date.Equals("Prehistoric", StringComparison.InvariantCultureIgnoreCase))
+			{
+				return new DateParseMetadata(9999, -9999, -3000);
+			}
+			else if (date.Equals("středověk", StringComparison.InvariantCultureIgnoreCase)
+				|| date.Equals("Medieval", StringComparison.InvariantCultureIgnoreCase)
+				|| date.Equals("Mediaeval", StringComparison.InvariantCultureIgnoreCase)
+				|| date.Equals("middle age", StringComparison.InvariantCultureIgnoreCase)
+				|| date.Equals("middle ages", StringComparison.InvariantCultureIgnoreCase))
+			{
+				return new DateParseMetadata(9999, 400, 1499);
 			}
 
 			// "before"
@@ -1271,9 +1346,7 @@ OtherLicense: {8}",
 					for (int g = 1; g < match.Groups.Count; ++g)
 					{
 						int century = int.Parse(match.Groups[g].Value);
-						DateParseMetadata groupMetadata = new DateParseMetadata();
-						groupMetadata.EarliestYear = century * 100 - 100;
-						groupMetadata.LatestYear = century * 100 - 1;
+						DateParseMetadata groupMetadata = Century(century);
 						if (metadata == null)
 						{
 							metadata = groupMetadata;
