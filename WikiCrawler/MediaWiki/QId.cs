@@ -23,7 +23,7 @@ namespace MediaWiki
 			Id = id;
 		}
 
-		private static readonly Regex QidRegex = new Regex("Q([0-9]+)", RegexOptions.IgnoreCase);
+		private static readonly Regex QidRegex = new Regex(@"^\s*Q?([0-9]+)\s*$", RegexOptions.IgnoreCase);
 
 		/// <summary>
 		/// Attempts to parse a string into a <see cref="QId"/>. Throws an exception on failure.
@@ -34,10 +34,6 @@ namespace MediaWiki
 			if (match.Success)
 			{
 				int id = int.Parse(match.Groups[1].Value);
-				return new QId(id);
-			}
-			else if (int.TryParse(s, out int id))
-			{
 				return new QId(id);
 			}
 			else
@@ -81,11 +77,6 @@ namespace MediaWiki
 					qid = Empty;
 					return false;
 				}
-			}
-			else if (int.TryParse(s, out int id))
-			{
-				qid = new QId(id);
-				return true;
 			}
 			else
 			{
