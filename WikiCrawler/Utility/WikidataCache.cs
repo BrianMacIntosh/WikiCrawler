@@ -288,26 +288,28 @@ namespace WikiCrawler
 			{
 				if (reader.Read())
 				{
-					int timestamp = reader.GetInt32(2);
-					if (timestamp < 1745687317)
+					return new ArtworkData()
 					{
-						// invalidated cache
-						return FetchNewArtwork(qid);
-					}
-					else
-					{
-						return new ArtworkData()
-						{
-							CreatorQid = reader.IsDBNull(0) ? QId.Empty : new QId(reader.GetInt32(0)),
-							LatestYear = reader.IsDBNull(1) ? 9999 : reader.GetInt32(1),
-						};
-					}
+						CreatorQid = reader.IsDBNull(0) ? QId.Empty : new QId(reader.GetInt32(0)),
+						LatestYear = reader.IsDBNull(1) ? 9999 : reader.GetInt32(1),
+					};
 				}
 				else
 				{
 					return FetchNewArtwork(qid);
 				}
 			}
+		}
+
+		/// <summary>
+		/// Deletes the specified artwork from the cache.
+		/// </summary>
+		public static void InvalidateArtwork(QId qid)
+		{
+			SQLiteCommand command = LocalDatabase.CreateCommand();
+			command.CommandText = "DELETE FROM artwork WHERE qid=$qid";
+			command.Parameters.AddWithValue("qid", qid.Id);
+			command.ExecuteNonQuery();
 		}
 
 		/// <summary>
@@ -383,9 +385,18 @@ namespace WikiCrawler
 			IEnumerable<Claim> bestClaims = Wikidata.KeepBestRank(dateClaims);
 			if (bestClaims.Any())
 			{
-				IEnumerable<MediaWiki.DateTime> bestDateTimes = bestClaims.Select(claim => claim.mainSnak.GetValueAsDate());
-				int maxYear = bestDateTimes.Max(date => GetLatestYear(date));
-				return bestDateTimes.Where(date => GetLatestYear(date) == maxYear).FirstOrDefault();
+				int latestYear = int.MinValue;
+				MediaWiki.DateTime latestDateTime = null;
+				foreach (Claim claim in bestClaims)
+				{
+					int year = GetLatestYear(claim);
+					if (year > latestYear)
+					{
+						latestYear = year;
+						latestDateTime = GetLatestDateTime(claim);
+					}
+				}
+				return latestDateTime;
 			}
 			else
 			{
@@ -402,11 +413,93 @@ namespace WikiCrawler
 			IEnumerable<Claim> bestClaims = Wikidata.KeepBestRank(dateClaims);
 			if (bestClaims.Any())
 			{
-				return bestClaims.Select(claim => claim.mainSnak.GetValueAsDate()).Max(date => GetLatestYear(date));
+				return bestClaims.Max(claim => GetLatestYear(claim));
 			}
 			else
 			{
 				return 9999;
+			}
+		}
+
+		/// <summary>
+		/// Returns the latest possible year represented by a <see cref="Claim"/>.
+		/// </summary>
+		public static int GetLatestYear(Claim claim)
+		{
+			if (claim == null)
+			{
+				return 9999;
+			}
+			else
+			{
+				MediaWiki.DateTime date = claim.mainSnak.GetValueAsDate();
+				int latestDate = GetLatestYear(date);
+
+				// also consider Latest Date qualifiers
+				Snak[] latestQual = claim.GetQualifiers(Wikidata.Qualifier_LatestDate);
+				if (latestQual != null)
+				{
+					latestDate = Math.Min(latestDate, GetLatestYear(latestQual));
+				}
+
+				return latestDate;
+			}
+		}
+
+		/// <summary>
+		/// Returns the latest possible time represented by a <see cref="Claim"/>.
+		/// </summary>
+		public static MediaWiki.DateTime GetLatestDateTime(Claim claim)
+		{
+			if (claim == null)
+			{
+				return MediaWiki.DateTime.FromYear(9999, MediaWiki.DateTime.YearPrecision);
+			}
+			else
+			{
+				MediaWiki.DateTime mainDate = claim.mainSnak.GetValueAsDate();
+				int latestDate = GetLatestYear(mainDate);
+
+				// also consider Latest Date qualifiers
+				Snak[] latestQuals = claim.GetQualifiers(Wikidata.Qualifier_LatestDate);
+				if (latestQuals != null)
+				{
+					//TODO:
+				}
+
+				return mainDate;
+			}
+		}
+
+		/// <summary>
+		/// Returns the latest possible year represented by a DateTime.
+		/// </summary>
+		/// <returns></returns>
+		public static int GetLatestYear(Snak snak)
+		{
+			if (snak == null)
+			{
+				return 9999;
+			}
+			else
+			{
+				return GetLatestYear(snak.GetValueAsDate());
+			}
+		}
+
+		/// <summary>
+		/// Returns the latest possible year represented by a DateTime.
+		/// </summary>
+		/// <returns></returns>
+		public static int GetLatestYear(Snak[] snaks)
+		{
+			if (snaks == null)
+			{
+				return 9999;
+			}
+			else
+			{
+				return snaks.Max(snak => GetLatestYear(snak));
 			}
 		}
 
