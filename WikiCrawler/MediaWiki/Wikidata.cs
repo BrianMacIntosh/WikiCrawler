@@ -24,6 +24,9 @@ namespace MediaWiki
 		public const string Prop_PublicationDate = "P577";
 		public const string Prop_CommonsCreator = "P1472";
 
+		public const string Qualifier_EarliestDate = "P1319";
+		public const string Qualifier_LatestDate = "P1326";
+
 		public static readonly QId Entity_Human = new QId(5);
 
 		/// <summary>
