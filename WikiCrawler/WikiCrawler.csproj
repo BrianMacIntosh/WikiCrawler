@@ -133,8 +133,10 @@
     <Compile Include="Tasks\Commons\ContribsSummary.cs" />
     <Compile Include="Tasks\Commons\CreatorPossible.cs" />
     <Compile Include="Tasks\Commons\ImplicitCreatorsHistorical.cs" />
+    <Compile Include="Tasks\Commons\PdArtFixup\ImpreciseLicenseYearCheck.cs" />
     <Compile Include="Tasks\Commons\PdArtFixup\PdArtInterwikiRerun.cs" />
     <Compile Include="Tasks\ReplaceInCategories.cs" />
+    <Compile Include="Tasks\ReplaceInDatabaseQuery.cs" />
     <Compile Include="Tasks\Wikidata\WikidataCacheTest.cs" />
     <Compile Include="Tasks\Wikimedia\NullEditLinks.cs" />
     <Compile Include="Tasks\Commons\PdArtFixup\PdArtDatabaseRerun.cs" />

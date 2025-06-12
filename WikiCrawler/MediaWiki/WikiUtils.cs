@@ -182,6 +182,11 @@ namespace MediaWiki
 		/// </summary>
 		public static IEnumerable<PageTitle> GetCategories(string text)
 		{
+			if (string.IsNullOrEmpty(text))
+			{
+				yield break;
+			}
+
 			//TODO: CHECK ME
 			//TODO: whitespace after [[ is legal
 			string[] catOpen = new string[] { "[[Category:", "[[category:" };

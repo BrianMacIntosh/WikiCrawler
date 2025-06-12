@@ -331,7 +331,7 @@ namespace Tasks.Commons
 			}
 			else
 			{
-				newAuthor = MapAuthorTemplate(worksheet, out replaceType);
+				newAuthor = MapAuthorTemplate(worksheet.Bake(), out replaceType);
 			}
 
 			if (replaceType == CreatorReplaceType.Identity)
@@ -370,7 +370,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// If the specified string can be definitively mapped to a template (e.g. creator), returns the template.
 		/// </summary>
-		public static string MapAuthorTemplate(CommonsFileWorksheet worksheet)
+		public static string MapAuthorTemplate(CommonsFileData worksheet)
 		{
 			return MapAuthorTemplate(worksheet, out CreatorReplaceType replaceType);
 		}
@@ -378,7 +378,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// If the specified string can be definitively mapped to a template (e.g. creator), returns the template.
 		/// </summary>
-		public static string MapAuthorTemplate(CommonsFileWorksheet worksheet, out CreatorReplaceType replaceType)
+		public static string MapAuthorTemplate(CommonsFileData worksheet, out CreatorReplaceType replaceType)
 		{
 			//TODO: if everything is in a language tag and every language tag comes up with the same result, replace
 
@@ -429,7 +429,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// Tries to map an author string that is already known to not be a template to a creator template.
 		/// </summary>
-		private static bool TryMapAuthorComponent(CommonsFileWorksheet worksheet, string authorString, out CreatorTemplate creator, out CreatorReplaceType replaceType)
+		private static bool TryMapAuthorComponent(CommonsFileData worksheet, string authorString, out CreatorTemplate creator, out CreatorReplaceType replaceType)
 		{
 			creator = MapAuthorComponent(worksheet, authorString, out replaceType);
 			return !creator.IsEmpty;
@@ -438,7 +438,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// Tries to map a raw author string to a creator template.
 		/// </summary>
-		private static CreatorTemplate MapAuthorComponent(CommonsFileWorksheet worksheet, string authorString, out CreatorReplaceType replaceType)
+		private static CreatorTemplate MapAuthorComponent(CommonsFileData worksheet, string authorString, out CreatorReplaceType replaceType)
 		{
 			ConsoleUtility.WriteLine(ConsoleColor.Gray, "  Component '{0}'", authorString);
 
@@ -485,7 +485,7 @@ namespace Tasks.Commons
 						//HACK: make sure this file is not still in the creator mappings
 						foreach (var kv in s_creatorMappings)
 						{
-							kv.Value.FromPages.Remove(worksheet.Article.title.FullTitle);
+							kv.Value.FromPages.Remove(worksheet.PageTitle.FullTitle);
 							s_creatorMappings.SetDirty();
 						}
 
@@ -737,7 +737,7 @@ namespace Tasks.Commons
 			}
 
 			// manually map
-			MappingCreator mapping = s_creatorMappings.TryMapValue(authorString, worksheet.Article.title);
+			MappingCreator mapping = s_creatorMappings.TryMapValue(authorString, worksheet.PageTitle);
 			if (mapping == null)
 			{
 				// null or empty authorString?
@@ -747,7 +747,7 @@ namespace Tasks.Commons
 			{
 				if (CreatorUtility.TryGetCreatorTemplate(mapping.MappedValue, out CreatorTemplate parsedCreator))
 				{
-					mapping.FromPages.Remove(worksheet.Article.title.FullTitle);
+					mapping.FromPages.Remove(worksheet.PageTitle.FullTitle);
 					s_creatorMappings.SetDirty();
 					return parsedCreator;
 				}
@@ -779,7 +779,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// Breaks the string down into parsed units and checks if all of them can represent one creator.
 		/// </summary>
-		private static bool TryMapMultiTemplate(CommonsFileWorksheet worksheet, string authorString, out CreatorTemplate creator, out CreatorReplaceType replaceType)
+		private static bool TryMapMultiTemplate(CommonsFileData worksheet, string authorString, out CreatorTemplate creator, out CreatorReplaceType replaceType)
 		{
 			creator = AutoMapMultiLanguage(worksheet, authorString, out replaceType);
 			return !creator.IsEmpty;
@@ -847,7 +847,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// Checks if the string is a series of language templates and they all match one creator.
 		/// </summary>
-		private static CreatorTemplate AutoMapMultiLanguage(CommonsFileWorksheet worksheet, string authorString, out CreatorReplaceType replaceType)
+		private static CreatorTemplate AutoMapMultiLanguage(CommonsFileData worksheet, string authorString, out CreatorReplaceType replaceType)
 		{
 			replaceType = CreatorReplaceType.None;
 

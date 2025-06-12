@@ -14,6 +14,11 @@ public abstract class Worksheet
 		RevisionIndex = revisionIndex;
 	}
 
+	public PageTitle PageTitle
+	{
+		get { return Article.title; }
+	}
+
 	public string Text
 	{
 		get { return Article.revisions[RevisionIndex].text; }

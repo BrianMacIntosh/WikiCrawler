@@ -56,7 +56,7 @@ namespace Tasks
 		/// <summary>
 		/// The replacement operation to run.
 		/// </summary>
-		private BaseReplacement[] m_replacements;
+		protected BaseReplacement[] m_replacements;
 
 		/// <summary>
 		/// Directory where task-specific data is stored.

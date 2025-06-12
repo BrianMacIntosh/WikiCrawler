@@ -36,6 +36,8 @@ namespace Tasks.Commons
 			get { return true; }
 		}
 
+		public static bool RerunGoodLicenses = false;
+
 		/// <summary>
 		/// If set, skips files that are already cached.
 		/// </summary>
@@ -57,7 +59,7 @@ namespace Tasks.Commons
 		/// <summary>
 		/// Database caching information about files that have been examined so far.
 		/// </summary>
-		private SQLiteConnection m_filesDatabase;
+		public readonly SQLiteConnection FilesDatabase;
 
 		private static List<Regex> s_dateRegexes = new List<Regex>();
 		private static List<Regex> s_centuryRegexes = new List<Regex>();
@@ -237,7 +239,7 @@ namespace Tasks.Commons
 			m_dateMapping = new ManualMapping<MappingDate>(DateMappingFile);
 			m_creatorMappings = new ManualMapping<MappingCreator>(ImplicitCreatorsReplacement.CreatorMappingFile);
 			
-			m_filesDatabase = ConnectFilesDatabase(true);
+			FilesDatabase = ConnectFilesDatabase(true);
 		}
 
 		public static SQLiteConnection ConnectFilesDatabase(bool bWantsWrite)
@@ -405,7 +407,7 @@ OtherLicense: {8}",
 				}
 			}
 
-			if (SkipCached && IsFileCached(m_filesDatabase, article.title))
+			if (SkipCached && IsFileCached(FilesDatabase, article.title))
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Already cached.");
 				return false;
@@ -510,7 +512,7 @@ OtherLicense: {8}",
 			// 1. find author death date
 			MediaWiki.DateTime creatorDeathYear;
 			QId creatorCountryOfCitizenship;
-			CreatorData creatorData = GetAuthorData(worksheet);
+			CreatorData creatorData = GetAuthorData(worksheet.Bake());
 			if (creatorData != null)
 			{
 				creatorDeathYear = creatorData.DeathYear;
@@ -598,8 +600,9 @@ OtherLicense: {8}",
 			string changeText;
 			string newLicense;
 			bool bRequiresLicenseRemoval = false;
+			bool bHasGoodLicense = !string.IsNullOrEmpty(existingGoodLicense);
 
-			if (!string.IsNullOrEmpty(existingGoodLicense))
+			if (!RerunGoodLicenses && bHasGoodLicense)
 			{
 				bRequiresLicenseRemoval = true;
 				newLicense = existingGoodLicense;
@@ -615,7 +618,7 @@ OtherLicense: {8}",
 				{
 					newLicense = string.Format("{{{{PD-Art|PD-old-100-expired}}}}");
 				}
-				changeText = "improving PD-art license: date older than 175 yrs and author deathyear unknown or imprecise";
+				changeText = bHasGoodLicense ? "removing imprecise license deathyear" : "improving PD-art license: date older than 175 yrs and author deathyear unknown or imprecise";
 			}
 			else if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
 			{
@@ -637,7 +640,7 @@ OtherLicense: {8}",
 				{
 					newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear.GetYear(), licensedPdArtOtherLicense);
 				}
-				changeText = "improving PD-art license with more information based on file data";
+				changeText = bHasGoodLicense ? "correcting license deathyear" : "improving PD-art license with more information based on file data";
 			}
 			else
 			{
@@ -658,7 +661,7 @@ OtherLicense: {8}",
 				{
 					newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear.GetYear());
 				}
-				changeText = "improving PD-art license with more information based on file data";
+				changeText = bHasGoodLicense ? "correcting license deathyear" : "improving PD-art license with more information based on file data";
 			}
 
 			qtySuccess++;
@@ -759,7 +762,7 @@ OtherLicense: {8}",
 				article.Changes.Add(changeText);
 			}
 
-			CacheReplacementStatus(article.title, ReplacementStatus.Replaced);
+			CacheReplacementMade(article.title);
 			CacheNewLicense(article.title, newLicense);
 
 			// remove date mapping
@@ -789,9 +792,9 @@ OtherLicense: {8}",
 			return false;
 		}
 
-		private CreatorData GetAuthorData(CommonsFileWorksheet worksheet)
+		public CreatorData GetAuthorData(CommonsFileData worksheet)
 		{
-			PageTitle articleTitle = worksheet.Article.title;
+			PageTitle articleTitle = worksheet.PageTitle;
 			string author = worksheet.Author;
 
 			if (string.IsNullOrEmpty(author))
@@ -936,7 +939,7 @@ OtherLicense: {8}",
 
 		private void CacheFile(PageTitle title, string author, string date)
 		{
-			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			SQLiteCommand command = FilesDatabase.CreateCommand();
 			command.CommandText = "INSERT INTO files (pageTitle, authorString, dateString) "
 				+ "VALUES ($pageTitle, $authorString, $dateString) "
 				+ "ON CONFLICT (pageTitle) DO UPDATE "
@@ -951,7 +954,7 @@ OtherLicense: {8}",
 
 		public void RemoveFromCache(PageTitle title)
 		{
-			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			SQLiteCommand command = FilesDatabase.CreateCommand();
 			command.CommandText = "DELETE FROM files WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
@@ -971,7 +974,7 @@ OtherLicense: {8}",
 
 		private void CacheOldLicense(PageTitle title, string pdArtLicense, string innerLicense)
 		{
-			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			SQLiteCommand command = FilesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET pdArtLicense=$pdArtLicense,innerLicense=$innerLicense WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("pdArtLicense", pdArtLicense);
@@ -981,7 +984,7 @@ OtherLicense: {8}",
 
 		private void CacheTimestamp(PageTitle title)
 		{
-			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			SQLiteCommand command = FilesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET touchTimeUnix=unixepoch() WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
@@ -989,16 +992,24 @@ OtherLicense: {8}",
 
 		private void CacheReplacementStatus(PageTitle title, ReplacementStatus state)
 		{
-			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			SQLiteCommand command = FilesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET replaced=$state WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("state", (int)state);
 			Debug.Assert(command.ExecuteNonQuery() == 1);
 		}
 
+		private void CacheReplacementMade(PageTitle title)
+		{
+			SQLiteCommand command = FilesDatabase.CreateCommand();
+			command.CommandText = "UPDATE files SET replaced=1,replaceTime=unixepoch() WHERE pageTitle=$pageTitle";
+			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
+			Debug.Assert(command.ExecuteNonQuery() == 1);
+		}
+
 		private void CacheAuthorInfo(PageTitle title, QId qid, MediaWiki.DateTime deathyear)
 		{
-			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			SQLiteCommand command = FilesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET authorQid=$authorQid,authorDeathYear=$authorDeathYear,authorDeathYearPrecision=$authorDeathYearPrecision WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("authorQid", (int?)qid);
@@ -1009,7 +1020,7 @@ OtherLicense: {8}",
 
 		private void CacheLatestYear(PageTitle title, int latestYear)
 		{
-			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			SQLiteCommand command = FilesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET latestYear=$latestYear WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("latestYear", latestYear);
@@ -1018,7 +1029,7 @@ OtherLicense: {8}",
 
 		private void CacheNewLicense(PageTitle title, string newLicense)
 		{
-			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			SQLiteCommand command = FilesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET newLicense=$newLicense WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("newLicense", newLicense);
@@ -1027,7 +1038,7 @@ OtherLicense: {8}",
 
 		private void CacheIrreplacableLicense(PageTitle title, string irreplaceableLicenses)
 		{
-			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			SQLiteCommand command = FilesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET irreplaceableLicenses=$irreplaceableLicenses WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("irreplaceableLicenses", irreplaceableLicenses);
@@ -1036,7 +1047,7 @@ OtherLicense: {8}",
 
 		private void CacheArtQID(PageTitle title, QId artQid)
 		{
-			SQLiteCommand command = m_filesDatabase.CreateCommand();
+			SQLiteCommand command = FilesDatabase.CreateCommand();
 			command.CommandText = "UPDATE files SET artQid=$artQid WHERE pageTitle=$pageTitle";
 			command.Parameters.AddWithValue("pageTitle", title.FullTitle);
 			command.Parameters.AddWithValue("artQid", (int?)artQid.Id);

@@ -1,6 +1,29 @@
 ﻿using MediaWiki;
 
 /// <summary>
+/// Baked data from a <see cref="CommonsFileWorksheet"/>.
+/// </summary>
+public struct CommonsFileData
+{
+	public PageTitle PageTitle;
+	public string Author;
+	public string AuthorParam;
+	public string Wikidata;
+	public string Date;
+	public string Text;
+
+	public CommonsFileData(CommonsFileWorksheet worksheet)
+	{
+		PageTitle = worksheet.Article.title;
+		Author = worksheet.Author;
+		AuthorParam = worksheet.AuthorParam;
+		Wikidata = worksheet.Wikidata;
+		Date = worksheet.Date;
+		Text = worksheet.Text;
+	}
+}
+
+/// <summary>
 /// Simplifies access to common data that might be needed from Commons file pages.
 /// </summary>
 public class CommonsFileWorksheet : Worksheet
@@ -125,6 +148,11 @@ public class CommonsFileWorksheet : Worksheet
 		authorIndex = -1;
 		date = null;
 		dateIndex = -1;
+	}
+
+	public CommonsFileData Bake()
+	{
+		return new CommonsFileData(this);
 	}
 
 	/// <summary>

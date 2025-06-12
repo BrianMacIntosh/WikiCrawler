@@ -1,13 +1,11 @@
-﻿using MediaWiki;
-using System.Collections.Generic;
-using System.Data.SQLite;
+﻿using System.Data.SQLite;
 
 namespace Tasks.Commons
 {
 	/// <summary>
 	/// Reruns the <see cref="PdArtReplacement"/> on files from a SQLite query.
 	/// </summary>
-	public class PdArtDatabaseRerun : ReplaceIn
+	public class PdArtDatabaseRerun : ReplaceInDatabaseQuery
 	{
 		public PdArtDatabaseRerun()
 			: base(
@@ -22,28 +20,14 @@ namespace Tasks.Commons
 			//TODO: SELECT * from files WHERE irreplaceableLicenses LIKE "PD-US-unpublished" AND replaced!=1
 			//Parameters["Query"] = "SELECT pageTitle from files WHERE irreplaceableLicenses LIKE \"PD-US-unpublished\" AND replaced!=1";
 
-			Parameters["Query"] = "SELECT* FROM files WHERE pdArtLicense LIKE \"{{PD-art}}\" and replaced=0 and touchTimeUnix<1748465572";
+			Parameters["Query"] = "SELECT * FROM files WHERE replaced=0 AND latestYear<1850 AND (authorString=\"{{unknown|author}}\" OR authorString=\"{{unknown|artist}}\" OR authorString=\"{{unknown|1=author}}\" OR authorString=\"{{unknown|1=artist}}\" OR authorString=\"{{unknown|author}}\" OR authorString=\"{{unknown author}}\" OR authorString=\"{{author|unknown}}\" OR authorString=\"{{unknown photographer}}\" OR authorString=\"{{unknown|photographer}}\" OR authorString=\"{{creator:unknown}}\" OR authorString=\"{{creator:?}}\")";
 
 			//Parameters["Query"] = "SELECT pageTitle FROM files where pdArtLicense LIKE \"{{pd-art}}\" AND replaced=0";
 		}
 
-		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
+		public override SQLiteConnection ConnectDatabase(bool bWantsWrite)
 		{
-			SQLiteConnection connection = PdArtReplacement.ConnectFilesDatabase(false);
-			SQLiteCommand query = connection.CreateCommand();
-			query.CommandText = Parameters["Query"];
-
-			List<Article> results = new List<Article>();
-			using (SQLiteDataReader reader = query.ExecuteReader())
-			{
-				while (reader.Read())
-				{
-					results.Add(new Article(PageTitle.Parse(reader.GetString(0))));
-				}
-			}
-
-			connection.Close();
-			return results;
+			return PdArtReplacement.ConnectFilesDatabase(false);
 		}
 	}
 }
