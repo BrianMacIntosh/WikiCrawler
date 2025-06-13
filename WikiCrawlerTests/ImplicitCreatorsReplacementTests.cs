@@ -169,7 +169,7 @@ public class ImplicitCreatorsReplacementTests
 [[Category:Test Category]]");
 		Assert.IsFalse(replacement.DoReplacement(article));
 
-		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
+		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article).Bake(), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
 		Assert.AreEqual(creator, "{{Creator:August Macke}}");
 		Assert.AreEqual(replaceType, ImplicitCreatorsReplacement.CreatorReplaceType.Identity);
 	}
@@ -190,7 +190,7 @@ public class ImplicitCreatorsReplacementTests
 [[Category:Test Category]]");
 		Assert.IsFalse(replacement.DoReplacement(article));
 
-		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
+		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article).Bake(), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
 		Assert.AreEqual(creator, "{{Creator:August Macke}}");
 		Assert.AreEqual(replaceType, ImplicitCreatorsReplacement.CreatorReplaceType.Identity);
 	}
@@ -262,7 +262,7 @@ public class ImplicitCreatorsReplacementTests
 [[Category:Test Category]]");
 		Assert.IsFalse(replacement.DoReplacement(article));
 
-		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
+		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article).Bake(), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
 		Assert.AreEqual(creator, "{{Creator:August Macke}}");
 		Assert.AreEqual(replaceType, ImplicitCreatorsReplacement.CreatorReplaceType.Identity);
 	}
@@ -283,7 +283,7 @@ public class ImplicitCreatorsReplacementTests
 [[Category:Test Category]]");
 		Assert.IsFalse(replacement.DoReplacement(article));
 
-		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
+		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article).Bake(), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
 		Assert.AreEqual(creator, "{{Creator:August Macke}}");
 		Assert.AreEqual(replaceType, ImplicitCreatorsReplacement.CreatorReplaceType.Identity);
 	}
@@ -304,7 +304,7 @@ public class ImplicitCreatorsReplacementTests
 [[Category:Test Category]]");
 		Assert.IsFalse(replacement.DoReplacement(article));
 
-		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
+		string creator = ImplicitCreatorsReplacement.MapAuthorTemplate(new CommonsFileWorksheet(article).Bake(), out ImplicitCreatorsReplacement.CreatorReplaceType replaceType);
 		Assert.AreEqual(creator, "{{Creator:August Macke}}");
 		Assert.AreEqual(replaceType, ImplicitCreatorsReplacement.CreatorReplaceType.Identity);
 	}
