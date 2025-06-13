@@ -254,5 +254,21 @@ namespace MediaWiki
 		{
 			return IsEmpty ? "" : FullTitle;
 		}
+
+		public string ToStringNormalized()
+		{
+			if (IsEmpty)
+			{
+				return "";
+			}
+			else if (string.IsNullOrEmpty(Namespace))
+			{
+				return Name.Replace('_', ' ');
+			}
+			else
+			{
+				return Namespace.ToUpperFirst() + ":" + Name.Replace('_', ' ');
+			}
+		}
 	}
 }

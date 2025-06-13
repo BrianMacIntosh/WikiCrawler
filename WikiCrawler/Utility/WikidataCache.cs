@@ -53,7 +53,7 @@ namespace WikiCrawler
 		public static CreatorData GetCreatorData(PageTitle creatorTemplate)
 		{
 			bool eat;
-			return GetCreatorData(creatorTemplate.ToString(), out eat);
+			return GetCreatorData(creatorTemplate, out eat);
 		}
 
 		/// <summary>
@@ -62,27 +62,25 @@ namespace WikiCrawler
 		/// <param name="creatorTemplate">The creator template.</param>
 		public static CreatorData GetCreatorData(string creatorTemplate)
 		{
-			bool eat;
-			return GetCreatorData(creatorTemplate, out eat);
-		}
-
-		/// <summary>
-		/// Gets cached information about a creator.
-		/// </summary>
-		/// <param name="creatorTemplate">The creator template.</param>
-		public static CreatorData GetCreatorData(string creatorTemplate, out bool isNew)
-		{
 			CreatorTemplate creator = CreatorUtility.GetCreatorTemplate(creatorTemplate);
 			if (creator.Template.IsEmpty)
 			{
 				throw new ArgumentException("Not a creator template name.", "creatorTemplate");
 			}
 
-			creatorTemplate = creator.Template.ToString();
+			bool eat;
+			return GetCreatorData(creator.Template, out eat);
+		}
 
+		/// <summary>
+		/// Gets cached information about a creator.
+		/// </summary>
+		/// <param name="creatorTemplate">The creator template.</param>
+		public static CreatorData GetCreatorData(PageTitle creatorTemplate, out bool isNew)
+		{
 			SQLiteCommand command = LocalDatabase.CreateCommand();
 			command.CommandText = "SELECT p.qid,p.deathYear,p.countryOfCitizenship,p.commonsCategory,p.deathYearPrecision FROM people p, creatortemplates c WHERE p.qid=c.qid AND c.templateName=$templateName";
-			command.Parameters.AddWithValue("templateName", creatorTemplate);
+			command.Parameters.AddWithValue("templateName", creatorTemplate.ToStringNormalized());
 			using (var reader = command.ExecuteReader())
 			{
 				if (reader.Read())
@@ -99,7 +97,7 @@ namespace WikiCrawler
 				else
 				{
 					isNew = true;
-					return RecordNewCreator(creator.Template);
+					return RecordNewCreator(creatorTemplate);
 				}
 			}
 		}
