@@ -101,7 +101,7 @@ namespace MediaWiki
 
 		public static bool operator !=(SnakValue<T> A, T B)
 		{
-			return A.HasValue && EqualityComparer<T>.Default.Equals(A.Value, B);
+			return A.HasValue && !EqualityComparer<T>.Default.Equals(A.Value, B);
 		}
 
 		public static bool operator ==(SnakValue<T> left, SnakValue<T> right)
