@@ -20,6 +20,7 @@ namespace WikiCrawler
 	public struct ArtworkData
 	{
 		public QId CreatorQid;
+		public bool CreatorUnknown;
 		public int LatestYear;
 	}
 
@@ -280,7 +281,7 @@ namespace WikiCrawler
 		public static ArtworkData GetArtworkData(QId qid)
 		{
 			SQLiteCommand command = LocalDatabase.CreateCommand();
-			command.CommandText = "SELECT creatorQid,latestYear,timestamp FROM artwork WHERE qid=$qid";
+			command.CommandText = "SELECT creatorQid,latestYear,timestamp,creatorUnknown FROM artwork WHERE qid=$qid";
 			command.Parameters.AddWithValue("qid", qid.Id);
 			using (var reader = command.ExecuteReader())
 			{
@@ -289,6 +290,7 @@ namespace WikiCrawler
 					return new ArtworkData()
 					{
 						CreatorQid = reader.IsDBNull(0) ? QId.Empty : new QId(reader.GetInt32(0)),
+						CreatorUnknown = reader.GetInt32(3) != 0,
 						LatestYear = reader.IsDBNull(1) ? 9999 : reader.GetInt32(1),
 					};
 				}
@@ -327,17 +329,19 @@ namespace WikiCrawler
 				int? latestYear = GetArtworkLatestYear(entity);
 
 				SQLiteCommand command = LocalDatabase.CreateCommand();
-				command.CommandText = "INSERT INTO artwork (qid,creatorQid,latestYear,timestamp) " +
-					"VALUES ($qid,$creatorQid,$latestYear,unixepoch()) " +
-					"ON CONFLICT(qid) DO UPDATE SET creatorQid=$creatorQid,latestYear=$latestYear,timestamp=unixepoch();";
+				command.CommandText = "INSERT INTO artwork (qid,creatorQid,creatorUnknown,latestYear,timestamp) " +
+					"VALUES ($qid,$creatorQid,$creatorUnknown,$latestYear,unixepoch()) " +
+					"ON CONFLICT(qid) DO UPDATE SET creatorQid=$creatorQid,creatorUnknown=$creatorUnknown,latestYear=$latestYear,timestamp=unixepoch();";
 				command.Parameters.AddWithValue("qid", qid.Id);
 				command.Parameters.AddWithValue("creatorQid", (int?)creatorQid.GetValueOrNull());
+				command.Parameters.AddWithValue("creatorUnknown", creatorQid.IsUnknown);
 				command.Parameters.AddWithValue("latestYear", latestYear);
 				command.ExecuteNonQuery();
 
 				return new ArtworkData()
 				{
 					CreatorQid = creatorQid.GetValueOrDefault(),
+					CreatorUnknown = creatorQid.IsUnknown,
 					LatestYear = latestYear.HasValue ? latestYear.Value : 9999,
 				};
 			}

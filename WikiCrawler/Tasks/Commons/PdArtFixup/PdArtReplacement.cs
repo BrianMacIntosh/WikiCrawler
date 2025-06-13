@@ -546,7 +546,8 @@ OtherLicense: {8}",
 
 			if (creatorDeathYear == null)
 			{
-				if (IsUnknownOrAnonymousAuthor(worksheet.Author) && latestYear < System.DateTime.Now.Year - 175)
+				if ((IsUnknownOrAnonymousAuthor(worksheet.Author) || IsWikidataUnknownOrAnonymousAuthor(worksheet.Wikidata))
+					&& latestYear < System.DateTime.Now.Year - 175)
 				{
 					allowPd100 = true;
 					Console.WriteLine("  Unknown author and date older than 175.");
@@ -789,6 +790,17 @@ OtherLicense: {8}",
 				return true;
 			}
 
+			return false;
+		}
+
+		private bool IsWikidataUnknownOrAnonymousAuthor(string wikidata)
+		{
+			if (QId.TryParse(wikidata, out QId artworkQid))
+			{
+				ArtworkData artwork = WikidataCache.GetArtworkData(artworkQid);
+				return artwork.CreatorUnknown;
+			}
+			
 			return false;
 		}
 
