@@ -12,7 +12,7 @@ using WikiCrawler;
 namespace Tasks.Commons
 {
 	/// <summary>
-	/// Replaces PD-Art tags with imprecise licenses with a more specific license, if one can be determined.
+	/// Replaces license tags with imprecise licenses with a more specific license, if one can be determined.
 	/// </summary>
 	/// <remarks>
 	/// Database Unix Seconds for changes:
@@ -123,6 +123,13 @@ namespace Tasks.Commons
 			"licensed-pd-art-two",
 		};
 
+		private static readonly string[] s_pdScanTemplates = new string[]
+		{
+			"pd-scan",
+			"pd-scan-100",
+			"pd-scan-two",
+		};
+
 		private static readonly string[] s_pmaLicenses = new string[]
 		{
 			"PD-old-auto",
@@ -156,6 +163,8 @@ namespace Tasks.Commons
 			"pd-art-old-70",
 			"pd-art-life-70",
 			"pd-art-100",
+
+			"pd-scan-100",
 		};
 
 		private static readonly string[] s_supersedeLicenses = new string[]
@@ -279,8 +288,8 @@ OtherLicense: {8}",
 		/// 
 		/// </summary>
 		/// <param name="nakedTemplate">The template without {{}}</param>
-		/// <remarks>Assumes the text is actually a PD-Art template.</remarks>
-		public static IEnumerable<string> BreakPdArtComponent(string nakedTemplate)
+		/// <remarks>Assumes the text is actually a PD-Art or PD-scan template.</remarks>
+		public static IEnumerable<string> BreakLicenseTemplateComponents(string nakedTemplate)
 		{
 			return nakedTemplate.Split('|').Select(rawComponent =>
 			{
@@ -297,13 +306,13 @@ OtherLicense: {8}",
 		/// 
 		/// </summary>
 		/// <param name="nakedTemplate">The template without {{}}</param>
-		/// <remarks>Assumes the text is actually a PD-Art template.</remarks>
-		public bool IsReplaceablePdArt(string nakedTemplate)
+		/// <remarks>Assumes the text is actually a PD-Art or PD-scan template.</remarks>
+		public bool IsReplaceableLicenseTemplate(string nakedTemplate)
 		{
-			IEnumerable<string> pdArtComponents = BreakPdArtComponent(nakedTemplate);
+			IEnumerable<string> templateComponents = BreakLicenseTemplateComponents(nakedTemplate);
 
 			// make sure we can dismiss all the parameters
-			foreach (string component in pdArtComponents.Skip(1))
+			foreach (string component in templateComponents.Skip(1))
 			{
 				//TODO:
 				//if (componentIndex == 2 && pdArtComponents.First().Equals("licensed-pd-art", StringComparison.InvariantCultureIgnoreCase))
@@ -318,7 +327,9 @@ OtherLicense: {8}",
 					&& !s_supersedeLicenses.Contains(component, StringComparer.InvariantCultureIgnoreCase)
 					&& !component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase)
 					&& !component.StartsWith("deathdate=", StringComparison.InvariantCultureIgnoreCase)
-					&& !component.StartsWith("country=", StringComparison.InvariantCultureIgnoreCase))
+					&& !component.StartsWith("country=", StringComparison.InvariantCultureIgnoreCase)
+					//&& !component.StartsWith("category=", StringComparison.InvariantCultureIgnoreCase)
+					)
 				{
 					return false;
 				}
@@ -328,9 +339,9 @@ OtherLicense: {8}",
 		}
 
 		/// <summary>
-		/// Returns true if the specified PD Art template needs no replacement.
+		/// Returns true if the specified license template needs no replacement.
 		/// </summary>
-		public bool IsGoodPdArt(string template)
+		public bool IsGoodWrapperLicenseTemplate(string template)
 		{
 			string licenseParam = WikiUtils.GetTemplateParameter(1, template);
 			string deathyearParam = WikiUtils.GetTemplateParameter("deathyear", template);
@@ -344,7 +355,7 @@ OtherLicense: {8}",
 		/// <param name="nakedTemplate">The template without {{}}</param>
 		public bool HasPMALicense(string nakedTemplate)
 		{
-			foreach (string component in BreakPdArtComponent(nakedTemplate))
+			foreach (string component in BreakLicenseTemplateComponents(nakedTemplate))
 			{
 				if (s_pmaLicenses.Contains(component, StringComparer.InvariantCultureIgnoreCase))
 				{
@@ -355,10 +366,10 @@ OtherLicense: {8}",
 			return false;
 		}
 
-		private List<StringSpan> GetPdArtTemplates(string text)
+		private List<StringSpan> GetReplaceableLicenseTemplates(string text)
 		{
 			List<StringSpan> pdArts = new List<StringSpan>();
-			foreach (string template in s_pdArtTemplates)
+			foreach (string template in s_pdArtTemplates.Concat(s_pdScanTemplates))
 			{
 				int workingIndex = 0;
 				do
@@ -379,7 +390,7 @@ OtherLicense: {8}",
 		}
 
 		/// <summary>
-		/// Determines the license that can replace PD-Art and replaces it.
+		/// Determines the license that can improve the existing licenses, and replaces them.
 		/// </summary>
 		/// <returns>True if a replacement was made.</returns>
 		public override bool DoReplacement(Article article)
@@ -420,9 +431,6 @@ OtherLicense: {8}",
 			// any errors that prevent the replacement from being made
 			List<string> errors = new List<string>();
 
-			// locate pd-art template(s)
-			List<StringSpan> pdArts = GetPdArtTemplates(worksheet.Text);
-
 			// if the file uses Licensed-PD-Art, the other (non-PD) license
 			//TODO: reimplement me
 			string licensedPdArtOtherLicense = null;
@@ -439,20 +447,32 @@ OtherLicense: {8}",
 			// if the file has a license we can replace, the license
 			string replaceableLicense = null;
 
-			foreach (StringSpan match in pdArts)
+			// the wrapper license in use here (e.g. PD-art, PD-scan)
+			string useWrapperLicense = "";
+
+			foreach (StringSpan match in GetReplaceableLicenseTemplates(worksheet.Text))
 			{
 				// check for unreplaceable templates
 				string rawTemplate = WikiUtils.TrimTemplate(worksheet.Text.Substring(match.start, match.Length));
 				string nakedTemplate = rawTemplate;
 
-				if (!IsReplaceablePdArt(nakedTemplate))
+				if (nakedTemplate.StartsWith("pd-art", StringComparison.OrdinalIgnoreCase))
+				{
+					useWrapperLicense = "PD-Art";
+				}
+				else if (nakedTemplate.StartsWith("pd-scan", StringComparison.OrdinalIgnoreCase))
+				{
+					useWrapperLicense = "PD-scan";
+				}
+
+				if (!IsReplaceableLicenseTemplate(nakedTemplate))
 				{
 					errors.Add(string.Format("Can't replace '{0}'.", nakedTemplate));
 				}
-				else if (IsGoodPdArt(nakedTemplate))
+				else if (IsGoodWrapperLicenseTemplate(nakedTemplate))
 				{
 					//TODO: test
-					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  PD-Art is already replaced.");
+					ConsoleUtility.WriteLine(ConsoleColor.DarkGreen, "  License template is already good.");
 					existingGoodLicense = "{{" + nakedTemplate + "}}";
 				}
 				else
@@ -485,7 +505,7 @@ OtherLicense: {8}",
 			}
 			else if (string.IsNullOrEmpty(replaceableLicense))
 			{
-				errors.Add("Failed to find a replaceable PD-Art template.");
+				errors.Add("Failed to find a replaceable license template.");
 				replacementStatus = ReplacementStatus.NotFound;
 			}
 			else
@@ -496,7 +516,7 @@ OtherLicense: {8}",
 
 				string replaceableInnerLicense = null;
 
-				// break pd-art template params
+				// break license template params
 				string[] logComponents = WikiUtils.TrimTemplate(replaceableLicense).Split('|').Select(component => component.Trim()).ToArray();
 				if (logComponents.Length >= 2)
 				{
@@ -602,6 +622,11 @@ OtherLicense: {8}",
 			bool bRequiresLicenseRemoval = false;
 			bool bHasGoodLicense = !string.IsNullOrEmpty(existingGoodLicense);
 
+			if (string.IsNullOrEmpty(useWrapperLicense))
+			{
+				errors.Add(string.Format("Failed to identify wrapper license."));
+			}
+
 			if (!RerunGoodLicenses && bHasGoodLicense)
 			{
 				bRequiresLicenseRemoval = true;
@@ -612,13 +637,13 @@ OtherLicense: {8}",
 			{
 				if (!string.IsNullOrEmpty(licenseCountry))
 				{
-					newLicense = string.Format("{{{{PD-Art|PD-old-100-expired|country={0}}}}}", licenseCountry);
+					newLicense = string.Format("{{{{{0}|PD-old-100-expired|country={1}}}}}", useWrapperLicense, licenseCountry);
 				}
 				else
 				{
-					newLicense = string.Format("{{{{PD-Art|PD-old-100-expired}}}}");
+					newLicense = string.Format("{{{{{0}|PD-old-100-expired}}}}", useWrapperLicense);
 				}
-				changeText = bHasGoodLicense ? "removing imprecise license deathyear" : "improving PD-art license: date older than 175 yrs and author deathyear unknown or imprecise";
+				changeText = bHasGoodLicense ? "removing imprecise license deathyear" : "improving PD license: date older than 175 yrs and author deathyear unknown or imprecise";
 			}
 			else if (!string.IsNullOrEmpty(licensedPdArtOtherLicense))
 			{
@@ -640,7 +665,7 @@ OtherLicense: {8}",
 				{
 					newLicense = string.Format("{{{{Licensed-PD-Art|PD-old-auto-expired|deathyear={0}|{1}}}}}", creatorDeathYear.GetYear(), licensedPdArtOtherLicense);
 				}
-				changeText = bHasGoodLicense ? "correcting license deathyear" : "improving PD-art license with more information based on file data";
+				changeText = bHasGoodLicense ? "correcting license deathyear" : "improving PD license with more information based on file data";
 			}
 			else
 			{
@@ -655,18 +680,18 @@ OtherLicense: {8}",
 				}
 				else if (!string.IsNullOrEmpty(licenseCountry))
 				{
-					newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}|country={1}}}}}", creatorDeathYear.GetYear(), licenseCountry);
+					newLicense = string.Format("{{{{{0}|PD-old-auto-expired|deathyear={1}|country={2}}}}}", useWrapperLicense, creatorDeathYear.GetYear(), licenseCountry);
 				}
 				else
 				{
-					newLicense = string.Format("{{{{PD-Art|PD-old-auto-expired|deathyear={0}}}}}", creatorDeathYear.GetYear());
+					newLicense = string.Format("{{{{{0}|PD-old-auto-expired|deathyear={1}}}}}", useWrapperLicense, creatorDeathYear.GetYear());
 				}
-				changeText = bHasGoodLicense ? "correcting license deathyear" : "improving PD-art license with more information based on file data";
+				changeText = bHasGoodLicense ? "correcting license deathyear" : "improving PD license with more information based on file data";
 			}
 
 			qtySuccess++;
 
-			List<StringSpan> allReplaceableLicenses = GetPdArtTemplates(worksheet.Text);
+			List<StringSpan> allReplaceableLicenses = GetReplaceableLicenseTemplates(worksheet.Text);
 			foreach (string supersededLicense in s_supersedeLicenses)
 			{
 				int currentLocation = 0;

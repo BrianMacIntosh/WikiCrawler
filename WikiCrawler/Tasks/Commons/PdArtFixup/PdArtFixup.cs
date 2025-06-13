@@ -25,6 +25,25 @@ namespace Tasks.Commons
 		{
 			return new PageTitle[]
 			{
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-US)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-US-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-50)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-50-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-60)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-60-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-70)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-70-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-75)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-75-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-80)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-80-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-90)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-90-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-100)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-100-expired)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old)"),
+				new PageTitle(PageTitle.NS_Category, "PD-scan (PD-old-auto)"),
+
 				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-US)"),
 				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-US-expired)"),
 				new PageTitle(PageTitle.NS_Category, "PD-Art (PD-old-50)"),
