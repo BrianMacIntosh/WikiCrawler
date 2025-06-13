@@ -172,12 +172,19 @@ namespace Tasks
 				foreach (BaseReplacement replacement in m_replacements)
 				{
 					ConsoleUtility.WriteLine(ConsoleColor.White, "{0} on '{1}'", replacement.GetType().Name, file.title);
-					if (replacement.DoReplacement(file) && replacement.Heartbeat != null)
+					if (replacement.DoReplacement(file))
 					{
-						lock (replacement.Heartbeat)
+						if (replacement.Heartbeat != null)
 						{
-							replacement.Heartbeat.nEdits++;
+							lock (replacement.Heartbeat)
+							{
+								replacement.Heartbeat.nEdits++;
+							}
 						}
+					}
+					else
+					{
+						HandleReplacementFailure(replacement, file);
 					}
 				}
 
@@ -203,6 +210,11 @@ namespace Tasks
 			{
 				replacement.SaveOut();
 			}
+		}
+
+		protected virtual void HandleReplacementFailure(BaseReplacement replacement, Article file)
+		{
+
 		}
 
 		private string FormatInt(int value)

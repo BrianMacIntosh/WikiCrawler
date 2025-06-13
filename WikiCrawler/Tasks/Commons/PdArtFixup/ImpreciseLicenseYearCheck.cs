@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.IO;
 using WikiCrawler;
 
 namespace Tasks.Commons
@@ -18,7 +19,7 @@ namespace Tasks.Commons
 			PdArtReplacement.RerunGoodLicenses = true;
 			PdArtReplacement.SkipCached = false;
 
-			Parameters["Query"] = "SELECT pageTitle,authorString,authorQid,artQid,newLicense,dateString FROM files WHERE (authorDeathYear%10)=9 AND authorDeathYear!=9999 AND replaceTime<1748302257 AND (touchTimeUnix IS NULL OR touchTimeUnix<1749749935) AND replaced=1";
+			Parameters["Query"] = "SELECT pageTitle,authorString,authorQid,artQid,newLicense,dateString FROM files WHERE (authorDeathYear%10)=9 AND authorDeathYear!=9999 AND replaceTime<1748302257 AND (touchTimeUnix>1749749935) AND replaced=1";
 		}
 
 		public override IEnumerable<Article> GetPagesToAffectUncached(string startSortkey)
@@ -73,6 +74,16 @@ namespace Tasks.Commons
 						yield return new Article(pageTitle);
 					}
 				}
+			}
+		}
+
+		protected override void HandleReplacementFailure(BaseReplacement replacement, Article file)
+		{
+			base.HandleReplacementFailure(replacement, file);
+
+			if (replacement is PdArtReplacement)
+			{
+				File.AppendAllText("E:/repfail.txt", $"{file.title}\n");
 			}
 		}
 	}
