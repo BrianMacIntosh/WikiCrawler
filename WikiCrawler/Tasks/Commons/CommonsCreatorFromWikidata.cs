@@ -621,6 +621,16 @@ namespace Tasks.Commons
 			}
 		}
 
+		public static bool IsValidForCreator(Entity entity)
+		{
+			if (!entity.HasClaim(Wikidata.Prop_InstanceOf) || entity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) != Wikidata.Entity_Human)
+			{
+				return false;
+			}
+
+			return true;
+		}
+
 		/// <summary>
 		/// Tries to create a Creator template for the specified Wikimedia entity, on Commons.
 		/// </summary>
@@ -636,9 +646,10 @@ namespace Tasks.Commons
 				creatorPage = PageTitle.Empty;
 				return false;
 			}
-			if (!entity.HasClaim(Wikidata.Prop_InstanceOf) || entity.GetClaimValueAsEntityId(Wikidata.Prop_InstanceOf) != Wikidata.Entity_Human)
+
+			if (!IsValidForCreator(entity))
 			{
-				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Entity '{0}' is not a person.", entity.labels["en"]);
+				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "  Entity '{0}' cannot be a Creator.", entity.labels["en"]);
 				creatorPage = PageTitle.Empty;
 				return false;
 			}

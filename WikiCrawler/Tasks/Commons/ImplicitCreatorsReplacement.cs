@@ -620,7 +620,29 @@ namespace Tasks.Commons
 			{
 				ConsoleUtility.WriteLine(ConsoleColor.Gray, "    #property invocation");
 
-				//TODO:
+				string template = WikiUtils.ExtractTemplate(authorString, authorTemplate);
+
+				if (authorTemplate.Equals("#property:P170"))
+				{
+					string fromParam = WikiUtils.GetTemplateParameter("from", template);
+					if (QId.TryParse(fromParam, out QId qid))
+					{
+						ArtworkData artData = WikidataCache.GetArtworkData(qid);
+						if (!artData.CreatorQid.IsEmpty)
+						{
+							Entity entity = GlobalAPIs.Wikidata.GetEntity(artData.CreatorQid);
+							if (!Entity.IsNullOrMissing(entity) && CommonsCreatorFromWikidata.TryMakeCreator(entity, out PageTitle qidCreator))
+							{
+								replaceType = CreatorReplaceType.Identity;
+								return qidCreator;
+							}
+						}
+					}
+				}
+				else
+				{
+					ConsoleUtility.WriteLine(ConsoleColor.Gray, "    Unknown property.");
+				}
 			}
 
 			// literal qid
