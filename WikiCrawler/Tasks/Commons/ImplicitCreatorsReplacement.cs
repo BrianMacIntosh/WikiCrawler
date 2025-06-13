@@ -809,7 +809,21 @@ namespace Tasks.Commons
 		private static IEnumerable<string> StripLanguageTemplates(string text)
 		{
 			WikitextParser parser = new WikitextParser();
-			Wikitext wikitext = parser.Parse(text);
+			Wikitext wikitext;
+			try
+			{
+				wikitext = parser.Parse(text);
+			}
+			catch (Exception e)
+			{
+				wikitext = null;
+			}
+
+			if (wikitext == null)
+			{
+				yield return text;
+				yield break;
+			}
 
 			foreach (Node node in FlattenNodes(wikitext.EnumChildren()))
 			{
