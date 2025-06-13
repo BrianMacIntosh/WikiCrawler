@@ -20,7 +20,7 @@ namespace Tasks.Commons
 			//TODO: SELECT * from files WHERE irreplaceableLicenses LIKE "PD-US-unpublished" AND replaced!=1
 			//Parameters["Query"] = "SELECT pageTitle from files WHERE irreplaceableLicenses LIKE \"PD-US-unpublished\" AND replaced!=1";
 
-			Parameters["Query"] = "SELECT * FROM files WHERE replaced=0 AND latestYear<1850 AND (authorString=\"{{unknown|author}}\" OR authorString=\"{{unknown|artist}}\" OR authorString=\"{{unknown|1=author}}\" OR authorString=\"{{unknown|1=artist}}\" OR authorString=\"{{unknown|author}}\" OR authorString=\"{{unknown author}}\" OR authorString=\"{{author|unknown}}\" OR authorString=\"{{unknown photographer}}\" OR authorString=\"{{unknown|photographer}}\" OR authorString=\"{{creator:unknown}}\" OR authorString=\"{{creator:?}}\")";
+			Parameters["Query"] = "SELECT * FROM files WHERE replaced=0 AND latestYear=9999 AND authorDeathYear<2025-95-120";
 
 			//Parameters["Query"] = "SELECT pageTitle FROM files where pdArtLicense LIKE \"{{pd-art}}\" AND replaced=0";
 		}

@@ -535,12 +535,6 @@ OtherLicense: {8}",
 			int pmaDuration = LicenseUtility.GetPMADurationByQID(creatorCountryOfCitizenship);
 			Console.WriteLine("  Date: {0}, Deathyear: {1}, PMA: {2}", latestYear, MediaWiki.DateTime.GetYearStringSafe(creatorDeathYear), pmaDuration);
 
-			if (latestYear == 9999)
-			{
-				errors.Add("Failed to identify publication date.");
-				qtyDateParseFail++;
-			}
-
 			// actual death date cannot be determined but it is certainly at least 100 years ago
 			bool allowPd100 = false;
 
@@ -590,6 +584,11 @@ OtherLicense: {8}",
 				if ((latestYear != 9999 && latestYear >= 2004) && creatorDeathYear != null && creatorDeathYear.GetLatestYear() < System.DateTime.Now.Year - 120)
 				{
 					Console.WriteLine("  Scan/upload date, death year older than 120.");
+				}
+				else if (creatorDeathYear != null && creatorDeathYear.GetLatestYear() < System.DateTime.Now.Year - 95 - 120)
+				{
+					// unknown publication date but known author death date is sufficiently old to be US-expired
+					Console.WriteLine("  Unknown pub date but deathyear before 95-120.");
 				}
 				else
 				{
@@ -797,6 +796,7 @@ OtherLicense: {8}",
 		{
 			if (QId.TryParse(wikidata, out QId artworkQid))
 			{
+				//TODO: untested
 				ArtworkData artwork = WikidataCache.GetArtworkData(artworkQid);
 				return artwork.CreatorUnknown;
 			}
