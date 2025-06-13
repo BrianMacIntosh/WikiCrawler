@@ -667,9 +667,18 @@ namespace MediaWiki
 					{
 						if (text.MatchAt(param, c, true))
 						{
-							state = 2;
 							c += param.Length;
-							continue;
+
+							if (c < text.Length && text[c] != '=' && !char.IsWhiteSpace(text[c]))
+							{
+								// beginning of param name matches but there's more after
+								state = 0;
+							}
+							else
+							{
+								state = 2;
+								continue;
+							}
 						}
 						else if (!char.IsWhiteSpace(text[c]))
 						{
