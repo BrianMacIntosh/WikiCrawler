@@ -149,7 +149,7 @@ namespace MediaWiki
 			{
 				return api.GetEntities(subclaims
 					.Where(c => c.HasValue())
-					.Select(c => c.mainSnak.GetValueAsEntityId())
+					.Select(c => c.mainSnak.GetValueAsEntityId().Value)
 					.ToArray());
 			}
 			else
@@ -158,12 +158,12 @@ namespace MediaWiki
 			}
 		}
 
-		public QId GetClaimValueAsEntityId(string property)
+		public SnakValue<QId> GetClaimValueAsEntityId(string property)
 		{
 			return claims[property][0].mainSnak.GetValueAsEntityId();
 		}
 
-		public IEnumerable<QId> GetClaimValuesAsEntityIds(string property)
+		public IEnumerable<SnakValue<QId>> GetClaimValuesAsEntityIds(string property)
 		{
 			if (claims.TryGetValue(property, out Claim[] subclaims))
 			{

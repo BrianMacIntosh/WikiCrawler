@@ -219,7 +219,7 @@ namespace WikiCrawler
 				//TODO: if no deathdate but another date (e.g. floruit) that is very old, record that (using deathYear 10000)
 
 				MediaWiki.DateTime deathYear = GetCreatorDeathYear(entity);
-				QId countryOfCitizenship = GetCreatorCountryOfCitizenship(entity);
+				SnakValue<QId> countryOfCitizenship = GetCreatorCountryOfCitizenship(entity);
 				PageTitle commonsCategory = GetCreatorCommonsCategory(entity);
 
 				SQLiteCommand command = LocalDatabase.CreateCommand();
@@ -228,7 +228,7 @@ namespace WikiCrawler
 				command.Parameters.AddWithValue("qid", qid.Id);
 				command.Parameters.AddWithValue("deathYear", deathYear == null ? null : (int?)deathYear.GetLatestYear());
 				command.Parameters.AddWithValue("deathYearPrecision", deathYear == null ? 0 : deathYear.Precision);
-				command.Parameters.AddWithValue("countryOfCitizenship", (int?)countryOfCitizenship);
+				command.Parameters.AddWithValue("countryOfCitizenship", (int?)countryOfCitizenship.GetValueOrNull());
 				command.Parameters.AddWithValue("commonsCategory", commonsCategory);
 				command.ExecuteNonQuery();
 
@@ -236,7 +236,7 @@ namespace WikiCrawler
 				{
 					QID = qid,
 					DeathYear = deathYear,
-					CountryOfCitizenship = countryOfCitizenship,
+					CountryOfCitizenship = countryOfCitizenship.GetValueOrDefault(),
 					CommonsCategory = commonsCategory,
 				};
 			}
@@ -252,7 +252,7 @@ namespace WikiCrawler
 			return null;
 		}
 
-		public static QId GetCreatorCountryOfCitizenship(Entity entity)
+		public static SnakValue<QId> GetCreatorCountryOfCitizenship(Entity entity)
 		{
 			//TODO: respect rank
 			if (entity.HasClaim(Wikidata.Prop_CountryOfCitizenship))
@@ -260,7 +260,7 @@ namespace WikiCrawler
 				return entity.GetClaimValueAsEntityId(Wikidata.Prop_CountryOfCitizenship);
 			}
 
-			return QId.Empty;
+			return new SnakValue<QId>(SnakType.Unspecified);
 		}
 
 		public static PageTitle GetCreatorCommonsCategory(Entity entity)
@@ -323,7 +323,7 @@ namespace WikiCrawler
 			}
 			else
 			{
-				QId creatorQid = GetArtworkCreator(entity);
+				SnakValue<QId> creatorQid = GetArtworkCreator(entity);
 				int? latestYear = GetArtworkLatestYear(entity);
 
 				SQLiteCommand command = LocalDatabase.CreateCommand();
@@ -331,19 +331,19 @@ namespace WikiCrawler
 					"VALUES ($qid,$creatorQid,$latestYear,unixepoch()) " +
 					"ON CONFLICT(qid) DO UPDATE SET creatorQid=$creatorQid,latestYear=$latestYear,timestamp=unixepoch();";
 				command.Parameters.AddWithValue("qid", qid.Id);
-				command.Parameters.AddWithValue("creatorQid", (int?)creatorQid);
+				command.Parameters.AddWithValue("creatorQid", (int?)creatorQid.GetValueOrNull());
 				command.Parameters.AddWithValue("latestYear", latestYear);
 				command.ExecuteNonQuery();
 
 				return new ArtworkData()
 				{
-					CreatorQid = creatorQid,
+					CreatorQid = creatorQid.GetValueOrDefault(),
 					LatestYear = latestYear.HasValue ? latestYear.Value : 9999,
 				};
 			}
 		}
 
-		public static QId GetArtworkCreator(Entity entity)
+		public static SnakValue<QId> GetArtworkCreator(Entity entity)
 		{
 			if (entity.claims.TryGetValue(Wikidata.Prop_Creator, out Claim[] creators))
 			{
@@ -358,7 +358,7 @@ namespace WikiCrawler
 				}
 			}
 
-			return QId.Empty;
+			return new SnakValue<QId>(SnakType.Unspecified);
 		}
 
 		public static int GetArtworkLatestYear(Entity entity)

@@ -53,7 +53,7 @@ namespace Tasks
 						foreach (Claim claim in locationClaims)
 						{
 							//TODO: use rank
-							QId id = claim.mainSnak.GetValueAsEntityId();
+							QId id = claim.mainSnak.GetValueAsEntityId().GetValueOrDefault();
 							entityIds.AddUnique(id);
 
 							// remember as a parent

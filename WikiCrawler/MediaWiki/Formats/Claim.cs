@@ -50,7 +50,7 @@ namespace MediaWiki
 
 		public bool HasValue()
 		{
-			return mainSnak != null && mainSnak.datavalue != null;
+			return mainSnak != null && mainSnak.snaktype == SnakType.Value;
 		}
 
 		public Snak[] GetQualifiers(string propId)
