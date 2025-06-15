@@ -302,12 +302,14 @@ OtherLicense: {8}",
 			});
 		}
 
+		private static readonly char[] s_equals = new char[] { '=' };
+
 		/// <summary>
 		/// 
 		/// </summary>
 		/// <param name="nakedTemplate">The template without {{}}</param>
 		/// <remarks>Assumes the text is actually a PD-Art or PD-scan template.</remarks>
-		public bool IsReplaceableLicenseTemplate(string nakedTemplate)
+		public bool IsReplaceableLicenseTemplate(string nakedTemplate, int? newDeathyear)
 		{
 			IEnumerable<string> templateComponents = BreakLicenseTemplateComponents(nakedTemplate);
 
@@ -322,10 +324,19 @@ OtherLicense: {8}",
 				//	continue;
 				//}
 
-				//TODO: handle whitespace after param name
-				if (!string.IsNullOrEmpty(component)
+				//TODO: handle whitespace after param names
+				if (component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase))
+				{
+					string deathyearParam = WikiUtils.GetTemplateParameter("deathyear", nakedTemplate);
+					if (!string.IsNullOrEmpty(deathyearParam)
+						&& newDeathyear.HasValue
+						&& (!int.TryParse(deathyearParam, out int deathyear) || deathyear != newDeathyear.Value))
+					{
+						return false;
+					}
+				}
+				else if (!string.IsNullOrEmpty(component)
 					&& !s_supersedeLicenses.Contains(component, StringComparer.InvariantCultureIgnoreCase)
-					&& !component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase)
 					&& !component.StartsWith("deathdate=", StringComparison.InvariantCultureIgnoreCase)
 					&& !component.StartsWith("country=", StringComparison.InvariantCultureIgnoreCase)
 					//&& !component.StartsWith("category=", StringComparison.InvariantCultureIgnoreCase)
@@ -366,7 +377,7 @@ OtherLicense: {8}",
 			return false;
 		}
 
-		private List<StringSpan> GetReplaceableLicenseTemplates(string text)
+		private List<StringSpan> GetTargetLicenseTemplates(string text)
 		{
 			List<StringSpan> pdArts = new List<StringSpan>();
 			foreach (string template in s_pdArtTemplates.Concat(s_pdScanTemplates))
@@ -450,7 +461,7 @@ OtherLicense: {8}",
 			// the wrapper license in use here (e.g. PD-art, PD-scan)
 			string useWrapperLicense = "";
 
-			foreach (StringSpan match in GetReplaceableLicenseTemplates(worksheet.Text))
+			foreach (StringSpan match in GetTargetLicenseTemplates(worksheet.Text))
 			{
 				// check for unreplaceable templates
 				string rawTemplate = WikiUtils.TrimTemplate(worksheet.Text.Substring(match.start, match.Length));
@@ -465,7 +476,7 @@ OtherLicense: {8}",
 					useWrapperLicense = "PD-scan";
 				}
 
-				if (!IsReplaceableLicenseTemplate(nakedTemplate))
+				if (!IsReplaceableLicenseTemplate(nakedTemplate, null))
 				{
 					errors.Add(string.Format("Can't replace '{0}'.", nakedTemplate));
 				}
@@ -691,7 +702,7 @@ OtherLicense: {8}",
 
 			qtySuccess++;
 
-			List<StringSpan> allReplaceableLicenses = GetReplaceableLicenseTemplates(worksheet.Text);
+			List<StringSpan> allReplaceableLicenses = GetTargetLicenseTemplates(worksheet.Text);
 			foreach (string supersededLicense in s_supersedeLicenses)
 			{
 				int currentLocation = 0;
@@ -710,6 +721,17 @@ OtherLicense: {8}",
 				}
 			}
 			allReplaceableLicenses.Sort((a, b) => a.end - b.end);
+
+			// validate that all licenses are replaceable
+			int needToMatchDeathyear = creatorDeathYear != null ? creatorDeathYear.GetYear() : 9999; // if null, the new license will not container a deathyear
+			foreach (StringSpan checkLicenseSpan in allReplaceableLicenses)
+			{
+				string checkLicense = WikiUtils.TrimTemplate(worksheet.Text.Substring(checkLicenseSpan));
+				if (!IsReplaceableLicenseTemplate(checkLicense, needToMatchDeathyear))
+				{
+					errors.Add("A target or supersedeable license was not replaceable (probably due to wrong deathyear).");
+				}
+			}
 
 			string oldText = worksheet.Text;
 			string replacedLicense = "";

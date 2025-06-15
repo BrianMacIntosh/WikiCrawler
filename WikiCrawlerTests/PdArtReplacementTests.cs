@@ -255,6 +255,27 @@ public class PdArtReplacementTests
 	}
 
 	[TestMethod]
+	public void DisagreeingLicenseDeathyear()
+	{
+		PdArtReplacement replacement = new PdArtReplacement();
+		Article article = CreateArticle("File:Test.jpg",
+@"=={{int:filedesc}}==
+{{Information
+|description=File description
+|date=1800
+|author={{Creator:August Macke}}
+|permission=
+|other versions=
+}}
+
+=={{int:license-header}}==
+{{PD-Art|deathyear=1111}}
+
+[[Category:Test Category]]");
+		Assert.IsFalse(replacement.DoReplacement(article));
+	}
+
+	[TestMethod]
 	public void MultiPdOldDefault()
 	{
 		PdArtReplacement replacement = new PdArtReplacement();
