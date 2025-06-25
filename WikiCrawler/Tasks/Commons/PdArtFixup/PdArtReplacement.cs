@@ -718,7 +718,9 @@ OtherLicense: {8}",
 			allReplaceableLicenses.Sort((a, b) => a.end - b.end);
 
 			// validate that all licenses are replaceable
-			int needToMatchDeathyear = creatorDeathYear != null ? creatorDeathYear.GetYear() : 9999; // if null, the new license will not container a deathyear
+			int needToMatchDeathyear = creatorDeathYear != null && creatorDeathYear.Precision >= MediaWiki.DateTime.YearPrecision
+				? creatorDeathYear.GetYear()
+				: 9999; // no creator deathyear: the new license will not contain a deathyear
 			foreach (StringSpan checkLicenseSpan in allReplaceableLicenses)
 			{
 				string checkLicense = WikiUtils.TrimTemplate(worksheet.Text.Substring(checkLicenseSpan));
