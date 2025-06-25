@@ -616,11 +616,6 @@ OtherLicense: {8}",
 				{
 					Console.WriteLine("  Scan/upload date, death year older than 120.");
 				}
-				else if (creatorDeathYear != null && creatorDeathYear.GetLatestYear() < System.DateTime.Now.Year - 95 - 120)
-				{
-					// unknown publication date but known author death date is sufficiently old to be US-expired
-					Console.WriteLine("  Unknown pub date but deathyear before 95-120.");
-				}
 				else
 				{
 					errors.Add(string.Format("Date {0} is after the US expired threshold.", latestYear));
