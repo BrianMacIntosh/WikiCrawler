@@ -158,7 +158,17 @@ public class CommonsFileWorksheet : Worksheet
 	/// <summary>
 	/// Returns the contents of the first info template param that's found.
 	/// </summary>
-	private string GetInfoParam(string[] paramNames, out string outParam, out int index)
+	public string GetInfoParam(string[] paramNames)
+	{
+		string outParam;
+		int index;
+		return GetInfoParam(paramNames, out outParam, out index);
+	}
+
+	/// <summary>
+	/// Returns the contents of the first info template param that's found.
+	/// </summary>
+	public string GetInfoParam(string[] paramNames, out string outParam, out int index)
 	{
 		StringSpan templateSpan = WikiUtils.GetPrimaryInfoTemplateLocation(Text);
 		if (templateSpan.IsValid)

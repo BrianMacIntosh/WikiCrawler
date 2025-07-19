@@ -540,6 +540,12 @@ OtherLicense: {8}",
 			CacheReplacementStatus(article.title, replacementStatus);
 			CacheNewLicense(article.title, existingGoodLicense);
 
+			// Editor or Illustrator may complicate copyright
+			if (!string.IsNullOrEmpty(worksheet.GetInfoParam(new string[] { "editor", "illustrator" })))
+			{
+				errors.Add("Has 'editor' or 'illustrator' parameter.");
+			}
+
 			// 1. find author death date
 			MediaWiki.DateTime creatorDeathYear;
 			QId creatorCountryOfCitizenship;
