@@ -46,22 +46,22 @@ namespace Tasks.Commons
 			foreach (var kv in dateMapping)
 			{
 				if (!string.IsNullOrEmpty(kv.Value.ReplaceDate)
-					&& PdArtReplacement.ParseDate(kv.Value.ReplaceDate).LatestYear < System.DateTime.Now.Year - 95)
+					&& PdArtReplacement.ParseDate(kv.Value.ReplaceDate).LatestYear < LicenseUtility.UnitedStatesExpiryYear)
 				{
 					foreach (Article article in kv.Value.FromPages.Select(title => new Article(PageTitle.Parse(title))))
 					{
 						yield return article;
 					}
 				}
-				else if (kv.Value.LatestYear < System.DateTime.Now.Year - 95
-					|| PdArtReplacement.ParseDate(kv.Key).LatestYear < System.DateTime.Now.Year - 95)
+				else if (kv.Value.LatestYear < LicenseUtility.UnitedStatesExpiryYear
+					|| PdArtReplacement.ParseDate(kv.Key).LatestYear < LicenseUtility.UnitedStatesExpiryYear)
 				{
 					foreach (Article article in kv.Value.FromPages.Select(title => new Article(PageTitle.Parse(title))))
 					{
 						yield return article;
 					}
 				}
-				else if (PdArtReplacement.ParseDate(kv.Key).LatestYear < System.DateTime.Now.Year - 95)
+				else if (PdArtReplacement.ParseDate(kv.Key).LatestYear < LicenseUtility.UnitedStatesExpiryYear)
 				{
 					foreach (Article article in kv.Value.FromPages.Select(title => new Article(PageTitle.Parse(title))))
 					{

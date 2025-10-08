@@ -14,6 +14,10 @@ public static class LicenseUtility
 	/// </summary>
 	private const int SafeLifetimeYears = 80;
 
+	public const int UnitedStatesExpiryTimeYears = 95;
+
+	public static int UnitedStatesExpiryYear => System.DateTime.Now.Year - UnitedStatesExpiryTimeYears;
+
 	private static readonly string[] s_primaryLicenseTemplates;
 
 	private static int CurrentYear
@@ -178,7 +182,7 @@ public static class LicenseUtility
 		if (pubCountry == "USA")
 		{
 			pubCountry = "US";
-			if (pubYear < (CurrentYear - 95))
+			if (pubYear < (CurrentYear - UnitedStatesExpiryTimeYears))
 			{
 				return "{{PD-US-expired|country=" + pubCountry + "}}";
 			}
@@ -211,7 +215,7 @@ public static class LicenseUtility
 		}
 		else if (pubCountry == "USA")
 		{
-			if (pubYear < (CurrentYear - 95))
+			if (pubYear < (CurrentYear - UnitedStatesExpiryTimeYears))
 			{
 				return "{{PD-anon-expired}}";
 			}
@@ -244,7 +248,7 @@ public static class LicenseUtility
 				|| CurrentYear - (pubYear + SafeLifetimeYears) > GetPMADuration(pubCountry);
 		}
 
-		if (canUsePDOldExpired && pubYear < (CurrentYear - 95))
+		if (canUsePDOldExpired && pubYear < (CurrentYear - UnitedStatesExpiryTimeYears))
 		{
 			if (authorDeathYear.HasValue && authorDeathYear != 9999)
 			{

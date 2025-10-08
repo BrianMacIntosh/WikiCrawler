@@ -614,8 +614,7 @@ OtherLicense: {8}",
 			}
 
 			// Is file/pub date expired in the US?
-			int usExpiredYear = System.DateTime.Now.Year - 95;
-			if (latestYear >= usExpiredYear)
+			if (latestYear >= LicenseUtility.UnitedStatesExpiryYear)
 			{
 				// Exception: post-2004 dates are very likely to be upload dates instead of pub dates
 				if ((latestYear != 9999 && latestYear >= 2004) && creatorDeathYear != null && creatorDeathYear.GetLatestYear() < System.DateTime.Now.Year - 120)
