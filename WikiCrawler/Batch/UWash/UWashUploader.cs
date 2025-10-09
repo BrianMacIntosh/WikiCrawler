@@ -57,6 +57,7 @@ namespace UWash
 			"Subjects (LCTGM)",
 			"Subjects (LCSH)",
 			"Subjects (TGM)",
+			"TGM Subjects",
 			"Category",
 			"Location Depicted",
 			"Location depicted",
@@ -87,6 +88,7 @@ namespace UWash
 			"Publishing Notes",
 			"Geographic Coverage",
 			"Historical period",
+			"Historical Period",
 			"Digital ID Number",
 			"UW Reference Number",
 			"Reference Number on Photograph",
@@ -769,6 +771,10 @@ namespace UWash
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Historical Period|value=" + temp.Trim(';') + "}}");
 			}
+			if (metadata.TryGetValue("Historical Period", out temp))
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Historical Period|value=" + temp.Trim(';') + "}}");
+			}
 			if (metadata.TryGetValue("Judicial District", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Judicial District|value=" + temp.Trim(';') + "}}");
@@ -1248,6 +1254,11 @@ namespace UWash
 			{
 				lctgm = StringUtility.Join("|", lctgm, temp);
 				data.Remove("Subjects (TGM)");
+			}
+			if (data.TryGetValue("TGM Subjects", out temp))
+			{
+				lctgm = StringUtility.Join("|", lctgm, temp);
+				data.Remove("TGM Subjects");
 			}
 			if (data.TryGetValue("Subjects (LCTGM)", out temp))
 			{
