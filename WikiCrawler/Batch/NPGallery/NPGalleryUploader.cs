@@ -103,11 +103,18 @@ namespace NPGallery
 		public NPGalleryUploader(string key)
 			: base(key)
 		{
-			// load existing assetlist, only to count how many keys there are
-			string assetlistFile = Path.Combine(ProjectDataDirectory, "assetlist.json");
-			string json = File.ReadAllText(assetlistFile);
-			List<NPGalleryAsset> allAssets = JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
-			m_assetCount = allAssets.Count(asset => asset.AssetType == "Standard");
+			SQLiteConnectionStringBuilder connectionString = new SQLiteConnectionStringBuilder
+			{
+				{ "Data Source", NPGallery.AssetDatabaseFile },
+				{ "Mode", "ReadOnly" }
+			};
+			SQLiteConnection assetsDatabase = new SQLiteConnection(connectionString.ConnectionString);
+			assetsDatabase.Open();
+
+			SQLiteCommand command = assetsDatabase.CreateCommand();
+			command.CommandText = "SELECT COUNT(id) FROM assets WHERE assettype=\"Standard\" or assettype=\"Standard File\"";
+			object assetCountQueryResult = command.ExecuteScalar();
+			m_assetCount = (int)(long)assetCountQueryResult;
 
 			// we'll need to redownload data when the Albums key is missing
 			m_downloader = new NPGalleryDownloader(key);

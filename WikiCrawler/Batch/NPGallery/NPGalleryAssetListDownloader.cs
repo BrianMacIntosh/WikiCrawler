@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Entity;
+using System.Data.SQLite;
 using System.IO;
 using Tasks;
 
@@ -15,17 +17,20 @@ namespace NPGallery
 
 	public class NPGalleryAssetListDownloader : BatchDownloader<int>
 	{
-		private List<NPGalleryAsset> m_allAssets = new List<NPGalleryAsset>();
+		private const string MetadataUriFormat = "https://npgallery.nps.gov/SearchResults/92380621-129d-44ad-997e-d05743a2b052?page={0}&showfilters=false&filterUnitssc=10&view=grid&sort=date-desc";
 
-		private const string MetadataUriFormat = "https://npgallery.nps.gov/SearchResults/f51d9701-865e-4950-b316-ff1567e7330f?page={0}&showfilters=false&filterUnitssc=10&view=grid&sort=date-desc";
+		public readonly SQLiteConnection AssetsDatabase;
 
 		public NPGalleryAssetListDownloader(string key)
 			: base(key)
 		{
-			// load existing assetlist
-			string assetlistFile = Path.Combine(ProjectDataDirectory, "assetlist.json");
-			string json = File.ReadAllText(assetlistFile);
-			m_allAssets = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
+			SQLiteConnectionStringBuilder connectionString = new SQLiteConnectionStringBuilder
+			{
+				{ "Data Source", NPGallery.AssetDatabaseFile },
+				{ "Mode", "ReadWrite" }
+			};
+			AssetsDatabase = new SQLiteConnection(connectionString.ConnectionString);
+			AssetsDatabase.Open();
 		}
 
 		protected override HashSet<int> GetDownloadSucceededKeys()
@@ -38,14 +43,6 @@ namespace NPGallery
 			return false;
 		}
 
-		protected override void SaveOut()
-		{
-			base.SaveOut();
-
-			string serialized = Newtonsoft.Json.JsonConvert.SerializeObject(m_allAssets, Newtonsoft.Json.Formatting.None);
-			File.WriteAllText(Path.Combine(ProjectDataDirectory, "assetlist.json"), serialized);
-		}
-
 		protected override Uri GetItemUri(int key)
 		{
 			return new Uri(string.Format(MetadataUriFormat, key));
@@ -53,7 +50,7 @@ namespace NPGallery
 
 		protected override IEnumerable<int> GetKeys()
 		{
-			for (int page = 1; page <= 9396; page++)
+			for (int page = 1; page <= 10000; page++)
 			{
 				yield return page;
 			}
@@ -72,16 +69,19 @@ namespace NPGallery
 				string jsonText = pageContent.Substring(jsonStart, javascriptEnd - jsonStart + 1);
 				NPGallerySearchResults results = Newtonsoft.Json.JsonConvert.DeserializeObject<NPGallerySearchResults>(jsonText);
 
+				SQLiteCommand command = AssetsDatabase.CreateCommand();
+				command.CommandText = "INSERT INTO assets (id, assettype, primarytype) "
+					+ "VALUES ($id, $assettype, $primarytype) ON CONFLICT(id) DO NOTHING;";
+
 				int Dupes = 0;
 				foreach (NPGallerySearchResult result in results.Results)
 				{
-					if (m_allAssets.Contains(result.Asset))
+					command.Parameters.AddWithValue("id", result.Asset.AssetID.Replace("-", ""));
+					command.Parameters.AddWithValue("assettype", result.Asset.AssetType);
+					command.Parameters.AddWithValue("primarytype", result.Asset.PrimaryType);
+					if (command.ExecuteNonQuery() == 0)
 					{
 						Dupes++;
-					}
-					else
-					{
-						m_allAssets.Add(result.Asset);
 					}
 				}
 

@@ -1,32 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Data.SQLite;
 
 namespace NPGallery
 {
 	public class NPGalleryDownloader : BatchDownloader<Guid>
 	{
-		private List<NPGalleryAsset> m_allAssets = new List<NPGalleryAsset>();
-
 		public const int Version = 3;
+
+		public readonly SQLiteConnection AssetsDatabase;
 
 		public NPGalleryDownloader(string key)
 			: base(key)
 		{
-			// load existing assetlist
-			string assetlistFile = Path.Combine(ProjectDataDirectory, "assetlist.json");
-			string json = File.ReadAllText(assetlistFile);
-			m_allAssets = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NPGalleryAsset>>(json);
-
-			List<string> assetTypes = new List<string>();
-			foreach (NPGalleryAsset asset in m_allAssets)
+			SQLiteConnectionStringBuilder connectionString = new SQLiteConnectionStringBuilder
 			{
-				if (!assetTypes.Contains(asset.AssetType))
-				{
-					assetTypes.Add(asset.AssetType);
-					Console.WriteLine(asset.AssetType);
-				}
-			}
+				{ "Data Source", NPGallery.AssetDatabaseFile },
+				{ "Mode", "ReadOnly" }
+			};
+			AssetsDatabase = new SQLiteConnection(connectionString.ConnectionString);
+			AssetsDatabase.Open();
 		}
 
 		protected override Guid StringToKey(string str)
@@ -43,12 +36,14 @@ namespace NPGallery
 
 		protected override IEnumerable<Guid> GetKeys()
 		{
-			foreach (NPGalleryAsset asset in m_allAssets)
+			SQLiteCommand command = AssetsDatabase.CreateCommand();
+			command.CommandText = "SELECT id FROM assets WHERE assettype=\"Standard\" or assettype=\"Standard File\"";
+			using (SQLiteDataReader reader = command.ExecuteReader())
 			{
-				if (asset.AssetType == "Standard"
-					|| asset.AssetType == "Standard File")
+				while (reader.Read())
 				{
-					yield return NPGallery.StringToKey(asset.AssetID);
+					string idString = reader.GetString(0);
+					yield return NPGallery.StringToKey(idString);
 				}
 			}
 		}
