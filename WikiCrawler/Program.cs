@@ -52,7 +52,7 @@ namespace WikiCrawler
 			}
 			/*catch (Exception e)
 			{
-				Console.WriteLine(e);
+				ConsoleUtility.WriteLine(ConsoleColor.Red, e);
 				using (StreamWriter writer = new StreamWriter(new FileStream("errorlog.txt", FileMode.Create)))
 				{
 					writer.WriteLine(e.ToString());

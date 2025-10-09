@@ -139,7 +139,7 @@ namespace Tasks
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine(e.ToString());
+				ConsoleUtility.WriteLine(ConsoleColor.Red, e.ToShortString());
 			}
 		}
 
