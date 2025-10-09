@@ -162,6 +162,7 @@
     <Compile Include="Utility\Commons\CommonsTemplates.cs" />
     <Compile Include="Utility\Commons\Worksheet.cs" />
     <Compile Include="Utility\ConsoleUtility.cs" />
+    <Compile Include="Utility\Exceptions\ExceptionUtilities.cs" />
     <Compile Include="Utility\LinqUtility.cs" />
     <Compile Include="Utility\ManualMapping.cs" />
     <Compile Include="Utility\StringSpan.cs" />

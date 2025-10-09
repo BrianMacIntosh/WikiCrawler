@@ -174,7 +174,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		}
 		catch (Exception e)
 		{
-			Console.WriteLine(e.ToString());
+			ConsoleUtility.WriteLine(ConsoleColor.Red, e.ToShortString());
 			m_failMessages.Add(key.ToString().PadLeft(5) + "\t" + e.Message);
 			return null;
 		}

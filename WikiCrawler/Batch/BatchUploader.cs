@@ -120,7 +120,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 					}
 					catch (Exception e)
 					{
-						Console.WriteLine(e.Message);
+						ConsoleUtility.WriteLine(ConsoleColor.Red, e.ToShortString());
 
 						if (e is LicenseException)
 						{

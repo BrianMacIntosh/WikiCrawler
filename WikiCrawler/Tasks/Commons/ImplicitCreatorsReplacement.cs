@@ -836,7 +836,7 @@ namespace Tasks.Commons
 			{
 				wikitext = parser.Parse(text);
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
 				wikitext = null;
 			}
