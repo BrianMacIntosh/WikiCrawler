@@ -530,7 +530,7 @@ namespace NPGallery
 
 					if (dateMetadata.IsPrecise)
 					{
-						PageTitle yearLocCat = new PageTitle("Category:", dateMetadata.PreciseYear.ToString() + " in " + definiteLocation);
+						PageTitle yearLocCat = new PageTitle("Category", dateMetadata.PreciseYear.ToString() + " in " + definiteLocation);
 						Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
 						if (existingYearLocCat != null)
 						{
