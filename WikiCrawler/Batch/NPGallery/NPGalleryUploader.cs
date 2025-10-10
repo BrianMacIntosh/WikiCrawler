@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -9,7 +10,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using System.Web.Script;
+using Tasks.Commons;
 using WikiCrawler;
 
 namespace NPGallery
@@ -99,6 +100,14 @@ namespace NPGallery
 		};
 
 		private NPGalleryDownloader m_downloader;
+		private readonly SQLiteConnection AssetsDatabase;
+		private readonly SQLiteCommand ShouldAttemptKeyQuery;
+		private readonly SQLiteCommand MarkAttemptQuery;
+
+		/// <summary>
+		/// The last Unix time at which a change was made that requires all files to recheck to reupload.
+		/// </summary>
+		private const int lastUploadChangeTime = 0;
 
 		public NPGalleryUploader(string key)
 			: base(key)
@@ -108,10 +117,16 @@ namespace NPGallery
 				{ "Data Source", NPGallery.AssetDatabaseFile },
 				{ "Mode", "ReadOnly" }
 			};
-			SQLiteConnection assetsDatabase = new SQLiteConnection(connectionString.ConnectionString);
-			assetsDatabase.Open();
+			AssetsDatabase = new SQLiteConnection(connectionString.ConnectionString);
+			AssetsDatabase.Open();
 
-			SQLiteCommand command = assetsDatabase.CreateCommand();
+			ShouldAttemptKeyQuery = AssetsDatabase.CreateCommand();
+			ShouldAttemptKeyQuery.CommandText = $"SELECT last_upload_attempt IS NULL OR last_upload_attempt<{lastUploadChangeTime} FROM assets WHERE id=$id";
+
+			MarkAttemptQuery = AssetsDatabase.CreateCommand();
+			MarkAttemptQuery.CommandText = $"UPDATE assets SET last_upload_attempt=unixepoch() WHERE id=$id";
+
+			SQLiteCommand command = AssetsDatabase.CreateCommand();
 			command.CommandText = "SELECT COUNT(id) FROM assets WHERE assettype=\"Standard\" or assettype=\"Standard File\"";
 			object assetCountQueryResult = command.ExecuteScalar();
 			m_assetCount = (int)(long)assetCountQueryResult;
@@ -179,8 +194,17 @@ namespace NPGallery
 
 		private const string ImageUriFormat = "https://npgallery.nps.gov/GetAsset/{0}/";
 
+		public override bool ShouldAttemptKey(Guid key)
+		{
+			ShouldAttemptKeyQuery.Parameters.AddWithValue("id", key.ToString("N"));
+			return (long)ShouldAttemptKeyQuery.ExecuteScalar() != 0;
+		}
+
 		protected override string BuildPage(Guid key, Dictionary<string, string> metadata)
 		{
+			MarkAttemptQuery.Parameters.AddWithValue("id", key.ToString("N"));
+			MarkAttemptQuery.ExecuteNonQuery();
+
 			// trim all metadata
 			foreach (KeyValuePair<string, string> kv in metadata.ToArray())
 			{
