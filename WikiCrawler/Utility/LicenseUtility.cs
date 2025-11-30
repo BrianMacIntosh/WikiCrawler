@@ -16,7 +16,7 @@ public static class LicenseUtility
 
 	public const int UnitedStatesExpiryTimeYears = 95;
 
-	public static int UnitedStatesExpiryYear => System.DateTime.Now.Year - UnitedStatesExpiryTimeYears;
+	public static int UnitedStatesExpiryYear => CurrentYear - UnitedStatesExpiryTimeYears;
 
 	private static readonly string[] s_primaryLicenseTemplates;
 
@@ -149,6 +149,7 @@ public static class LicenseUtility
 				return "DNK";
 			case "ENGLAND":
 			case "GREAT BRITAIN":
+			case "GREAT BRITIAN":
 			case "UNITED KINGDOM":
 				return "GBR";
 			case "FRANCE":
@@ -235,17 +236,21 @@ public static class LicenseUtility
 	/// </summary>
 	public static string GetPdLicenseTag(int pubYear, int? authorDeathYear, string pubCountry)
 	{
-		bool canUsePDOldExpired = false;
+		int pmaDuration = GetPMADuration(pubCountry);
 
+		bool canUsePDOldExpired;
 		if (pubCountry == "USA")
 		{
 			canUsePDOldExpired = true;
 		}
-		else if (authorDeathYear.HasValue)
+		else if (authorDeathYear.HasValue && authorDeathYear != 9999)
 		{
-			canUsePDOldExpired = (CurrentYear - authorDeathYear.Value) > GetPMADuration(pubCountry)
-				// estimate for authors with unknown deathyear
-				|| CurrentYear - (pubYear + SafeLifetimeYears) > GetPMADuration(pubCountry);
+			canUsePDOldExpired = (CurrentYear - authorDeathYear.Value) > pmaDuration;
+		}
+		else
+		{
+			// estimate for authors with unknown deathyear
+			canUsePDOldExpired = CurrentYear - (pubYear + SafeLifetimeYears) > pmaDuration;
 		}
 
 		if (canUsePDOldExpired && pubYear < (CurrentYear - UnitedStatesExpiryTimeYears))
@@ -260,11 +265,13 @@ public static class LicenseUtility
 			}
 			else if (pubCountry == "FRA")
 			{
-				return "{{PD-US-expired}}{{PD-France}}";
+				return "{{PD-two|PD-France|PD-US-expired}}";
 			}
 			else
 			{
-				return "";
+				int safeDeadYears = CurrentYear - (pubYear + SafeLifetimeYears);
+				int pma = PmaRoundDown(safeDeadYears);
+				return $"{{PD-old-{pma}-expired}}";
 			}
 		}
 		else
@@ -279,4 +286,20 @@ public static class LicenseUtility
 			}
 		}
 	}
+
+	/// <summary>
+	/// Gets the highest common PMA duration below the specified value.
+	/// </summary>
+	public static int PmaRoundDown(int years)
+	{
+		for (int i = pmaDurations.Length - 1; i >= 0; i--)
+		{
+			if (pmaDurations[i] <= years)
+			{
+				return pmaDurations[i];
+			}
+		}
+		return 0;
+	}
+	private static int[] pmaDurations = new int[] { 50, 60, 70, 75, 80, 90, 95, 100 };
 }
