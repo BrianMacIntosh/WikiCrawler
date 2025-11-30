@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using MediaWiki;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -7,8 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using Tasks.Commons;
 using WikiCrawler;
-using MediaWiki;
 
 public interface IBatchUploader : IBatchTask
 {
@@ -28,6 +29,16 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	}
 
 	protected Api Api = GlobalAPIs.Commons;
+
+	/// <summary>
+	/// Maps author strings to creators for this task.
+	/// </summary>
+	protected ManualMapping<MappingCreator> creatorMapping;
+
+	public string CreatorMappingFile
+	{
+		get { return Path.Combine(ProjectDataDirectory, "creators.json"); }
+	}
 
 	public string PreviewDirectory
 	{
@@ -58,6 +69,8 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		WebClient = new WebClient();
 
 		Api.AutoLogIn();
+
+		creatorMapping = new ManualMapping<MappingCreator>(CreatorMappingFile);
 	}
 
 	private static bool s_stop = false;
@@ -66,8 +79,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	{
 		try
 		{
-			List<string> metadataFiles = Directory.GetFiles(MetadataCacheDirectory).ToList();
-
+			int keyCount = GetKeyCount();
 			int initialSucceeded = m_succeeded.Count;
 			int totalKeys = TotalKeyCount;
 			int licenseFailures = 0;
@@ -78,25 +90,20 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 				if (totalKeys < 0)
 				{
 					// assume everything was downloaded
-					Heartbeat.nTotal = metadataFiles.Count + m_succeeded.Count - m_permanentlyFailed.Count;
+					Heartbeat.nTotal = keyCount + m_succeeded.Count - m_permanentlyFailed.Count;
 				}
 				else
 				{
 					Heartbeat.nTotal = totalKeys - m_permanentlyFailed.Count;
 				}
 				Heartbeat.nCompleted = m_succeeded.Count;
-				Heartbeat.nDownloaded = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
+				Heartbeat.nDownloaded = keyCount - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
 				Heartbeat.nFailed = m_failMessages.Count;
 				Heartbeat.nFailedLicense = licenseFailures;
 				Heartbeat.nDeclined = uploadDeclined;
 			}
 
 			StartHeartbeat();
-
-			if (m_config.randomizeOrder)
-			{
-				metadataFiles.Shuffle();
-			}
 
 			using (FileSystemWatcher fileWatcher = new FileSystemWatcher(Configuration.DataDirectory, "STOP"))
 			{
@@ -110,13 +117,14 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 					return;
 				}
 
-				foreach (string metadataFile in metadataFiles)
+				foreach (KeyType key in GetKeys())
 				{
-					KeyType key = StringToKey(Path.GetFileNameWithoutExtension(metadataFile));
-
 					try
 					{
-						Upload(key);
+						if (ShouldAttemptKey(key))
+						{
+							Upload(key);
+						}
 					}
 					catch (Exception e)
 					{
@@ -140,7 +148,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 					lock (Heartbeat)
 					{
 						Heartbeat.nCompleted = m_succeeded.Count;
-						Heartbeat.nDownloaded = metadataFiles.Count - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
+						Heartbeat.nDownloaded = keyCount - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
 						Heartbeat.nFailed = m_failMessages.Count;
 						Heartbeat.nFailedLicense = licenseFailures;
 						Heartbeat.nDeclined = uploadDeclined;
@@ -158,6 +166,45 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 			SaveOut();
 			SendHeartbeat(true);
 		}
+	}
+
+	/// <summary>
+	/// Returns all the keys that should be uploaded.
+	/// </summary>
+	public virtual IEnumerable<KeyType> GetKeys()
+	{
+		List<string> metadataFiles = Directory.GetFiles(MetadataCacheDirectory).ToList();
+
+		if (m_config.randomizeOrder)
+		{
+			metadataFiles.Shuffle();
+		}
+
+		foreach (string metadataFile in metadataFiles)
+		{
+			KeyType key = StringToKey(Path.GetFileNameWithoutExtension(metadataFile));
+			yield return key;
+		}
+	}
+
+	/// <summary>
+	/// Returns the number of keys to be uploaded.
+	/// </summary>
+	public virtual int GetKeyCount()
+	{
+		return GetKeys().Count();
+	}
+
+	public virtual bool ShouldAttemptKey(KeyType key)
+	{
+		return true;
+	}
+
+	public override void SaveOut()
+	{
+		base.SaveOut();
+
+		creatorMapping.Serialize();
 	}
 
 	void OnStopFileCreated(object sender, FileSystemEventArgs e)
@@ -366,7 +413,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	/// Loads the key-value metadata for the asset with the specified key.
 	/// </summary>
 	/// <param name="always">If set, will look in the trash and TODO: redownload if necessary.</param>
-	protected virtual Dictionary<string, string> LoadMetadata(KeyType key, bool always = false)
+	public virtual Dictionary<string, string> LoadMetadata(KeyType key, bool always = false)
 	{
 		string cacheFile = GetMetadataCacheFilename(key);
 		if (File.Exists(cacheFile))
@@ -482,30 +529,43 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	/// <summary>
 	/// Get a string that should be used for the file's 'author' field.
 	/// </summary>
-	protected virtual string GetAuthor(string name, string lang, ref List<Creator> creators)
+	protected virtual string GetAuthor(string fileKey, string name, string lang, ref List<MappingCreator> creators)
 	{
 		string finalResult = "";
 		foreach (string author in ParseAuthor(name))
 		{
-			throw new NotImplementedException();
-			Creator creator = null;//TODO: WikidataCache.GetCreator(author);
 			if (creators == null)
 			{
-				creators = new List<Creator>();
+				creators = new List<MappingCreator>();
 			}
-			creator.Usage++;
-			if (!creators.AddUnique(creator))
+
+			MappingCreator creator = creatorMapping.TryMapValue(author, fileKey);
+			if (creator == null)
+			{
+				// only happens for invalid input
+				continue;
+			}
+			else if (!creators.AddUnique(creator))
 			{
 				// duplicate
 				continue;
 			}
-			else if (!string.IsNullOrEmpty(creator.Author))
+			else if (!string.IsNullOrEmpty(creator.MappedValue))
 			{
-				finalResult += creator.Author;
+				finalResult += creator.MappedValue;
 				continue;
 			}
+			else if (!string.IsNullOrEmpty(creator.MappedQID))
+			{
+				CreatorTemplate qidCreator = WikidataCache.GetCreatorTemplate(QId.Parse(creator.MappedQID));
+				if (!qidCreator.IsEmpty)
+				{
+					finalResult += qidCreator;
+					continue;
+				}
+			}
 
-			// if we get here, there is not yet a mapping for this creator
+			// if we get here, there is not a mapping for this creator; use it as plaintext
 			if (!string.IsNullOrEmpty(lang))
 			{
 				finalResult += "{{" + lang + "|" + author + "}}";
@@ -578,7 +638,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		return name.TrimEnd(s_dobTrim);
 	}
 
-	protected string GetLicenseTag(string author, List<Creator> creator, int latestYear, string pubCountry)
+	protected string GetLicenseTag(string author, List<MappingCreator> creator, int latestYear, string pubCountry)
 	{
 		if (author == "{{unknown|author}}")
 		{
@@ -588,15 +648,16 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		{
 			return LicenseUtility.GetPdLicenseTagAnonymousAuthor(latestYear, pubCountry);
 		}
-		else if (creator != null)
+		else if (creator != null && creator.Any())
 		{
-			if (creator.Count == 1 && !string.IsNullOrEmpty(creator[0].LicenseTemplate))
+			//TODO: manual per-author license override feature
+			//if (creator.Count == 1 && !string.IsNullOrEmpty(creator[0].LicenseTemplate))
+			//{
+			//	return creator[0].LicenseTemplate;
+			//}
+			//else
 			{
-				return creator[0].LicenseTemplate;
-			}
-			else
-			{
-				int deathYearMax = creator.Max((Creator c) => c.DeathYear);
+				int deathYearMax = creator.Max((MappingCreator c) => c.MappedDeathyear);
 				return LicenseUtility.GetPdLicenseTag(latestYear, deathYearMax, pubCountry);
 			}
 		}

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Tasks.Commons;
 using WikiCrawler;
 
 namespace Dsal
@@ -15,8 +16,8 @@ namespace Dsal
 
 		protected override string BuildPage(string key, Dictionary<string, string> metadata)
 		{
-			List<Creator> creators = new List<Creator>();
-			string photographer = GetAuthor(metadata["Photographer"], "en", ref creators);
+			List<MappingCreator> creators = new List<MappingCreator>();
+			string photographer = GetAuthor(key, metadata["Photographer"], "en", ref creators);
 			if (creators.Count == 0)
 			{
 				throw new UWashException("No creator");
@@ -63,12 +64,13 @@ namespace Dsal
 				}
 			}
 
-			foreach (Creator creator in creators)
+			foreach (MappingCreator creator in creators)
 			{
-				if (!creator.Category.IsEmpty)
-				{
-					categories.Add(creator.Category);
-				}
+				//TODO:
+				//if (!creator.Category.IsEmpty)
+				//{
+				//	categories.Add(creator.Category);
+				//}
 			}
 
 			string licenseTag = GetLicenseTag(photographer, creators, dateMetadata.LatestYear, m_config.defaultPubCountry);
