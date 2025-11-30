@@ -1217,6 +1217,14 @@ namespace MediaWiki
 		}
 
 		/// <summary>
+		/// Fetches contents for the specified page titles.
+		/// </summary>
+		public IEnumerable<Article> FetchArticles(IEnumerable<PageTitle> titles)
+		{
+			return FetchArticles(titles.Select(pt => new Article(pt)));
+		}
+
+		/// <summary>
 		/// Fetches contents for the specified unfetched articles.
 		/// </summary>
 		public IEnumerable<Article> FetchArticles(IEnumerable<Article> articles)

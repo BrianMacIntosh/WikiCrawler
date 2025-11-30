@@ -123,6 +123,7 @@
     <Compile Include="Batch\TrashCombiner.cs" />
     <Compile Include="Batch\UWash\BatchRebuildSuccesses.cs" />
     <Compile Include="Batch\UWash\MohaiCreditFix.cs" />
+    <Compile Include="Batch\UWash\WarnerAuthorUpdate.cs" />
     <Compile Include="MediaWiki\Formats\ImageInfo.cs" />
     <Compile Include="MediaWiki\Formats\InterwikiConfig.cs" />
     <Compile Include="MediaWiki\Formats\Revision.cs" />
