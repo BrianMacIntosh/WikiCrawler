@@ -47,7 +47,7 @@ public abstract class BatchTaskKeyed<KeyType> : BatchTask
 		}
 	}
 
-	protected override void SaveOut()
+	public override void SaveOut()
 	{
 		if (GetPersistStatus())
 		{

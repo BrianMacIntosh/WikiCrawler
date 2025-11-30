@@ -1065,7 +1065,7 @@ namespace NPGallery
 			}
 		}
 
-		protected override void SaveOut()
+		public override void SaveOut()
 		{
 			base.SaveOut();
 

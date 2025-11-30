@@ -50,7 +50,7 @@ public abstract class BatchTask : BaseTask, IBatchTask
 		Heartbeat = AddHeartbeatTask(m_projectKey);
 	}
 
-	protected virtual void SaveOut()
+	public virtual void SaveOut()
 	{
 		string failedFile = Path.Combine(ProjectDataDirectory, "failed.txt");
 		File.WriteAllLines(failedFile, m_failMessages);
