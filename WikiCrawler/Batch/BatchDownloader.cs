@@ -75,7 +75,6 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 			// load metadata
 			IEnumerable<KeyType> downloadKeys = allKeys.Where(
 				key => !downloadSucceededKeys.Contains(key)
-					&& !m_succeeded.Contains(key)
 					&& !m_permanentlyFailed.Contains(key));
 			int downloadCount = downloadKeys.Count();
 			foreach (KeyType key in downloadKeys)
@@ -131,7 +130,10 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		}
 
 		// load the list of files that have already been uploaded
-		downloadSucceededKeys.AddRange(m_succeeded);
+		if (!m_config.redownloadSucceeded)
+		{
+			downloadSucceededKeys.AddRange(m_succeeded);
+		}
 
 		return downloadSucceededKeys;
 	}

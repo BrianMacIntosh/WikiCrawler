@@ -45,6 +45,11 @@ public class ProjectConfig
 	public bool allowDataDownload = true;
 	public bool allowImageDownload = true;
 
+	/// <summary>
+	/// If set, will redownload data that was marked as succeeded (but not data that's still cached).
+	/// </summary>
+	public bool redownloadSucceeded = false;
+
 	public int maxFailed = int.MaxValue;
 	public int maxNew = int.MaxValue;
 	public int maxSuccesses = int.MaxValue;
