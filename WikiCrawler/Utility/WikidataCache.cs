@@ -15,6 +15,7 @@ namespace WikiCrawler
 		public MediaWiki.DateTime DeathYear = null;
 		public QId CountryOfCitizenship;
 		public PageTitle CommonsCategory;
+		public PageTitle CommonsCreator;
 	}
 
 	public struct ArtworkData
@@ -80,7 +81,7 @@ namespace WikiCrawler
 		public static CreatorData GetCreatorData(PageTitle creatorTemplate, out bool isNew)
 		{
 			SQLiteCommand command = LocalDatabase.CreateCommand();
-			command.CommandText = "SELECT p.qid,p.deathYear,p.countryOfCitizenship,p.commonsCategory,p.deathYearPrecision FROM people p, creatortemplates c WHERE p.qid=c.qid AND c.templateName=$templateName";
+			command.CommandText = "SELECT p.qid,p.deathYear,p.countryOfCitizenship,p.commonsCategory,p.commonsCreator,p.deathYearPrecision FROM people p, creatortemplates c WHERE p.qid=c.qid AND c.templateName=$templateName";
 			command.Parameters.AddWithValue("templateName", creatorTemplate.ToStringNormalized());
 			using (var reader = command.ExecuteReader())
 			{
@@ -90,9 +91,10 @@ namespace WikiCrawler
 					return new CreatorData()
 					{
 						QID = new QId(reader.GetInt32(0)),
-						DeathYear = reader.IsDBNull(1) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(1), reader.GetInt32(4)),
+						DeathYear = reader.IsDBNull(1) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(1), reader.GetInt32(5)),
 						CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
 						CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
+						CommonsCreator = reader.IsDBNull(4) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(4)),
 					};
 				}
 				else
@@ -104,12 +106,21 @@ namespace WikiCrawler
 		}
 
 		/// <summary>
+		/// Returns the creator template associated with the specified QID, if any.
+		/// </summary>
+		public static CreatorTemplate GetCreatorTemplate(QId qid)
+		{
+			CreatorData creatorData = GetPersonData(qid);
+			return creatorData.CommonsCreator;
+		}
+
+		/// <summary>
 		/// Gets cached information about a person.
 		/// </summary>
 		public static CreatorData GetPersonData(QId qid)
 		{
 			SQLiteCommand command = LocalDatabase.CreateCommand();
-			command.CommandText = "SELECT deathYear,deathYearPrecision,countryOfCitizenship,commonsCategory FROM people WHERE qid=$qid";
+			command.CommandText = "SELECT deathYear,deathYearPrecision,countryOfCitizenship,commonsCategory,commonsCreator FROM people WHERE qid=$qid";
 			command.Parameters.AddWithValue("qid", qid.Id);
 			using (var reader = command.ExecuteReader())
 			{
@@ -121,6 +132,7 @@ namespace WikiCrawler
 						DeathYear = reader.IsDBNull(0) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(0), reader.GetInt32(1)),
 						CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
 						CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
+						CommonsCreator = reader.IsDBNull(4) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(4)),
 					};
 				}
 				else
@@ -180,7 +192,7 @@ namespace WikiCrawler
 					// person already cached?
 					{
 						SQLiteCommand command = LocalDatabase.CreateCommand();
-						command.CommandText = "SELECT deathYear,deathYearPrecision,countryOfCitizenship,commonsCategory FROM people WHERE qid=$qid";
+						command.CommandText = "SELECT deathYear,deathYearPrecision,countryOfCitizenship,commonsCategory,commonsCreator FROM people WHERE qid=$qid";
 						command.Parameters.AddWithValue("qid", qid.Id);
 						using (var reader = command.ExecuteReader())
 						{
@@ -192,6 +204,7 @@ namespace WikiCrawler
 									DeathYear = reader.IsDBNull(0) ? null : MediaWiki.DateTime.FromYear(reader.GetInt32(0), reader.GetInt32(1)),
 									CountryOfCitizenship = reader.IsDBNull(2) ? QId.Empty : new QId(reader.GetInt32(2)),
 									CommonsCategory = reader.IsDBNull(3) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(3)),
+									CommonsCreator = reader.IsDBNull(4) ? PageTitle.Empty : PageTitle.Parse(reader.GetString(4)),
 								};
 							}
 						}
@@ -222,15 +235,17 @@ namespace WikiCrawler
 				MediaWiki.DateTime deathYear = GetCreatorDeathYear(entity);
 				SnakValue<QId> countryOfCitizenship = GetCreatorCountryOfCitizenship(entity);
 				PageTitle commonsCategory = GetCreatorCommonsCategory(entity);
+				PageTitle commonsCreator = GetCreatorCommonsCreator(entity);
 
 				SQLiteCommand command = LocalDatabase.CreateCommand();
-				command.CommandText = "INSERT INTO people (qid,deathYear,deathYearPrecision,countryOfCitizenship,commonsCategory,timestamp) " +
-					"VALUES ($qid,$deathYear,$deathYearPrecision,$countryOfCitizenship,$commonsCategory,unixepoch());";
+				command.CommandText = "INSERT INTO people (qid,deathYear,deathYearPrecision,countryOfCitizenship,commonsCategory,commonsCreator,timestamp) " +
+					"VALUES ($qid,$deathYear,$deathYearPrecision,$countryOfCitizenship,$commonsCategory,$commonsCreator,unixepoch());";
 				command.Parameters.AddWithValue("qid", qid.Id);
 				command.Parameters.AddWithValue("deathYear", deathYear == null ? null : (int?)deathYear.GetLatestYear());
 				command.Parameters.AddWithValue("deathYearPrecision", deathYear == null ? 0 : deathYear.Precision);
 				command.Parameters.AddWithValue("countryOfCitizenship", (int?)countryOfCitizenship.GetValueOrNull());
 				command.Parameters.AddWithValue("commonsCategory", commonsCategory);
+				command.Parameters.AddWithValue("commonsCreator", commonsCreator);
 				command.ExecuteNonQuery();
 
 				return new CreatorData()
@@ -239,6 +254,7 @@ namespace WikiCrawler
 					DeathYear = deathYear,
 					CountryOfCitizenship = countryOfCitizenship.GetValueOrDefault(),
 					CommonsCategory = commonsCategory,
+					CommonsCreator = commonsCreator,
 				};
 			}
 		}
@@ -270,6 +286,17 @@ namespace WikiCrawler
 			if (entity.HasClaim(Wikidata.Prop_CommonsCategory))
 			{
 				return new PageTitle(PageTitle.NS_Category, entity.GetClaimValueAsString(Wikidata.Prop_CommonsCategory));
+			}
+
+			return PageTitle.Empty;
+		}
+
+		public static PageTitle GetCreatorCommonsCreator(Entity entity)
+		{
+			//TODO: respect rank
+			if (entity.HasClaim(Wikidata.Prop_CommonsCreator))
+			{
+				return new PageTitle(PageTitle.NS_Creator, entity.GetClaimValueAsString(Wikidata.Prop_CommonsCreator));
 			}
 
 			return PageTitle.Empty;

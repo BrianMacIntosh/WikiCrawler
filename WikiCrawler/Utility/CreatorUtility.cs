@@ -6,6 +6,8 @@ namespace MediaWiki
 {
 	public struct CreatorTemplate : IEquatable<CreatorTemplate>
 	{
+		public static readonly CreatorTemplate Empty = new CreatorTemplate();
+
 		public CreatorTemplate(PageTitle inTemplate)
 		{
 			Template = inTemplate;
