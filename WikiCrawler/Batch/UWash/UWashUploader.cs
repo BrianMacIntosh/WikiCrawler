@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Tasks.Commons;
 using WikiCrawler;
 
 namespace UWash
@@ -140,7 +141,7 @@ namespace UWash
 		/// <summary>
 		/// Holds intermediate data for one media file that is passed around to various functions.
 		/// </summary>
-		private class IntermediateData
+		public class IntermediateData
 		{
 			public Dictionary<string, string> Metadata;
 
@@ -152,22 +153,42 @@ namespace UWash
 
 			public PageTitle SureLocationCategory;
 
+			public string PubCountry;
+
 			public string Creator;
 			public string Artist;
 			public string Contributor;
 
-			public List<Creator> CreatorData = new List<Creator>();
-			public List<Creator> ArtistData = new List<Creator>();
-			public List<Creator> ContributorData = new List<Creator>();
+			public List<MappingCreator> CreatorData = new List<MappingCreator>();
+			public List<MappingCreator> ArtistData = new List<MappingCreator>();
+			public List<MappingCreator> ContributorData = new List<MappingCreator>();
 
 			public int PublicDomainYear
 			{
-				get { return DateParseMetadata.LatestYear + 95; }
+				get { return DateParseMetadata.LatestYear + LicenseUtility.UnitedStatesExpiryTimeYears; }
 			}
 
-			public IntermediateData(Dictionary<string, string> metadata)
+			public IntermediateData(Dictionary<string, string> metadata, ProjectConfig config)
 			{
 				Metadata = metadata;
+
+				if (metadata.TryGetValue("Place of Publication", out PubCountry))
+				{
+					PubCountry = LicenseUtility.ParseCountry(PubCountry);
+				}
+				else if (metadata.TryGetValue("Place of origin", out PubCountry))
+				{
+					PubCountry = LicenseUtility.ParseCountry(PubCountry);
+				}
+				else if (metadata.TryGetValue("Publisher Location", out PubCountry))
+				{
+					PubCountry = LicenseUtility.ParseCountry(PubCountry);
+				}
+				else
+				{
+					PubCountry = config.defaultPubCountry;
+				}
+
 			}
 		}
 
@@ -316,7 +337,7 @@ namespace UWash
 		protected override string BuildPage(int key, Dictionary<string, string> metadata)
 		{
 			metadata = PreprocessMetadata(metadata);
-			IntermediateData intermediate = new IntermediateData(metadata);
+			IntermediateData intermediate = new IntermediateData(metadata, m_config);
 
 			string lang;
 			//if (metadata.TryGetValue("Language", out lang))
@@ -330,16 +351,14 @@ namespace UWash
 
 			string temp;
 
-			GetAuthor(metadata, lang, ref intermediate);
+			GetAuthor(key, metadata, lang, intermediate);
 			
 			string dateTag = GetDate(metadata, out intermediate.DateParseMetadata);
 
-			int latestYear = intermediate.DateParseMetadata.LatestYear;
-
 			// must have been published before author's death
-			if (intermediate.DateParseMetadata.LatestYear == 9999 && intermediate.CreatorData.Count > 0)
+			/*if (intermediate.DateParseMetadata.LatestYear == 9999 && intermediate.CreatorData.Count > 0)
 			{
-				int deathYearMax = intermediate.CreatorData.Max((Creator c) => c.DeathYear);
+				int deathYearMax = intermediate.CreatorData.Max((MappingCreator c) => c.MappedDeathyear);
 				if (latestYear == 9999)
 				{
 					latestYear = deathYearMax;
@@ -351,7 +370,7 @@ namespace UWash
 			}
 			if (intermediate.DateParseMetadata.LatestYear == 9999 && intermediate.ArtistData.Count > 0)
 			{
-				int deathYearMax = intermediate.ArtistData.Max((Creator c) => c.DeathYear);
+				int deathYearMax = intermediate.ArtistData.Max((MappingCreator c) => c.MappedDeathyear);
 				if (latestYear == 9999)
 				{
 					latestYear = deathYearMax;
@@ -360,40 +379,10 @@ namespace UWash
 				{
 					latestYear = Math.Max(latestYear, deathYearMax);
 				}
-			}
-
-			string pubCountry;
-			if (metadata.TryGetValue("Place of Publication", out pubCountry))
-			{
-				pubCountry = LicenseUtility.ParseCountry(pubCountry);
-			}
-			else if (metadata.TryGetValue("Place of origin", out pubCountry))
-			{
-				pubCountry = LicenseUtility.ParseCountry(pubCountry);
-			}
-			else if (metadata.TryGetValue("Publisher Location", out pubCountry))
-			{
-				pubCountry = LicenseUtility.ParseCountry(pubCountry);
-			}
-			else
-			{
-				pubCountry = m_config.defaultPubCountry;
-			}
+			}*/
 
 			// check license
-			string licenseTag;
-			if (metadata.TryGetValue("LICENSE", out temp))
-			{
-				licenseTag = temp;
-			}
-			else
-			{
-				licenseTag = GetLicenseTag(intermediate.Creator, intermediate.CreatorData, latestYear, pubCountry);
-			}
-			if (string.IsNullOrEmpty(licenseTag))
-			{
-				throw new LicenseException(intermediate.DateParseMetadata.LatestYear, pubCountry);
-			}
+			string licenseTag = GetLicenseTag(key, metadata, intermediate);
 
 			// check it's not a MOHAI modern photo
 			string objectType;
@@ -449,7 +438,10 @@ namespace UWash
 			if (metadata.ContainsKey("~art"))
 			{
 				informationTemplate = "Artwork";
-				licenseTag = "{{PD-Art|" + licenseTag.Trim('{', '}') + "}}";
+			}
+			if (string.Equals(informationTemplate, "Artwork"))
+			{
+				licenseTag = "{{PD-Art|" + WikiUtils.TrimTemplate(licenseTag) + "}}";
 			}
 
 			content.AppendLine("=={{int:filedesc}}==");
@@ -864,19 +856,21 @@ namespace UWash
 					content.AppendLine("[[" + category + "]]");
 				}
 			}
-			foreach (Creator creator in intermediate.CreatorData)
+			foreach (MappingCreator creator in intermediate.CreatorData)
 			{
-				if (!creator.Category.IsEmpty)
-				{
-					content.AppendLine("[[" + creator.Category + "]]");
-				}
+				//TODO:
+				//if (!creator.Category.IsEmpty)
+				//{
+				//	content.AppendLine("[[" + creator.Category + "]]");
+				//}
 			}
-			foreach (Creator creator in intermediate.ArtistData)
+			foreach (MappingCreator creator in intermediate.ArtistData)
 			{
-				if (!creator.Category.IsEmpty)
-				{
-					content.AppendLine("[[" + creator.Category + "]]");
-				}
+				//TODO:
+				//if (!creator.Category.IsEmpty)
+				//{
+				//	content.AppendLine("[[" + creator.Category + "]]");
+				//}
 			}
 
 			foreach (PageTitle t in intermediate.Categories)
@@ -884,20 +878,16 @@ namespace UWash
 				content.AppendLine("[[" + t + "]]");
 			}
 
-			if (latestYear == 9999)
+			if (intermediate.DateParseMetadata.LatestYear == 9999)
 			{
 				throw new UWashException("unknown year");
 			}
 
-			foreach (Creator creator in intermediate.CreatorData)
+			foreach (MappingCreator creator in intermediate.CreatorData)
 			{
-				creator.UploadableUsage++;
-				if (string.IsNullOrEmpty(creator.Author))
+				if (creator.IsUnmapped && !m_config.allowFailedCreators)
 				{
-					if (!m_config.allowFailedCreators)
-					{
-						throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
-					}
+					throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
 				}
 			}
 			if (intermediate.CreatorData.Count == 0 && !m_config.allowFailedCreators)
@@ -905,15 +895,11 @@ namespace UWash
 				throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
 			}
 
-			foreach (Creator creator in intermediate.ArtistData)
+			foreach (MappingCreator creator in intermediate.ArtistData)
 			{
-				creator.UploadableUsage++;
-				if (string.IsNullOrEmpty(creator.Author))
+				if (creator.IsUnmapped && !m_config.allowFailedCreators)
 				{
-					if (!m_config.allowFailedCreators)
-					{
-						throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
-					}
+					throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
 				}
 			}
 			if (intermediate.CreatorData.Count == 0 && !m_config.allowFailedCreators)
@@ -1418,11 +1404,9 @@ namespace UWash
 			}
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		private void GetAuthor(Dictionary<string, string> data, string lang, ref IntermediateData intermediate)
+		public void GetAuthor(int key, Dictionary<string, string> data, string lang, IntermediateData intermediate)
 		{
+			string keyStr = key.ToString();
 			string notes;
 			if (data.TryGetValue("Notes", out notes)
 				&& notes.Contains("Original photographer unknown"))
@@ -1434,60 +1418,96 @@ namespace UWash
 			string author;
 			if (data.TryGetValue("Author", out author))
 			{
-				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
 
 				if (data.TryGetValue("Artist", out author)
 					|| data.TryGetValue("Illustrator", out author))
 				{
-					intermediate.Artist += GetAuthor(author, lang, ref intermediate.ArtistData);
+					intermediate.Artist += GetAuthor(keyStr, author, lang, ref intermediate.ArtistData);
 				}
 			}
 			if (data.TryGetValue("Original Creator", out author))
 			{
-				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Creator", out author))
 			{
-				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Artist", out author))
 			{
-				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Photographer", out author))
 			{
-				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Cartographer", out author))
 			{
-				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Engraver", out author))
 			{
-				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Company/Advertising Agency", out author))
 			{
-				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Publisher", out author))
 			{
-				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Illustrator", out author))
 			{
-				intermediate.Creator += GetAuthor(author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+			}
+
+			// warner special case: default unknown photographer
+			if (string.IsNullOrEmpty(intermediate.Creator) || intermediate.Creator == "{{Creator:Arthur Churchill Warner}}")
+			{
+				if (m_projectKey.Equals("warner", StringComparison.OrdinalIgnoreCase))
+				{
+					int phcoll = notes.IndexOf("PH Coll ") + "PH Coll ".Length;
+					string[] phcollstr = notes.Substring(phcoll).Split('.');
+					if (phcollstr.Length != 2)
+					{
+						throw new FormatException("Malformed PH Coll");
+					}
+					if (phcollstr[1][0] == 'A')
+					{
+						intermediate.Creator = "{{unknown|photographer}}";
+					}
+				}
 			}
 
 			if (string.IsNullOrEmpty(intermediate.Creator))
 			{
-				intermediate.Creator = GetAuthor(m_config.defaultAuthor, "en", ref intermediate.CreatorData);
+				intermediate.Creator = GetAuthor(keyStr, m_config.defaultAuthor, "en", ref intermediate.CreatorData);
 			}
 
 			if (data.TryGetValue("Explorer", out author))
 			{
-				intermediate.Contributor = GetAuthor(author, lang, ref intermediate.ContributorData);
+				intermediate.Contributor = GetAuthor(keyStr, author, lang, ref intermediate.ContributorData);
 			}
+		}
+
+		public string GetLicenseTag(int key, Dictionary<string, string> metadata, IntermediateData intermediate)
+		{
+			string licenseTag;
+			if (metadata.TryGetValue("LICENSE", out string temp))
+			{
+				licenseTag = temp;
+			}
+			else
+			{
+				licenseTag = GetLicenseTag(intermediate.Creator, intermediate.CreatorData, intermediate.DateParseMetadata.LatestYear, intermediate.PubCountry);
+			}
+			if (string.IsNullOrEmpty(licenseTag))
+			{
+				throw new LicenseException(intermediate.DateParseMetadata.LatestYear, intermediate.PubCountry);
+			}
+			return licenseTag;
 		}
 
 		private string GetDate(Dictionary<string, string> data, out DateParseMetadata parseMetadata)

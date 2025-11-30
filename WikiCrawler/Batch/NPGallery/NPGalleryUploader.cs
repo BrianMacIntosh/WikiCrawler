@@ -256,47 +256,38 @@ namespace NPGallery
 
 			// determine the photographer
 			string authorString = "";
-			List<Creator> creators = null;
+			List<MappingCreator> creators = null;
 			if (metadata.TryGetValue("Photographer", out outValue))
 			{
-				authorString = GetAuthor(outValue, "", ref creators);
+				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("Photographer, attributed", out outValue))
 			{
-				authorString = GetAuthor(outValue, "", ref creators);
+				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("Creator, attributed", out outValue))
 			{
-				authorString = GetAuthor(outValue, "", ref creators);
+				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("PhotoCredit", out outValue)
 				&& !outValue.Contains(", Code: "))
 			{
-				authorString = GetAuthor(outValue, "", ref creators);
+				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("Creator", out outValue)
 				&& !outValue.Contains(", Code: "))
 			{
-				authorString = GetAuthor(outValue, "", ref creators);
+				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
 			}
 
 			if (metadata.TryGetValue("Author", out outValue))
 			{
 				infoTemplate = "Information";
-				authorString = GetAuthor(outValue, "", ref creators);
+				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
 			}
 			if (metadata.TryGetValue("Camera Information", out string cameraInfo) && cameraInfo == "Better Light Better Light, Model Super8k")
 			{
 				infoTemplate = "Information";
-			}
-
-			if (creators != null)
-			{
-				foreach (Creator creator in creators)
-				{
-					//HACK;
-					creator.UploadableUsage++;
-				}
 			}
 
 			// determine the creation date
@@ -647,12 +638,13 @@ namespace NPGallery
 
 			if (creators != null)
 			{
-				foreach (Creator creator in creators)
+				foreach (MappingCreator creator in creators)
 				{
-					if (!creator.Category.IsEmpty)
-					{
-						categories.Add(creator.Category);
-					}
+					throw new NotImplementedException();
+					//if (!creator.Category.IsEmpty)
+					//{
+					//	categories.Add(creator.Category);
+					//}
 				}
 			}
 
@@ -1171,7 +1163,7 @@ namespace NPGallery
 			}
 		}
 
-		protected override string GetAuthor(string name, string lang, ref List<Creator> creator)
+		protected override string GetAuthor(string fileKey, string name, string lang, ref List<MappingCreator> creator)
 		{
 			string organization = "";
 			int italicStartIndex = name.IndexOf("<i>");
@@ -1182,7 +1174,7 @@ namespace NPGallery
 				name = name.Substring(0, italicStartIndex - 1).TrimEnd();
 			}
 
-			string niceAuthor = base.GetAuthor(name, lang, ref creator);
+			string niceAuthor = base.GetAuthor(fileKey, name, lang, ref creator);
 			if (!string.IsNullOrEmpty(organization))
 			{
 				niceAuthor += " (''" + organization + "'')";

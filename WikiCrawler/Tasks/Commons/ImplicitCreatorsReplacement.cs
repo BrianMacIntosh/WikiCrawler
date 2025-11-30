@@ -18,6 +18,8 @@ namespace Tasks.Commons
 		public string MappedQID;
 		public int MappedDeathyear = 9999;
 		public bool IsUnknown = false;
+
+		public override bool IsUnmapped => string.IsNullOrEmpty(MappedValue) && string.IsNullOrEmpty(MappedQID);
 	}
 
 	/// <summary>
@@ -759,7 +761,7 @@ namespace Tasks.Commons
 			}
 
 			// manually map
-			MappingCreator mapping = s_creatorMappings.TryMapValue(authorString, worksheet.PageTitle);
+			MappingCreator mapping = s_creatorMappings.TryMapValue(authorString, worksheet.PageTitle.ToString());
 			if (mapping == null)
 			{
 				// null or empty authorString?

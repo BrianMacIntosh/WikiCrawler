@@ -1,5 +1,4 @@
-﻿using MediaWiki;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -12,6 +11,9 @@ public abstract class MappingValue
 	/// Pages the value appears on.
 	/// </summary>
 	public List<string> FromPages = new List<string>();
+
+	[JsonIgnore]
+	public virtual bool IsUnmapped => true;
 }
 
 public class MappingDate : MappingValue
@@ -119,7 +121,7 @@ public class ManualMapping<MappingType> : IEnumerable<KeyValuePair<string, Mappi
 		}
 	}
 
-	public MappingType TryMapValue(string input, PageTitle onPage)
+	public MappingType TryMapValue(string input, string onPage)
 	{
 		if (string.IsNullOrEmpty(input))
 		{
@@ -132,7 +134,7 @@ public class ManualMapping<MappingType> : IEnumerable<KeyValuePair<string, Mappi
 			mapping = new MappingType();
 			m_mappings.Add(input, mapping);
 		}
-		if (mapping.FromPages.AddUnique(onPage.ToString()))
+		if (mapping.FromPages.AddUnique(onPage))
 		{
 			m_isDirty = true;
 		}

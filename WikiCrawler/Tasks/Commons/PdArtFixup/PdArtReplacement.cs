@@ -916,7 +916,7 @@ OtherLicense: {8}",
 			}
 
 			// E. is death year manually mapped?
-			MappingCreator mapping = m_creatorMappings.TryMapValue(author, articleTitle);
+			MappingCreator mapping = m_creatorMappings.TryMapValue(author, articleTitle.ToString());
 			if (mapping != null && mapping.MappedDeathyear != 9999)
 			{
 				return new CreatorData() { DeathYear = MediaWiki.DateTime.FromYear(mapping.MappedDeathyear, MediaWiki.DateTime.YearPrecision) };
@@ -971,7 +971,7 @@ OtherLicense: {8}",
 			}
 
 			// unparseable date
-			mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle);
+			mappedDate = m_dateMapping.TryMapValue(worksheet.Date, articleTitle.ToString());
 
 			if (!string.IsNullOrEmpty(mappedDate.ReplaceDate))
 			{
