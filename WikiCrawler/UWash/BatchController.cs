@@ -92,66 +92,6 @@ namespace Tasks
 	}
 
 	/// <summary>
-	/// Task that rebuilds the succeeded list by seeing what's on Commons.
-	/// </summary>
-	public class BatchRebuildSuccesses : BaseTask
-	{
-		public override void Execute()
-		{
-			Api commonsApi = new Api(new Uri("https://commons.wikimedia.org/"));
-
-			Console.Write("Project Key>");
-			string projectKey = Console.ReadLine();
-			string projectDir = Path.Combine(Configuration.DataDirectory, projectKey);
-
-			ProjectConfig projectConfig = JsonConvert.DeserializeObject<ProjectConfig>(
-				File.ReadAllText(Path.Combine(projectDir, "config.json")));
-
-			List<string> succeeded = new List<string>();
-
-			string suffixStart = " (";// + projectConfig.filenameSuffix + " ";
-			foreach (Article article in commonsApi.GetCategoryEntries(PageTitle.Parse(projectConfig.masterCategory), cmtype: CMType.file))
-			{
-				Console.WriteLine(article.title);
-				int tagIndex = article.title.Name.LastIndexOf(suffixStart);
-				if (tagIndex < 0)
-				{
-					continue;
-				}
-				int numStart = tagIndex + suffixStart.Length;
-				int numEnd = article.title.Name.IndexOf(')', numStart);
-				string articleId = article.title.Name.Substring(numStart, numEnd - numStart);
-				succeeded.Add(articleId);
-			}
-
-			string succeededFile = Path.Combine(projectDir, "succeeded.json");
-			succeeded.Sort();
-
-			// clean up metadata for already-succeeded files
-			foreach (string id in succeeded)
-			{
-				string metadataFile = Path.Combine(projectDir, "data_cache", id + ".json");
-				if (File.Exists(metadataFile))
-				{
-					//TODO: create trash directory
-					//TODO: get filenames from central source
-					string targetFile = Path.Combine(projectDir, "data_trash", id + ".json");
-					if (File.Exists(targetFile))
-					{
-						File.Delete(metadataFile);
-					}
-					else
-					{
-						File.Move(metadataFile, targetFile);
-					}
-				}
-			}
-
-			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded, Formatting.Indented));
-		}
-	}
-
-	/// <summary>
 	/// Task that throws away downloaded data that's invalid.
 	/// </summary>
 	public class BatchRevalidateDownloads : BaseTask

@@ -99,6 +99,7 @@
   <ItemGroup>
     <Compile Include="Backend\ImageUtils.cs" />
     <Compile Include="Backend\WebInterface.cs" />
+    <Compile Include="Batch\BatchCleanTrash.cs" />
     <Compile Include="Batch\BatchDownloader.cs" />
     <Compile Include="Batch\BatchTask.cs" />
     <Compile Include="Batch\BatchTaskKeyed.cs" />
@@ -119,6 +120,8 @@
     <Compile Include="Batch\NPGallery\NPSDirectoryQuery.cs" />
     <Compile Include="Batch\OEC\OecUploader.cs" />
     <Compile Include="Batch\ProjectConfig.cs" />
+    <Compile Include="Batch\TrashCombiner.cs" />
+    <Compile Include="Batch\UWash\BatchRebuildSuccesses.cs" />
     <Compile Include="Batch\UWash\MohaiCreditFix.cs" />
     <Compile Include="MediaWiki\Formats\ImageInfo.cs" />
     <Compile Include="MediaWiki\Formats\InterwikiConfig.cs" />
