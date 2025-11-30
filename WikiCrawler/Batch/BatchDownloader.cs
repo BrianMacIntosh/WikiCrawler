@@ -150,26 +150,22 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		Uri url = GetItemUri(key);
 	redownload:
 		string content = Download(url);
+		if (content == null)
+		{
+			// downloader requested skip
+			Console.WriteLine("Downloader requested PERMANENT skip.");
+			m_permanentlyFailed.Add(key);
+			return null;
+		}
+
+		Dictionary<string, string> metadata;
 		try
 		{
-			Dictionary<string, string> metadata = ParseMetadata(content);
-			if (metadata == null)
-			{
-				Console.WriteLine("Permanent skip.");
-				m_permanentlyFailed.Add(key);
-			}
-			else if (cache)
-			{
-				//TODO: crash when failing here
-				File.WriteAllText(
-					GetMetadataCacheFilename(key),
-					JsonConvert.SerializeObject(metadata, Formatting.Indented),
-					Encoding.UTF8);
-			}
-			return metadata;
+			metadata = ParseMetadata(content);
 		}
 		catch (RedownloadException)
 		{
+			// parser requested redownload
 			goto redownload;
 		}
 		catch (Exception e)
@@ -178,6 +174,20 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 			m_failMessages.Add(key.ToString().PadLeft(5) + "\t" + e.Message);
 			return null;
 		}
+
+		if (metadata == null)
+		{
+			Console.WriteLine("Parser requested PERMANENT skip.");
+			m_permanentlyFailed.Add(key);
+		}
+		else if (cache)
+		{
+			File.WriteAllText(
+				GetMetadataCacheFilename(key),
+				JsonConvert.SerializeObject(metadata, Formatting.Indented),
+				Encoding.UTF8);
+		}
+		return metadata;
 	}
 
 	/// <summary>
