@@ -26,7 +26,7 @@ namespace OEC
 			}
 		}
 
-		protected override Dictionary<string, string> LoadMetadata(string fileContents, bool always = false)
+		public override Dictionary<string, string> LoadMetadata(string fileContents, bool always = false)
 		{
 			return new Dictionary<string, string>();
 		}
