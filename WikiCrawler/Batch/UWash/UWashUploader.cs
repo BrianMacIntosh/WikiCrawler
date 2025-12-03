@@ -155,9 +155,9 @@ namespace UWash
 
 			public string PubCountry;
 
-			public string Creator;
-			public string Artist;
-			public string Contributor;
+			public string Creator = "";
+			public string Artist = "";
+			public string Contributor = "";
 
 			public List<MappingCreator> CreatorData = new List<MappingCreator>();
 			public List<MappingCreator> ArtistData = new List<MappingCreator>();
@@ -890,10 +890,6 @@ namespace UWash
 					throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
 				}
 			}
-			if (intermediate.CreatorData.Count == 0 && !m_config.allowFailedCreators)
-			{
-				throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
-			}
 
 			foreach (MappingCreator creator in intermediate.ArtistData)
 			{
@@ -901,10 +897,6 @@ namespace UWash
 				{
 					throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
 				}
-			}
-			if (intermediate.CreatorData.Count == 0 && !m_config.allowFailedCreators)
-			{
-				throw new UWashException("unrecognized creator '" + intermediate.Creator + "'");
 			}
 			if (!string.IsNullOrEmpty(intermediate.Artist) && intermediate.ArtistData.Count == 0 && !m_config.allowFailedCreators)
 			{
