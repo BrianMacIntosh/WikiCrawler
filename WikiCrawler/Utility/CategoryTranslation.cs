@@ -621,7 +621,9 @@ namespace WikiCrawler
 
 		public static PageTitle TryFetchCategoryName(Api api, string cat)
 		{
-			Article article = TryFetchCategory(api, PageTitle.Parse(cat));
+			PageTitle title = PageTitle.Parse(cat);
+			title.Namespace = PageTitle.NS_Category;
+			Article article = TryFetchCategory(api, title);
 			if (!Article.IsNullOrMissing(article))
 			{
 				return article.title;
@@ -750,6 +752,10 @@ namespace WikiCrawler
 
 		private static Article GetCategory(Api api, ref PageTitle cat)
 		{
+			if (cat.Namespace != PageTitle.NS_Category)
+			{
+				throw new ArgumentException("Provided title is not in the Category namespace.");
+			}
 			Article art = api.GetPage(cat);
 			if (art != null && !art.missing)
 			{
