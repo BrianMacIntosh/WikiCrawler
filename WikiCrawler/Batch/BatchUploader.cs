@@ -173,6 +173,11 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	/// </summary>
 	public virtual IEnumerable<KeyType> GetKeys()
 	{
+		if (!Directory.Exists(MetadataCacheDirectory))
+		{
+			yield break;
+		}
+
 		List<string> metadataFiles = Directory.GetFiles(MetadataCacheDirectory).ToList();
 
 		if (m_config.randomizeOrder)
