@@ -5,6 +5,16 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
+public struct TaskItemKeyString
+{
+	public string Key;
+
+	public TaskItemKeyString(string key)
+	{
+		Key = key;
+	}
+}
+
 public abstract class MappingValue
 {
 	/// <summary>
@@ -121,7 +131,7 @@ public class ManualMapping<MappingType> : IEnumerable<KeyValuePair<string, Mappi
 		}
 	}
 
-	public MappingType TryMapValue(string input, string onPage)
+	public MappingType TryMapValue(string input, TaskItemKeyString onPage)
 	{
 		if (string.IsNullOrEmpty(input))
 		{
@@ -134,7 +144,7 @@ public class ManualMapping<MappingType> : IEnumerable<KeyValuePair<string, Mappi
 			mapping = new MappingType();
 			m_mappings.Add(input, mapping);
 		}
-		if (mapping.FromPages.AddUnique(onPage))
+		if (mapping.FromPages.AddUnique(onPage.Key))
 		{
 			m_isDirty = true;
 		}

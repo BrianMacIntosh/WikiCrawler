@@ -30,6 +30,9 @@ namespace Tasks
 
 			Api Api = GlobalAPIs.Commons;
 
+			throw new NotImplementedException(); //TODO: update
+			CategoryMapping categoryMapping = null;// new CategoryMapping();
+
 			string[] keys = categoryMap.Keys.ToArray();
 			foreach (string key in keys)
 			{
@@ -39,7 +42,7 @@ namespace Tasks
 				{
 					Console.WriteLine(key + "?");
 
-					PageTitle automap = CategoryTranslation.TranslateCategory(Api, key);
+					PageTitle automap = categoryMapping.TranslateCategory(Api, key, new TaskItemKeyString()); //TODO: key
 					if (!automap.IsEmpty)
 					{
 						Console.WriteLine("=" + automap);

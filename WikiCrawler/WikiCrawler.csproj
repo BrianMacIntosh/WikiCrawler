@@ -193,7 +193,7 @@
     <Compile Include="Utility\ImageUtility.cs" />
     <Compile Include="Utility\LicenseUtility.cs" />
     <Compile Include="Utility\StringUtility.cs" />
-    <Compile Include="Utility\CategoryTranslation.cs" />
+    <Compile Include="Utility\CategoryMapping.cs" />
     <Compile Include="Tasks\Commons\CommonsCreatorFromWikidata.cs" />
     <Compile Include="DetectLanguage.cs" />
     <Compile Include="Tasks\DropboxDownloader.cs" />

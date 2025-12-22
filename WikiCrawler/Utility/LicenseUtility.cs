@@ -22,7 +22,7 @@ public static class LicenseUtility
 
 	private static int CurrentYear
 	{
-		get { return System.DateTime.Now.Year; }
+		get { return System.DateTime.Now.Year + 1; } //TEMP: +1
 	}
 
 	static LicenseUtility()

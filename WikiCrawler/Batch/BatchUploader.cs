@@ -35,9 +35,19 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	/// </summary>
 	protected ManualMapping<MappingCreator> creatorMapping;
 
+	/// <summary>
+	/// Maps tag strings to categories for this task.
+	/// </summary>
+	protected CategoryMapping categoryMapping;
+
 	public string CreatorMappingFile
 	{
 		get { return Path.Combine(ProjectDataDirectory, "creators.json"); }
+	}
+
+	public string CategoryMappingFile
+	{
+		get { return Path.Combine(ProjectDataDirectory, "categories.json"); }
 	}
 
 	public string PreviewDirectory
@@ -71,6 +81,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		Api.AutoLogIn();
 
 		creatorMapping = new ManualMapping<MappingCreator>(CreatorMappingFile);
+		categoryMapping = new CategoryMapping(CategoryMappingFile);
 	}
 
 	private static bool s_stop = false;
@@ -210,6 +221,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		base.SaveOut();
 
 		creatorMapping.Serialize();
+		categoryMapping.Serialize();
 	}
 
 	void OnStopFileCreated(object sender, FileSystemEventArgs e)
@@ -534,8 +546,10 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	/// <summary>
 	/// Get a string that should be used for the file's 'author' field.
 	/// </summary>
-	protected virtual string GetAuthor(string fileKey, string name, string lang, ref List<MappingCreator> creators)
+	protected virtual string GetAuthor(KeyType key, string name, string lang, ref List<MappingCreator> creators)
 	{
+		TaskItemKeyString keyString = new TaskItemKeyString(key.ToString());
+
 		string finalResult = "";
 		foreach (string author in ParseAuthor(name))
 		{
@@ -544,7 +558,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 				creators = new List<MappingCreator>();
 			}
 
-			MappingCreator creator = creatorMapping.TryMapValue(author, fileKey);
+			MappingCreator creator = creatorMapping.TryMapValue(author, keyString);
 			if (creator == null)
 			{
 				// only happens for invalid input

@@ -202,6 +202,8 @@ namespace NPGallery
 
 		protected override string BuildPage(Guid key, Dictionary<string, string> metadata)
 		{
+			TaskItemKeyString keyString = new TaskItemKeyString(key.ToString());
+
 			MarkAttemptQuery.Parameters.AddWithValue("id", key.ToString("N"));
 			MarkAttemptQuery.ExecuteNonQuery();
 
@@ -259,31 +261,31 @@ namespace NPGallery
 			List<MappingCreator> creators = null;
 			if (metadata.TryGetValue("Photographer", out outValue))
 			{
-				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
+				authorString = GetAuthor(key, outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("Photographer, attributed", out outValue))
 			{
-				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
+				authorString = GetAuthor(key, outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("Creator, attributed", out outValue))
 			{
-				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
+				authorString = GetAuthor(key, outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("PhotoCredit", out outValue)
 				&& !outValue.Contains(", Code: "))
 			{
-				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
+				authorString = GetAuthor(key, outValue, "", ref creators);
 			}
 			else if (metadata.TryGetValue("Creator", out outValue)
 				&& !outValue.Contains(", Code: "))
 			{
-				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
+				authorString = GetAuthor(key, outValue, "", ref creators);
 			}
 
 			if (metadata.TryGetValue("Author", out outValue))
 			{
 				infoTemplate = "Information";
-				authorString = GetAuthor(key.ToString(), outValue, "", ref creators);
+				authorString = GetAuthor(key, outValue, "", ref creators);
 			}
 			if (metadata.TryGetValue("Camera Information", out string cameraInfo) && cameraInfo == "Better Light Better Light, Model Super8k")
 			{
@@ -515,14 +517,14 @@ namespace NPGallery
 			}
 			if (!string.IsNullOrEmpty(parkName))
 			{
-				foreach (PageTitle category in CategoryTranslation.TranslateLocationCategory(parkName))
+				foreach (PageTitle category in categoryMapping.TranslateLocationCategory(parkName, keyString))
 				{
 					string definiteLocation = category.Name;
 
 					if (dateMetadata.IsPrecise)
 					{
 						PageTitle yearLocCat = new PageTitle("Category", dateMetadata.PreciseYear.ToString() + " in " + definiteLocation);
-						Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
+						Article existingYearLocCat = categoryMapping.TryFetchCategory(Api, yearLocCat);
 						if (existingYearLocCat != null)
 						{
 							categories.Add(existingYearLocCat.title);
@@ -576,7 +578,7 @@ namespace NPGallery
 						continue;
 					}
 
-					CollectCategories(categories, subject, parkCodes);
+					CollectCategories(key, categories, subject, parkCodes);
 				}
 			}
 			string keywordsToParse = "";
@@ -605,7 +607,7 @@ namespace NPGallery
 					// park codes will not map to meaningful categories
 					if (!parkCodes.Contains(dataTrimmed, StringComparer.CurrentCultureIgnoreCase))
 					{
-						CollectCategories(categories, dataTrimmed, parkCodes);
+						CollectCategories(key, categories, dataTrimmed, parkCodes);
 					}
 
 					if (!parsedKeywords.Contains(dataTrimmed, StringComparer.CurrentCultureIgnoreCase))
@@ -623,7 +625,7 @@ namespace NPGallery
 				foreach (string dataSplit in outValue.Split(','))
 				{
 					string subject = dataSplit.Trim();
-					CollectCategories(categories, subject, parkCodes);
+					CollectCategories(key, categories, subject, parkCodes);
 				}
 			}
 			if (metadata.TryGetValue("Title", out outValue))
@@ -632,7 +634,7 @@ namespace NPGallery
 				int secondSpace = outValue.IndexOf(' ', outValue.IndexOf(' ') + 1);
 				if (secondSpace >= 12)
 				{
-					CollectCategories(categories, outValue.Substring(0, secondSpace), parkCodes);
+					CollectCategories(key, categories, outValue.Substring(0, secondSpace), parkCodes);
 				}
 			}	
 
@@ -724,7 +726,7 @@ namespace NPGallery
 					{
 						relatedAlbums.Add(relatedTitle);
 
-						CollectCategories(categories, relatedTitle, parkCodes);
+						CollectCategories(key, categories, relatedTitle, parkCodes);
 					}
 				}
 
@@ -856,7 +858,7 @@ namespace NPGallery
 
 			//TODO: captions
 
-			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
+			CategoryMapping.CommonsCategoryTree.RemoveLessSpecific(categories);
 
 			string catCheckTag = GetCheckCategoriesTag(categories.Count);
 			categories.Add(PageTitle.Parse(m_config.checkCategory));
@@ -958,9 +960,11 @@ namespace NPGallery
 			return page;
 		}
 
-		private void CollectCategories(HashSet<PageTitle> categories, string tag, IList<string> unitCodes)
+		private void CollectCategories(Guid key, HashSet<PageTitle> categories, string tag, IList<string> unitCodes)
 		{
-			IEnumerable<PageTitle> mappedCats = CategoryTranslation.TranslateTagCategory(tag);
+			TaskItemKeyString keyString = new TaskItemKeyString(key.ToString());
+
+			IEnumerable<PageTitle> mappedCats = categoryMapping.TranslateTagCategory(tag, keyString);
 			if (mappedCats != null)
 			{
 				foreach (PageTitle mappedCat in mappedCats)
@@ -979,7 +983,7 @@ namespace NPGallery
 						}
 					}
 
-					foreach (Article checkCatArt in CategoryTranslation.TryFetchCategories(Api, checkCats))
+					foreach (Article checkCatArt in categoryMapping.TryFetchCategories(Api, checkCats))
 					{
 						if (checkCatArt != null)
 						{
@@ -1163,7 +1167,7 @@ namespace NPGallery
 			}
 		}
 
-		protected override string GetAuthor(string fileKey, string name, string lang, ref List<MappingCreator> creator)
+		protected override string GetAuthor(Guid key, string name, string lang, ref List<MappingCreator> creator)
 		{
 			string organization = "";
 			int italicStartIndex = name.IndexOf("<i>");
@@ -1174,7 +1178,7 @@ namespace NPGallery
 				name = name.Substring(0, italicStartIndex - 1).TrimEnd();
 			}
 
-			string niceAuthor = base.GetAuthor(fileKey, name, lang, ref creator);
+			string niceAuthor = base.GetAuthor(key, name, lang, ref creator);
 			if (!string.IsNullOrEmpty(organization))
 			{
 				niceAuthor += " (''" + organization + "'')";

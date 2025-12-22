@@ -336,6 +336,8 @@ namespace UWash
 		/// </summary>
 		protected override string BuildPage(int key, Dictionary<string, string> metadata)
 		{
+			TaskItemKeyString keyString = new TaskItemKeyString(key.ToString());
+
 			metadata = PreprocessMetadata(metadata);
 			IntermediateData intermediate = new IntermediateData(metadata, m_config);
 
@@ -422,7 +424,7 @@ namespace UWash
 			}
 
 			// collect all the categories that should be used
-			ProduceCategories(intermediate);
+			ProduceCategories(keyString, intermediate);
 
 			//======== BUILD PAGE TEXT
 
@@ -588,7 +590,7 @@ namespace UWash
 			string placeOfCreation;
 			if (metadata.TryGetValue("Place of Publication", out placeOfCreation))
 			{
-				IEnumerable<PageTitle> locCats = CategoryTranslation.TranslateLocationCategory(placeOfCreation);
+				IEnumerable<PageTitle> locCats = categoryMapping.TranslateLocationCategory(placeOfCreation, keyString);
 				PageTitle placeOfCreationCat = locCats == null ? PageTitle.Empty : locCats.FirstOrDefault();
 				string placeOfCreationContent;
 				if (!placeOfCreationCat.IsEmpty)
@@ -909,7 +911,7 @@ namespace UWash
 		/// <summary>
 		/// Determines which categories the image should go in.
 		/// </summary>
-		private void ProduceCategories(IntermediateData data)
+		private void ProduceCategories(TaskItemKeyString keyString, IntermediateData data)
 		{
 			Dictionary<string, string> metadata = data.Metadata;
 			HashSet<PageTitle> categories = data.Categories;
@@ -977,7 +979,7 @@ namespace UWash
 			}*/
 			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
 			{
-				IEnumerable<PageTitle> cats = CategoryTranslation.TranslateTagCategory(s.Trim());
+				IEnumerable<PageTitle> cats = categoryMapping.TranslateTagCategory(s.Trim(), keyString);
 				if (cats != null)
 				{
 					foreach (PageTitle catsplit in cats)
@@ -998,14 +1000,14 @@ namespace UWash
 					if (nameSplit.Length >= 2 && nameSplit.Length <= 3)
 					{
 						string nameAssembled = nameSplit[1].Trim() + " " + nameSplit[0].Trim();
-						foreach (PageTitle cat in CategoryTranslation.TranslatePersonCategory(nameAssembled, false))
+						foreach (PageTitle cat in categoryMapping.TranslatePersonCategory(nameAssembled, keyString, false))
 						{
 							if (!categories.Contains(cat)) categories.Add(cat);
 						}
 					}
 					else
 					{
-						foreach (PageTitle cat in CategoryTranslation.TranslateTagCategory(rawName))
+						foreach (PageTitle cat in categoryMapping.TranslateTagCategory(rawName, keyString))
 						{
 							if (!categories.Contains(cat)) categories.Add(cat);
 						}
@@ -1025,7 +1027,7 @@ namespace UWash
 			if (metadata.TryGetValue("Additional Glaciers", out outValue)) catparse += "|" + outValue;
 			foreach (string s in catparse.Split(s_categorySplitters, StringSplitOptions.RemoveEmptyEntries))
 			{
-				IEnumerable<PageTitle> cats = CategoryTranslation.TranslateLocationCategory(s.Trim());
+				IEnumerable<PageTitle> cats = categoryMapping.TranslateLocationCategory(s.Trim(), keyString);
 				if (cats != null)
 				{
 					foreach (PageTitle catsplit in cats)
@@ -1038,7 +1040,7 @@ namespace UWash
 			
 			if (metadata.TryGetValue("Publisher Location", out string publisherLocation))
 			{
-				IEnumerable<PageTitle> pubLocCats = CategoryTranslation.TranslateLocationCategory(publisherLocation);
+				IEnumerable<PageTitle> pubLocCats = categoryMapping.TranslateLocationCategory(publisherLocation, keyString);
 				data.PublisherLocCategory = pubLocCats == null ? PageTitle.Empty : pubLocCats.FirstOrDefault();
 			}
 
@@ -1047,7 +1049,7 @@ namespace UWash
 			{
 				string latestYearString = data.DateParseMetadata.LatestYear.ToString();
 				PageTitle adYearCat = new PageTitle(PageTitle.NS_Category, latestYearString + " advertisements in the United States");
-				Article existingYearCat = CategoryTranslation.TryFetchCategory(Api, adYearCat);
+				Article existingYearCat = categoryMapping.TryFetchCategory(Api, adYearCat);
 				if (existingYearCat == null)
 				{
 					existingYearCat = new Article(adYearCat);
@@ -1062,7 +1064,7 @@ namespace UWash
 				if (!data.PublisherLocCategory.IsEmpty)
 				{
 					PageTitle adLocCat = new PageTitle(PageTitle.NS_Category, "Advertisements in " + data.PublisherLocCategory.Name.Split(',')[0]);
-					Article existingLocCat = CategoryTranslation.TryFetchCategory(Api, adLocCat);
+					Article existingLocCat = categoryMapping.TryFetchCategory(Api, adLocCat);
 					if (existingLocCat != null)
 					{
 						categories.Add(existingLocCat.title);
@@ -1097,7 +1099,7 @@ namespace UWash
 							foreach (PageTitle category in categories)
 							{
 								PageTitle portraitPhotosCat = new PageTitle(PageTitle.NS_Category, "Portrait photographs of " + category.Name.ToLower());
-								Article existingCat = CategoryTranslation.TryFetchCategory(Api, portraitPhotosCat);
+								Article existingCat = categoryMapping.TryFetchCategory(Api, portraitPhotosCat);
 								if (!Article.IsNullOrMissing(existingCat))
 								{
 									categories.Add(existingCat.title);
@@ -1123,7 +1125,7 @@ namespace UWash
 					if (false)
 					{
 						PageTitle blackAndWhiteCat = new PageTitle(PageTitle.NS_Category, "Black and white photographs of " + sureLocation);
-						Article existingBwCat = CategoryTranslation.TryFetchCategory(Api, blackAndWhiteCat);
+						Article existingBwCat = categoryMapping.TryFetchCategory(Api, blackAndWhiteCat);
 						if (existingBwCat != null)
 						{
 							categories.Add(existingBwCat.title);
@@ -1134,7 +1136,7 @@ namespace UWash
 				if (data.DateParseMetadata.IsPrecise)
 				{
 					PageTitle yearLocCat = new PageTitle(PageTitle.NS_Category, data.DateParseMetadata.PreciseYear.ToString() + " in " + sureLocation);
-					Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
+					Article existingYearLocCat = categoryMapping.TryFetchCategory(Api, yearLocCat);
 					if (existingYearLocCat != null)
 					{
 						categories.Add(existingYearLocCat.title);
@@ -1142,9 +1144,9 @@ namespace UWash
 				}
 			}
 
-			SayreCategorize.ProduceSayreCategories(Api, CategoryTranslation.CategoryTree, data.Metadata, data.Categories);
+			SayreCategorize.ProduceSayreCategories(Api, CategoryMapping.CommonsCategoryTree, data.Metadata, data.Categories);
 
-			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
+			CategoryMapping.CommonsCategoryTree.RemoveLessSpecific(categories);
 
 			// Public Domain Day
 			if (data.PublicDomainYear == System.DateTime.Now.Year && System.DateTime.Now.Month == 1)
@@ -1398,7 +1400,6 @@ namespace UWash
 
 		public void GetAuthor(int key, Dictionary<string, string> data, string lang, IntermediateData intermediate)
 		{
-			string keyStr = key.ToString();
 			string notes;
 			if (data.TryGetValue("Notes", out notes)
 				&& notes.Contains("Original photographer unknown"))
@@ -1410,49 +1411,49 @@ namespace UWash
 			string author;
 			if (data.TryGetValue("Author", out author))
 			{
-				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 
 				if (data.TryGetValue("Artist", out author)
 					|| data.TryGetValue("Illustrator", out author))
 				{
-					intermediate.Artist += GetAuthor(keyStr, author, lang, ref intermediate.ArtistData);
+					intermediate.Artist += GetAuthor(key, author, lang, ref intermediate.ArtistData);
 				}
 			}
 			if (data.TryGetValue("Original Creator", out author))
 			{
-				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Creator", out author))
 			{
-				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Artist", out author))
 			{
-				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Photographer", out author))
 			{
-				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Cartographer", out author))
 			{
-				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Engraver", out author))
 			{
-				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Company/Advertising Agency", out author))
 			{
-				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Publisher", out author))
 			{
-				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Illustrator", out author))
 			{
-				intermediate.Creator += GetAuthor(keyStr, author, lang, ref intermediate.CreatorData);
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
 
 			// warner special case: default unknown photographer
@@ -1475,12 +1476,12 @@ namespace UWash
 
 			if (string.IsNullOrEmpty(intermediate.Creator))
 			{
-				intermediate.Creator = GetAuthor(keyStr, m_config.defaultAuthor, "en", ref intermediate.CreatorData);
+				intermediate.Creator = GetAuthor(key, m_config.defaultAuthor, "en", ref intermediate.CreatorData);
 			}
 
 			if (data.TryGetValue("Explorer", out author))
 			{
-				intermediate.Contributor = GetAuthor(keyStr, author, lang, ref intermediate.ContributorData);
+				intermediate.Contributor = GetAuthor(key, author, lang, ref intermediate.ContributorData);
 			}
 		}
 

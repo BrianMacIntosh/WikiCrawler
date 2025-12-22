@@ -12,10 +12,13 @@ namespace Dsal
 		public DsalUploader(string key)
 			: base(key)
 		{
+
 		}
 
 		protected override string BuildPage(string key, Dictionary<string, string> metadata)
 		{
+			TaskItemKeyString keyString = new TaskItemKeyString(key);
+
 			List<MappingCreator> creators = new List<MappingCreator>();
 			string photographer = GetAuthor(key, metadata["Photographer"], "en", ref creators);
 			if (creators.Count == 0)
@@ -26,11 +29,13 @@ namespace Dsal
 			DateParseMetadata dateMetadata;
 			string date = DateUtility.ParseDate(metadata["Date"], out dateMetadata);
 
-			HashSet<PageTitle> categories = new HashSet<PageTitle>();
-			categories.Add(PageTitle.Parse(m_config.checkCategory));
+			HashSet<PageTitle> categories = new HashSet<PageTitle>
+			{
+				PageTitle.Parse(m_config.checkCategory)
+			};
 
 			string location = metadata["Location"];
-			IEnumerable<PageTitle> locationCats = CategoryTranslation.TranslateLocationCategory(metadata["Location"]);
+			IEnumerable<PageTitle> locationCats = categoryMapping.TranslateLocationCategory(metadata["Location"], keyString);
 			PageTitle locationCat = locationCats == null ? PageTitle.Empty : locationCats.FirstOrDefault();
 			if (!locationCat.IsEmpty)
 			{
@@ -39,7 +44,7 @@ namespace Dsal
 				if (dateMetadata.IsPrecise)
 				{
 					PageTitle yearLocCat = new PageTitle(PageTitle.NS_Category, dateMetadata.PreciseYear.ToString() + " in " + location);
-					Article existingYearLocCat = CategoryTranslation.TryFetchCategory(Api, yearLocCat);
+					Article existingYearLocCat = categoryMapping.TryFetchCategory(Api, yearLocCat);
 					if (existingYearLocCat != null)
 					{
 						categories.Add(existingYearLocCat.title);
@@ -57,7 +62,7 @@ namespace Dsal
 
 			foreach (string subject in metadata["Subject"].Trim('"').Split(','))
 			{
-				IEnumerable<PageTitle> mappedCats = CategoryTranslation.TranslateTagCategory(subject);
+				IEnumerable<PageTitle> mappedCats = categoryMapping.TranslateTagCategory(subject, keyString);
 				if (mappedCats != null)
 				{
 					categories.AddRange(mappedCats);
@@ -107,7 +112,7 @@ namespace Dsal
 				+ "}}\n"
 				+ "\n";
 
-			CategoryTranslation.CategoryTree.RemoveLessSpecific(categories);
+			CategoryMapping.CommonsCategoryTree.RemoveLessSpecific(categories);
 
 			foreach (PageTitle cat in categories)
 			{

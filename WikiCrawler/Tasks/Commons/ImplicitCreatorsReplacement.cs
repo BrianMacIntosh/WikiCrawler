@@ -761,7 +761,7 @@ namespace Tasks.Commons
 			}
 
 			// manually map
-			MappingCreator mapping = s_creatorMappings.TryMapValue(authorString, worksheet.PageTitle.ToString());
+			MappingCreator mapping = s_creatorMappings.TryMapValue(authorString, new TaskItemKeyString(worksheet.PageTitle.ToString()));
 			if (mapping == null)
 			{
 				// null or empty authorString?

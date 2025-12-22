@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 
 namespace MediaWiki
@@ -121,6 +122,7 @@ namespace MediaWiki
 
 		public static readonly PageTitle Empty = new PageTitle();
 
+		[JsonIgnore]
 		public string FullTitle
 		{
 			get { return string.IsNullOrEmpty(Namespace) ? Name : Namespace + ":" + Name; }
@@ -136,6 +138,7 @@ namespace MediaWiki
 			get; set;
 		}
 
+		[JsonIgnore]
 		public bool IsEmpty
 		{
 			get { return string.IsNullOrEmpty(Name); }
