@@ -424,7 +424,7 @@ namespace UWash
 			}
 
 			// collect all the categories that should be used
-			ProduceCategories(keyString, intermediate);
+			ProduceCategories(key, intermediate);
 
 			//======== BUILD PAGE TEXT
 
@@ -911,8 +911,10 @@ namespace UWash
 		/// <summary>
 		/// Determines which categories the image should go in.
 		/// </summary>
-		private void ProduceCategories(TaskItemKeyString keyString, IntermediateData data)
+		private void ProduceCategories(int key, IntermediateData data)
 		{
+			TaskItemKeyString keyString = new TaskItemKeyString(key.ToString());
+
 			Dictionary<string, string> metadata = data.Metadata;
 			HashSet<PageTitle> categories = data.Categories;
 			string outValue;
@@ -1144,7 +1146,7 @@ namespace UWash
 				}
 			}
 
-			SayreCategorize.ProduceSayreCategories(Api, CategoryMapping.CommonsCategoryTree, data.Metadata, data.Categories);
+			SayreCategorize.ProduceSayreCategories(Api, CategoryMapping.CommonsCategoryTree, key, categoryMapping, data.Metadata, data.Categories);
 
 			CategoryMapping.CommonsCategoryTree.RemoveLessSpecific(categories);
 
