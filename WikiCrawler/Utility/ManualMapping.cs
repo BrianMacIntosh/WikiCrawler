@@ -111,6 +111,7 @@ public class ManualMapping<MappingType> : IEnumerable<KeyValuePair<string, Mappi
 	public void Remove(string key)
 	{
 		m_mappings.Remove(key);
+		m_isDirty = true;
 	}
 
 	public MappingType TryGetValue(string input)
