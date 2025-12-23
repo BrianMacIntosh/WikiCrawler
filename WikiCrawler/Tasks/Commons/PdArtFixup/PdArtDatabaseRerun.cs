@@ -11,7 +11,7 @@ namespace Tasks.Commons
 			: base(
 				  new ImplicitCreatorsReplacement("FixImplicitCreators"),
 				  new LocalizeDateReplacement(),
-				  new PdArtReplacement(),
+				  new PdArtReplacement()
 				  //new LicenseHeaderCleanup(),
 				  )
 		{
