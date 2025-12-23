@@ -100,6 +100,7 @@
     <Compile Include="Backend\ImageUtils.cs" />
     <Compile Include="Backend\WebInterface.cs" />
     <Compile Include="Batch\BatchCleanTrash.cs" />
+    <Compile Include="Batch\BatchCullUnmappedCats.cs" />
     <Compile Include="Batch\BatchDownloader.cs" />
     <Compile Include="Batch\BatchTask.cs" />
     <Compile Include="Batch\BatchTaskKeyed.cs" />
@@ -114,6 +115,7 @@
     <Compile Include="Batch\NPGallery\NPGallery.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryAssetListDownloader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryData.cs" />
+    <Compile Include="Batch\NPGallery\NPGalleryDatabaseImport.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryDownloader.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryFixUp.cs" />
     <Compile Include="Batch\NPGallery\NPGalleryUploader.cs" />
@@ -137,6 +139,7 @@
     <Compile Include="Tasks\Commons\ContribsSummary.cs" />
     <Compile Include="Tasks\Commons\CreatorPossible.cs" />
     <Compile Include="Tasks\Commons\ImplicitCreatorsHistorical.cs" />
+    <Compile Include="Tasks\Commons\LicenseHeaderCleanup.cs" />
     <Compile Include="Tasks\Commons\PdArtFixup\ImpreciseLicenseYearCheck.cs" />
     <Compile Include="Tasks\Commons\PdArtFixup\PdArtInterwikiRerun.cs" />
     <Compile Include="Tasks\ReplaceInCategories.cs" />
