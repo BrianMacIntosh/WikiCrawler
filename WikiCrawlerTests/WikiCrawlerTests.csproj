@@ -81,6 +81,7 @@
     <Compile Include="PageNameComparerTests.cs" />
     <Compile Include="PdArtReplacementTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QIdTests.cs" />
     <Compile Include="TakenOnTemplateTest.cs" />
     <Compile Include="TemplateLocationTests.cs" />
   </ItemGroup>
