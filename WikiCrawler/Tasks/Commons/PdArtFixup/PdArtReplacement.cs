@@ -43,6 +43,8 @@ namespace Tasks.Commons
 		/// </summary>
 		public static bool SkipCached = true;
 
+		public static bool AllowDeathyearOverwrite = false;
+
 		/// <summary>
 		/// Directory where task-specific data is stored.
 		/// </summary>
@@ -328,7 +330,8 @@ OtherLicense: {8}",
 				if (component.StartsWith("deathyear=", StringComparison.InvariantCultureIgnoreCase))
 				{
 					string deathyearParam = WikiUtils.GetTemplateParameter("deathyear", nakedTemplate);
-					if (!string.IsNullOrEmpty(deathyearParam)
+					if (!AllowDeathyearOverwrite
+						&& !string.IsNullOrEmpty(deathyearParam)
 						&& newDeathyear.HasValue
 						&& (!int.TryParse(deathyearParam, out int deathyear) || deathyear != newDeathyear.Value))
 					{
