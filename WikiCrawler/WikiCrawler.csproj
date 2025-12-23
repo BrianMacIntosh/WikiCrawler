@@ -123,7 +123,7 @@
     <Compile Include="Batch\OEC\OecUploader.cs" />
     <Compile Include="Batch\ProjectConfig.cs" />
     <Compile Include="Batch\TrashCombiner.cs" />
-    <Compile Include="Batch\UWash\BatchRebuildSuccesses.cs" />
+    <Compile Include="Batch\UWash\RebuildSuccesses.cs" />
     <Compile Include="Batch\UWash\MohaiCreditFix.cs" />
     <Compile Include="Batch\UWash\WarnerAuthorUpdate.cs" />
     <Compile Include="MediaWiki\Formats\ImageInfo.cs" />
