@@ -141,7 +141,7 @@
     <Compile Include="Tasks\Commons\ImplicitCreatorsHistorical.cs" />
     <Compile Include="Tasks\Commons\LicenseHeaderCleanup.cs" />
     <Compile Include="Tasks\Commons\PdArtFixup\ImpreciseLicenseYearCheck.cs" />
-    <Compile Include="Tasks\Commons\PdArtFixup\PdArtCheckDeathyearChange.cs" />
+    <Compile Include="Tasks\Commons\PdArtFixup\PdArtUpdateDeathyear.cs" />
     <Compile Include="Tasks\Commons\PdArtFixup\PdArtInterwikiRerun.cs" />
     <Compile Include="Tasks\ReplaceInCategories.cs" />
     <Compile Include="Tasks\ReplaceInDatabaseQuery.cs" />
