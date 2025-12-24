@@ -194,7 +194,11 @@ namespace MediaWiki
 			string[] sp1 = text.Split(catOpen, StringSplitOptions.None);
 			for (int c = 1; c < sp1.Length; c++)
 			{
-				yield return new PageTitle(PageTitle.NS_Category, sp1[c].Split(catClose, StringSplitOptions.None)[0].Split('|')[0].Trim());
+				PageTitle category = new PageTitle(PageTitle.NS_Category, sp1[c].Split(catClose, StringSplitOptions.None)[0].Split('|')[0].Trim());
+				if (!category.IsEmpty)
+				{
+					yield return category;
+				}
 			}
 		}
 
