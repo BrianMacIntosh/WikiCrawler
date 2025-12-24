@@ -244,8 +244,8 @@ namespace WikiCrawler
 				command.Parameters.AddWithValue("deathYear", deathYear == null ? null : (int?)deathYear.GetLatestYear());
 				command.Parameters.AddWithValue("deathYearPrecision", deathYear == null ? 0 : deathYear.Precision);
 				command.Parameters.AddWithValue("countryOfCitizenship", (int?)countryOfCitizenship.GetValueOrNull());
-				command.Parameters.AddWithValue("commonsCategory", commonsCategory);
-				command.Parameters.AddWithValue("commonsCreator", commonsCreator);
+				command.Parameters.AddWithValue("commonsCategory", commonsCategory.IsEmpty ? null : commonsCategory.ToString());
+				command.Parameters.AddWithValue("commonsCreator", commonsCreator.IsEmpty ? null : commonsCreator.ToString());
 				command.ExecuteNonQuery();
 
 				return new CreatorData()
