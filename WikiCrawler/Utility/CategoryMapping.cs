@@ -159,6 +159,9 @@ namespace WikiCrawler
 				}
 			}
 
+
+			//TODO: instead of checking just the last component, verify ALL pieces are present
+#if false
 			//check for only the last on wikidata
 			IEnumerable<QId> entities = GlobalAPIs.Wikidata.SearchEntities(pieces.Last());
 			foreach (QId qid in entities.Take(5))
@@ -168,9 +171,6 @@ namespace WikiCrawler
 				//get country for place
 				if (place.HasClaim("P17"))
 				{
-					//TODO: instead, verify ALL pieces are present
-					throw new Exception();
-
 					IEnumerable<Entity> parents = place.GetClaimValuesAsEntities("P17", GlobalAPIs.Wikidata);
 					if (place.HasClaim("P131"))
 					{
@@ -215,6 +215,7 @@ namespace WikiCrawler
 					}
 				}
 			}
+#endif
 
 			return MapCategory(input, key);
 		}
