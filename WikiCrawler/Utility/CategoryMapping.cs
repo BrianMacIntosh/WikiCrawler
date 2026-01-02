@@ -514,11 +514,21 @@ namespace WikiCrawler
 			return "";*/
 		}
 
+		/// <summary>
+		/// Forces the specified page title into the category namespace.
+		/// </summary>
 		private PageTitle ForceCategory(string pageName)
 		{
-			PageTitle title = PageTitle.Parse(pageName);
-			title.Namespace = PageTitle.NS_Category;
-			return title;
+			try
+			{
+				PageTitle title = PageTitle.Parse(pageName);
+				title.Namespace = PageTitle.NS_Category;
+				return title;
+			}
+			catch (ArgumentException)
+			{
+				return new PageTitle(PageTitle.NS_Category, pageName);
+			}
 		}
 
 		/// <summary>
