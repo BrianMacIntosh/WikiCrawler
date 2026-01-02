@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using MediaWiki;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -112,6 +113,8 @@ namespace Tasks
 
 			try
 			{
+				string password = File.ReadAllText(Path.Combine(Configuration.DataDirectory, "auth-heartbeat.txt"));
+
 				foreach (HeartbeatData heartbeatTask in m_heartbeatTasks.Values)
 				{
 					string dataString;
@@ -121,7 +124,7 @@ namespace Tasks
 						string serialized;
 						heartbeatTask.terminate = terminate;
 						serialized = JsonConvert.SerializeObject(heartbeatTask);
-						dataString = "d=" + System.Web.HttpUtility.UrlEncode(serialized);
+						dataString = "d=" + System.Web.HttpUtility.UrlEncode(serialized) + "&pw=" + System.Web.HttpUtility.UrlEncode(password);
 					}
 
 					using (StreamReader response = new StreamReader(WebInterface.HttpPost(CreateHeartbeatRequest, dataString, m_heartbeatThrottle)))
@@ -145,7 +148,10 @@ namespace Tasks
 
 		private HttpWebRequest CreateHeartbeatRequest()
 		{
-			return (HttpWebRequest)WebRequest.Create(m_heartbeatEndpoint);
+			HttpWebRequest request =(HttpWebRequest)WebRequest.Create(m_heartbeatEndpoint);
+			request.UserAgent = Api.UserAgent;
+			request.ContentType = "application/x-www-form-urlencoded";
+			return request;
 		}
 	}
 }

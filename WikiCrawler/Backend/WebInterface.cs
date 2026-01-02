@@ -51,7 +51,10 @@ public static class WebInterface
 	retry:
 		HttpWebRequest request = requestFactory();
 		request.Method = "POST";
-		request.ContentType = "application/x-www-form-urlencoded";
+		if (request.ContentType == null)
+		{
+			request.ContentType = "application/x-www-form-urlencoded";
+		}
 
 		if (throttle == null)
 		{
