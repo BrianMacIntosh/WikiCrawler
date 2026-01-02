@@ -163,9 +163,12 @@ namespace UWash
 			public List<MappingCreator> ArtistData = new List<MappingCreator>();
 			public List<MappingCreator> ContributorData = new List<MappingCreator>();
 
+			/// <summary>
+			/// The first year in which this item will be public domain in the United States due to expiry.
+			/// </summary>
 			public int PublicDomainYear
 			{
-				get { return DateParseMetadata.LatestYear + LicenseUtility.UnitedStatesExpiryTimeYears; }
+				get { return DateParseMetadata.LatestYear + LicenseUtility.UnitedStatesExpiryTimeYears + 1; }
 			}
 
 			public IntermediateData(Dictionary<string, string> metadata, ProjectConfig config)
