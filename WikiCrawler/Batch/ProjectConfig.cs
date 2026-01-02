@@ -14,6 +14,12 @@ public class ProjectConfig
 	public string sourceTemplate;
 	public string defaultAuthor = "unknown";
 	public string defaultPubCountry;
+
+	/// <summary>
+	/// The latest publication year that can possibly occur in this collection.
+	/// </summary>
+	public int latestYear = 9999;
+
 	public bool omitCheckWarning;
 
 	/// <summary>

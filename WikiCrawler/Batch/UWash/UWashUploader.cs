@@ -1525,6 +1525,7 @@ namespace UWash
 				&& !data.TryGetValue("Century Published", out date))
 			{
 				parseMetadata = DateParseMetadata.Unknown;
+				parseMetadata.LatestYear = m_config.latestYear;
 				return "{{unknown|date}}";
 			}
 
@@ -1564,6 +1565,15 @@ namespace UWash
 				&& DateUtility.IsExactDateModern(date))
 			{
 				date = "{{taken on|" + date + "}}";
+			}
+
+			if (parseMetadata.LatestYear == 9999)
+			{
+				parseMetadata.LatestYear = m_config.latestYear;
+			}
+			else if (parseMetadata.LatestYear > m_config.latestYear)
+			{
+				ConsoleUtility.WriteLine(ConsoleColor.Yellow, "Parsed year is greater than config latestYear");
 			}
 
 			return date;
