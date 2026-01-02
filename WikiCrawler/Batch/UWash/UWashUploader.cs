@@ -31,6 +31,7 @@ namespace UWash
 			"Subtitle",
 			"Advertisement",
 			"Photographer",
+			"Studio Name",
 			"Cartographer",
 			"Engraver",
 			"Explorer",
@@ -52,6 +53,7 @@ namespace UWash
 			"Historical Notes",
 			"Scrapbook Notes",
 			"Album/Page",
+			"Album Navigation",
 			"Keywords",
 			"Personal Names",
 			"Subjects",
@@ -196,7 +198,7 @@ namespace UWash
 		}
 
 		private static char[] s_punctuation = { '.', ' ', '\t', '\n', ',', '-' };
-		private static string[] s_categorySplitters = { "|", ";", "<br/>", "<br />", "<br>" };
+		private static string[] s_categorySplitters = { "|", ";", "<br/>", "<br />", "<br>", "\r\n" };
 		private static string[] s_captionSplitters = new string[] { "--", "|" };
 
 		public UWashUploader(string key)
@@ -411,16 +413,6 @@ namespace UWash
 			}
 			if (!string.IsNullOrEmpty(unused)) throw new UWashException("unused key" + unused);
 
-			// check for metadata with unexpected value
-			string objectDescription;
-			if (metadata.TryGetValue("Object Description", out objectDescription))
-			{
-				if (objectDescription != "Photograph")
-				{
-					throw new UWashException("unused key|Object Description");
-				}
-			}
-
 			if (intermediate.DateParseMetadata.LatestYear < 1897 && intermediate.Creator == "{{Creator:Asahel Curtis}}")
 			{
 				//throw new UWashException("Curtis - check author");
@@ -622,18 +614,25 @@ namespace UWash
 			}
 
 			content.AppendLine("|date=" + dateTag);
-			if (metadata.TryGetValue("Physical Description", out temp))
-			{
-				if (metadata.ContainsKey("Image Production Process"))
-				{
-					throw new UWashException("Both 'Physical Description' and 'Image Production Process'");
-				}
 
+			// these currently cannot be reconciled
+			int physicalDescKeys = 0;
+			if (metadata.ContainsKey("Physical Description")) physicalDescKeys++;
+			if (metadata.ContainsKey("Object Description")) physicalDescKeys++;
+			if (metadata.ContainsKey("Image Production Process")) physicalDescKeys++;
+			if (physicalDescKeys > 1)
+			{
+				throw new UWashException("Too many Physical Description keys.");
+			}
+
+			if (metadata.TryGetValue("Physical Description", out temp)
+				|| metadata.TryGetValue("Object Description", out temp))
+			{
 				string medium;
 				Dimensions dimensions;
 				ParsePhysicalDescription(temp, out medium, out dimensions);
 				medium = medium.Trim();
-				if (!string.IsNullOrEmpty(medium))
+				if (!string.IsNullOrEmpty(medium) && medium != "Photograph") // Photograph is obvious
 				{
 					content.AppendLine("|medium={{en|1=" + medium + "}}");
 				}
@@ -728,6 +727,10 @@ namespace UWash
 			if (metadata.TryGetValue("Album/Page", out temp))
 			{
 				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Album/Page|value=" + temp + "}}");
+			}
+			if (metadata.TryGetValue("Album Navigation", out temp))
+			{
+				otherFields = StringUtility.Join("\n", otherFields, "{{Information field|name=Album Navigation|value=" + temp + "}}");
 			}
 			if (metadata.TryGetValue("Digital ID Number", out temp))
 			{
@@ -1437,6 +1440,10 @@ namespace UWash
 				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
 			if (data.TryGetValue("Photographer", out author))
+			{
+				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
+			}
+			if (data.TryGetValue("Studio Name", out author))
 			{
 				intermediate.Creator += GetAuthor(key, author, lang, ref intermediate.CreatorData);
 			}
