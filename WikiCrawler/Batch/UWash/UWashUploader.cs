@@ -1211,7 +1211,7 @@ namespace UWash
 			string accession = "{{UWASH-digital-accession|" + UWashConfig.digitalCollectionsKey + "|" + key + "}}";
 			if (text.Contains(accession))
 			{
-				return false;
+				return true;
 			}
 			text = text.Substring(0, insertionPoint) + " " + accession + text.Substring(insertionPoint);
 
