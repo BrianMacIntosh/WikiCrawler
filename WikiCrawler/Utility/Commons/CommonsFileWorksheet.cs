@@ -41,6 +41,10 @@ public class CommonsFileWorksheet : Worksheet
 			}
 			return author;
 		}
+		set
+		{
+			Text = Text.Substring(0, authorIndex) + value + Text.Substring(authorIndex + author.Length);
+		}
 	}
 
 	/// <summary>
