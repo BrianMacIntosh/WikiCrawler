@@ -291,6 +291,7 @@ namespace WikiCrawler
 			if (string.IsNullOrWhiteSpace(input)) return null;
 
 			input = input.Trim();
+			input = input.Trim('[', ']', '{', '}', '<', '>');
 
 			IEnumerable<PageTitle> existingMapping = GetMappedCategories(input, key);
 			if (existingMapping != null)
@@ -391,6 +392,7 @@ namespace WikiCrawler
 				//Exact match on first word
 				catChecks.Add(split[0]);
 
+				catChecks.RemoveAll(s => string.IsNullOrEmpty(s));
 				PageTitle catname = TryMapCategoryFinal(api, catChecks, false);
 				if (!catname.IsEmpty) return catname;
 			}
@@ -519,15 +521,15 @@ namespace WikiCrawler
 		/// </summary>
 		private PageTitle ForceCategory(string pageName)
 		{
-			try
+			PageTitle title = PageTitle.SafeParse(pageName);
+			if (title.IsEmpty)
 			{
-				PageTitle title = PageTitle.Parse(pageName);
+				return PageTitle.ConstructAndSanitize(PageTitle.NS_Category, pageName);
+			}
+			else
+			{
 				title.Namespace = PageTitle.NS_Category;
 				return title;
-			}
-			catch (ArgumentException)
-			{
-				return new PageTitle(PageTitle.NS_Category, pageName);
 			}
 		}
 

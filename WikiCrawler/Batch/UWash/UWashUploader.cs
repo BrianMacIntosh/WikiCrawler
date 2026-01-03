@@ -249,7 +249,7 @@ namespace UWash
 				title = string.Format("{0} ({1} {2})", title, m_config.filenameSuffix, key);
 			}
 
-			return new PageTitle(PageTitle.NS_File, title);
+			return PageTitle.ConstructAndSanitize(PageTitle.NS_File, title);
 		}
 
 		/// <summary>

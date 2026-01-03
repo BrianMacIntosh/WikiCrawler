@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MediaWiki
 {
@@ -144,10 +145,45 @@ namespace MediaWiki
 			get { return string.IsNullOrEmpty(Name); }
 		}
 
+		public static readonly char[] ForbiddenCharacters = new char[] { '#', '<', '>', '[', ']', '|', '{', '}', '_' };
+
+		public static bool IsValidTitleCharacter(char c)
+		{
+			return c >= 32 && c != 127 && !ForbiddenCharacters.Contains(c);
+		}
+
+		public static bool ContainsInvalidTitleCharacter(string str)
+		{
+			return !str.All(c => IsValidTitleCharacter(c));
+		}
+
 		public PageTitle(string ns, string name)
 		{
 			Namespace = ns;
+
+			if (ContainsInvalidTitleCharacter(name))
+			{
+				throw new ArgumentException($"PageTitle name '{name}' contains an invalid character.");
+			}
+
 			Name = name.Trim();
+		}
+
+		/// <summary>
+		/// Constructs a page title, silently sanitizing the name segment of any invalid characters.
+		/// </summary>
+		public static PageTitle ConstructAndSanitize(string ns, string name)
+		{
+			name = name.Replace('[', '(');
+			name = name.Replace(']', ')');
+			name = name.Replace('{', '(');
+			name = name.Replace('}', ')');
+			name = name.Replace('<', '(');
+			name = name.Replace('>', ')');
+			name = name.Replace('#', '-');
+			name = name.Replace('|', '-');
+			name = name.Replace('_', '-');
+			return new PageTitle(ns, name);
 		}
 
 		/// <summary>
