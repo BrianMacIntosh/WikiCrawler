@@ -1190,7 +1190,7 @@ namespace UWash
 			string text = targetArticle.revisions[0].text;
 
 			// Check that it's one of ours
-			if (!text.Contains("|source=" + m_config.sourceTemplate))
+			if (!text.Contains("|source={{UWASH-"))
 			{
 				return false;
 			}
