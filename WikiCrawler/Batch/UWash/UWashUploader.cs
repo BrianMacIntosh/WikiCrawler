@@ -198,7 +198,7 @@ namespace UWash
 		}
 
 		private static char[] s_punctuation = { '.', ' ', '\t', '\n', ',', '-' };
-		private static string[] s_categorySplitters = { "|", ";", "<br/>", "<br />", "<br>", "\r\n" };
+		private static string[] s_categorySplitters = { "|", ";", "<br/>", "<br />", "<br>", "\r\n", "\n" };
 		private static string[] s_captionSplitters = new string[] { "--", "|" };
 
 		public UWashUploader(string key)
@@ -1157,7 +1157,9 @@ namespace UWash
 			CategoryMapping.CommonsCategoryTree.RemoveLessSpecific(categories);
 
 			// Public Domain Day
-			if (data.PublicDomainYear == System.DateTime.Now.Year && System.DateTime.Now.Month == 1)
+			if (data.PublicDomainYear == System.DateTime.Now.Year
+				&& data.DateParseMetadata.IsPrecise
+				&& System.DateTime.Now.Month == 1)
 			{
 				string nameFormat = string.IsNullOrEmpty(m_config.publicDomainDayCategory)
 					? "Media uploaded for Public Domain Day {0}"
