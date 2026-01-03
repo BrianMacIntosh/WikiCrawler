@@ -134,7 +134,7 @@ namespace UWash
 					}
 				}
 
-				Article personCategory = commonsApi.GetPage(new PageTitle(PageTitle.NS_Category, nametrim));
+				Article personCategory = commonsApi.GetPage(PageTitle.ConstructAndSanitize(PageTitle.NS_Category, nametrim));
 				if (personCategory != null && !personCategory.missing)
 				{
 					// check that it's an actor/ess
