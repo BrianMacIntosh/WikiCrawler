@@ -271,7 +271,7 @@ public static class LicenseUtility
 			{
 				int safeDeadYears = CurrentYear - (pubYear + SafeLifetimeYears);
 				int pma = PmaRoundDown(safeDeadYears);
-				return $"{{PD-old-{pma}-expired}}";
+				return "{{PD-old-" + pma + "-expired}}";
 			}
 		}
 		else
