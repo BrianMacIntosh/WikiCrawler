@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Web.UI.WebControls;
 
 public enum BatchItemStatus
 {
@@ -14,7 +15,9 @@ public enum BatchItemStatus
 	Failed,
 	LicenseFailed,
 	UploadDeclined,
-	Succeeded
+	Succeeded,
+
+	COUNT
 }
 
 /// <summary>
@@ -144,14 +147,24 @@ public abstract class BatchTaskKeyed<KeyType> : BatchTask
 
 	protected void RefreshHeartbeatData()
 	{
+		int[] counts = new int[(int)BatchItemStatus.COUNT];
+		int total = 0;
+		foreach (var kv in m_itemStatus)
+		{
+			if (kv.Value != BatchItemStatus.PermanentlySkipped)
+			{
+				total++;
+			}
+			counts[(int)kv.Value]++;
+		}
 		lock (Heartbeat)
 		{
-			Heartbeat.nTotal = m_itemStatus.Count(kv => kv.Value != BatchItemStatus.PermanentlySkipped);
-			Heartbeat.nCompleted = m_itemStatus.Count(kv => kv.Value == BatchItemStatus.Succeeded);
-			Heartbeat.nDownloaded = m_itemStatus.Count(kv => kv.Value == BatchItemStatus.Downloaded);
-			Heartbeat.nFailed = m_itemStatus.Count(kv => kv.Value == BatchItemStatus.Failed);
-			Heartbeat.nFailedLicense = m_itemStatus.Count(kv => kv.Value == BatchItemStatus.LicenseFailed);
-			Heartbeat.nDeclined = m_itemStatus.Count(kv => kv.Value == BatchItemStatus.UploadDeclined);
+			Heartbeat.nTotal		= total;
+			Heartbeat.nCompleted	= counts[(int)BatchItemStatus.Succeeded];
+			Heartbeat.nDownloaded	= counts[(int)BatchItemStatus.Downloaded];
+			Heartbeat.nFailed		= counts[(int)BatchItemStatus.Failed];
+			Heartbeat.nFailedLicense = counts[(int)BatchItemStatus.LicenseFailed];
+			Heartbeat.nDeclined		= counts[(int)BatchItemStatus.UploadDeclined];
 		}
 	}
 }
