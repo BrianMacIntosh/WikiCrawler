@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using Tasks.Commons;
@@ -232,6 +233,7 @@ namespace UWash
 			title = title.Split(
 				StringUtility.LineBreak,
 				StringSplitOptions.RemoveEmptyEntries)[0].Trim(s_punctuation).Replace(".", "");
+			title = WebUtility.HtmlDecode(title);
 			if (title.Length > 129)
 			{
 				//truncate the title to 128 characters on a word boundary
