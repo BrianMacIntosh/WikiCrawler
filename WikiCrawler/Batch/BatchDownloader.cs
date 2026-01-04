@@ -27,6 +27,16 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 
 		if (!Directory.Exists(MetadataCacheDirectory))
 			Directory.CreateDirectory(MetadataCacheDirectory);
+
+		// retroactively mark status of downloaded items
+		foreach (KeyType itemKey in GetDownloadSucceededKeys())
+		{
+			if (GetItemStatus(itemKey) == BatchItemStatus.NotDownloaded
+				|| GetItemStatus(itemKey) == BatchItemStatus.Unknown)
+			{
+				m_itemStatus[itemKey] = BatchItemStatus.Downloaded;
+			}
+		}
 	}
 
 	/// <summary>
@@ -57,43 +67,34 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 
 		try
 		{
-			HashSet<KeyType> downloadSucceededKeys = GetDownloadSucceededKeys();
-
 			int saveOutInterval = 10;
 			int saveOutTimer = saveOutInterval;
 
 			IEnumerable<KeyType> allKeys = GetKeys();
-			int totalKeyCount = allKeys.Count();
-			Heartbeat.nTotal = totalKeyCount - m_permanentlyFailed.Count;
-			Heartbeat.nCompleted = m_succeeded.Count;
-			Heartbeat.nDownloaded = downloadSucceededKeys.Count;
-			Heartbeat.nFailed = m_failMessages.Count;
-			Heartbeat.nFailedLicense = 0;
+			foreach (KeyType key in allKeys)
+			{
+				if (!m_itemStatus.ContainsKey(key))
+				{
+					m_itemStatus[key] = BatchItemStatus.NotDownloaded;
+				}
+			}
 
+			RefreshHeartbeatData();
 			StartHeartbeat();
 
 			// load metadata
-			IEnumerable<KeyType> downloadKeys = allKeys.Where(
-				key => !downloadSucceededKeys.Contains(key)
-					&& !m_permanentlyFailed.Contains(key));
+			IEnumerable<KeyType> downloadKeys = allKeys.Where(key => GetItemStatus(key) == BatchItemStatus.NotDownloaded);
 			int downloadCount = downloadKeys.Count();
 			foreach (KeyType key in downloadKeys)
 			{
 				Dictionary<string, string> metadata = Download(key);
 				if (metadata != null)
 				{
-					downloadSucceededKeys.Add(key);
+					m_itemStatus[key] = BatchItemStatus.Downloaded;
 				}
 				saveOutTimer--;
 
-				lock (m_heartbeatTasks)
-				{
-					Heartbeat.nTotal = totalKeyCount - m_permanentlyFailed.Count;
-					Heartbeat.nCompleted = m_succeeded.Count;
-					Heartbeat.nDownloaded = downloadSucceededKeys.Count;
-					Heartbeat.nFailed = m_failMessages.Count;
-					Heartbeat.nFailedLicense = 0;
-				}
+				RefreshHeartbeatData();
 				
 				if (File.Exists(stopFile))
 				{
@@ -132,7 +133,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		// load the list of files that have already been uploaded
 		if (!m_config.redownloadSucceeded)
 		{
-			downloadSucceededKeys.AddRange(m_succeeded);
+			downloadSucceededKeys.AddRange(GetItemsWithStatus(BatchItemStatus.Succeeded));
 		}
 
 		return downloadSucceededKeys;
@@ -156,7 +157,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		{
 			// downloader requested skip
 			Console.WriteLine("Downloader requested PERMANENT skip.");
-			m_permanentlyFailed.Add(key);
+			m_itemStatus[key] = BatchItemStatus.PermanentlySkipped;
 			return null;
 		}
 
@@ -164,6 +165,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		try
 		{
 			metadata = ParseMetadata(content);
+			metadata["~DLTIME"] = DateTime.Now.ToString("s");
 		}
 		catch (RedownloadException)
 		{
@@ -180,7 +182,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		if (metadata == null)
 		{
 			Console.WriteLine("Parser requested PERMANENT skip.");
-			m_permanentlyFailed.Add(key);
+			m_itemStatus[key] = BatchItemStatus.PermanentlySkipped;
 		}
 		else if (cache)
 		{

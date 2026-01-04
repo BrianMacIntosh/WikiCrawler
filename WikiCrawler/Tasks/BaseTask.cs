@@ -135,6 +135,7 @@ namespace Tasks
 
 					lock (heartbeatTask)
 					{
+						//TODO: possible race condition
 						// edits are additive
 						heartbeatTask.nEdits = 0;
 					}

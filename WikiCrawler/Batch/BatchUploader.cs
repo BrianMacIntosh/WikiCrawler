@@ -90,30 +90,8 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 	{
 		try
 		{
-			int keyCount = GetKeyCount();
-			int initialSucceeded = m_succeeded.Count;
-			int totalKeys = TotalKeyCount;
-			int licenseFailures = 0;
-			int uploadDeclined = 0;
-
-			lock (Heartbeat)
-			{
-				if (totalKeys < 0)
-				{
-					// assume everything was downloaded
-					Heartbeat.nTotal = keyCount + m_succeeded.Count - m_permanentlyFailed.Count;
-				}
-				else
-				{
-					Heartbeat.nTotal = totalKeys - m_permanentlyFailed.Count;
-				}
-				Heartbeat.nCompleted = m_succeeded.Count;
-				Heartbeat.nDownloaded = keyCount - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
-				Heartbeat.nFailed = m_failMessages.Count;
-				Heartbeat.nFailedLicense = licenseFailures;
-				Heartbeat.nDeclined = uploadDeclined;
-			}
-
+			//TODO: uploader will not count Unknown items
+			RefreshHeartbeatData();
 			StartHeartbeat();
 
 			using (FileSystemWatcher fileWatcher = new FileSystemWatcher(Configuration.DataDirectory, "STOP"))
@@ -143,27 +121,22 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 
 						if (e is LicenseException)
 						{
-							licenseFailures++;
+							m_itemStatus[key] = BatchItemStatus.LicenseFailed;
 						}
 						else if (e is UploadDeclinedException)
 						{
-							uploadDeclined++;
+							m_itemStatus[key] = BatchItemStatus.UploadDeclined;
 						}
 						else
 						{
+							m_itemStatus[key] = BatchItemStatus.Failed;
+
 							string failMessage = key.ToString().PadLeft(5) + "\t" + e.Message;
 							m_failMessages.Add(failMessage);
 						}
 					}
 
-					lock (Heartbeat)
-					{
-						Heartbeat.nCompleted = m_succeeded.Count;
-						Heartbeat.nDownloaded = keyCount - m_failMessages.Count - licenseFailures - uploadDeclined - (m_succeeded.Count - initialSucceeded);
-						Heartbeat.nFailed = m_failMessages.Count;
-						Heartbeat.nFailedLicense = licenseFailures;
-						Heartbeat.nDeclined = uploadDeclined;
-					}
+					RefreshHeartbeatData();
 
 					if (s_stop)
 					{
@@ -248,8 +221,8 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		// permanently skip files
 		if (ShouldSkipForever(key, metadata))
 		{
-			Console.WriteLine("Permanently skipping");
-			m_permanentlyFailed.Add(key);
+			Console.WriteLine("Uploader requested PERMANENT skip.");
+			m_itemStatus[key] = BatchItemStatus.PermanentlySkipped;
 			DeleteCachedFiles(key, metadata);
 			return;
 		}
@@ -343,7 +316,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		if (uploadSuccess != SuccessType.Failed)
 		{
 			// failures in PostUpload will have to be fixed manually for now
-			m_succeeded.Add(key);
+			m_itemStatus[key] = BatchItemStatus.Succeeded;
 
 			if (uploadSuccess == SuccessType.Succeeded)
 			{

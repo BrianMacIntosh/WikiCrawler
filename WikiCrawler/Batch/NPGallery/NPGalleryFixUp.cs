@@ -21,10 +21,11 @@ namespace NPGallery
 			foreach (string file in Directory.GetFiles(MetadataCacheDirectory))
 			{
 				Guid key = StringToKey(Path.GetFileNameWithoutExtension(file));
-				if (m_succeeded.Contains(key) || m_permanentlyFailed.Contains(key))
+				BatchItemStatus status = GetItemStatus(key);
+				if (status == BatchItemStatus.Succeeded || status == BatchItemStatus.PermanentlySkipped)
 				{
-					Console.WriteLine("Delete " + file);
-					File.Delete(file);
+					Console.WriteLine("Trash " + file);
+					File.Move(file, GetMetadataTrashFilename(key));
 				}
 			}
 		}

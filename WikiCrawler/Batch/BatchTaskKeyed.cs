@@ -5,6 +5,18 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
+public enum BatchItemStatus
+{
+	Unknown,
+	NotDownloaded,
+	PermanentlySkipped,
+	Downloaded,
+	Failed,
+	LicenseFailed,
+	UploadDeclined,
+	Succeeded
+}
+
 /// <summary>
 /// Base class for a batch file upload or download task with uniquely-keyed files.
 /// </summary>
@@ -12,10 +24,9 @@ using System.Text;
 public abstract class BatchTaskKeyed<KeyType> : BatchTask
 {
 	/// <summary>
-	/// Set of keys for files that have already been uploaded.
+	/// For each item, its status.
 	/// </summary>
-	protected HashSet<KeyType> m_succeeded = new HashSet<KeyType>();
-	protected HashSet<KeyType> m_permanentlyFailed = new HashSet<KeyType>();
+	protected Dictionary<KeyType, BatchItemStatus> m_itemStatus = new Dictionary<KeyType, BatchItemStatus>();
 
 	public BatchTaskKeyed(string key)
 		: base(key)
@@ -23,26 +34,57 @@ public abstract class BatchTaskKeyed<KeyType> : BatchTask
 		// load already-succeeded uploads
 		if (GetPersistStatus())
 		{
+			string statusFile = Path.Combine(ProjectDataDirectory, "status.json");
+			if (File.Exists(statusFile))
+			{
+				m_itemStatus = JsonConvert.DeserializeObject<Dictionary<KeyType, BatchItemStatus>>(File.ReadAllText(statusFile, Encoding.UTF8));
+
+				return; // do not do any backwards-compat!
+			}
+
+			// mark all available keys as Downloaded
+			//TODO:
+
+			// load backwards-compatible success file
 			string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
 			if (File.Exists(succeededFile))
 			{
+				HashSet<KeyType> m_succeeded = new HashSet<KeyType>();
+
 				string[] succeeded = JsonConvert.DeserializeObject<string[]>(File.ReadAllText(succeededFile, Encoding.UTF8));
 				foreach (string succeededString in succeeded)
 				{
 					KeyType succeededKey = StringToKey(succeededString);
 					m_succeeded.Add(succeededKey);
 				}
+
+				foreach (KeyType itemKey in m_succeeded)
+				{
+					m_itemStatus[itemKey] = BatchItemStatus.Succeeded;
+				}
+
+				File.Move(succeededFile, Path.Combine(Path.GetDirectoryName(succeededFile), "succeeded_old.json"));
 			}
 
+			// load backwards-compatible failed file
 			string failedFile = Path.Combine(ProjectDataDirectory, "permafailed.json");
 			if (File.Exists(failedFile))
 			{
+				HashSet<KeyType> m_permanentlyFailed = new HashSet<KeyType>();
+
 				string[] failed = JsonConvert.DeserializeObject<string[]>(File.ReadAllText(failedFile, Encoding.UTF8));
 				foreach (string failedString in failed)
 				{
 					KeyType failedKey = StringToKey(failedString);
 					m_permanentlyFailed.Add(failedKey);
 				}
+
+				foreach (KeyType itemKey in m_permanentlyFailed)
+				{
+					m_itemStatus[itemKey] = BatchItemStatus.PermanentlySkipped;
+				}
+
+				File.Move(failedFile, Path.Combine(Path.GetDirectoryName(failedFile), "permafailed_old.json"));
 			}
 		}
 	}
@@ -51,15 +93,8 @@ public abstract class BatchTaskKeyed<KeyType> : BatchTask
 	{
 		if (GetPersistStatus())
 		{
-			string succeededFile = Path.Combine(ProjectDataDirectory, "succeeded.json");
-			List<KeyType> succeeded = m_succeeded.ToList();
-			succeeded.Sort();
-			File.WriteAllText(succeededFile, JsonConvert.SerializeObject(succeeded, Formatting.Indented));
-
-			string permafailedFile = Path.Combine(ProjectDataDirectory, "permafailed.json");
-			List<KeyType> failed = m_permanentlyFailed.ToList();
-			failed.Sort();
-			File.WriteAllText(permafailedFile, JsonConvert.SerializeObject(failed, Formatting.Indented));
+			string statusFile = Path.Combine(ProjectDataDirectory, "status.json");
+			File.WriteAllText(statusFile, JsonConvert.SerializeObject(m_itemStatus, Formatting.Indented));
 		}
 
 		base.SaveOut();
@@ -90,4 +125,33 @@ public abstract class BatchTaskKeyed<KeyType> : BatchTask
 		return Path.Combine(MetadataTrashDirectory, key + ".json");
 	}
 
+	public IEnumerable<KeyType> GetItemsWithStatus(BatchItemStatus status)
+	{
+		return m_itemStatus.Where(kv => kv.Value == status).Select(kv => kv.Key);
+	}
+
+	public BatchItemStatus GetItemStatus(KeyType key)
+	{
+		if (m_itemStatus.TryGetValue(key, out BatchItemStatus status))
+		{
+			return status;
+		}
+		else
+		{
+			return BatchItemStatus.Unknown;
+		}
+	}
+
+	protected void RefreshHeartbeatData()
+	{
+		lock (Heartbeat)
+		{
+			Heartbeat.nTotal = m_itemStatus.Count(kv => kv.Value != BatchItemStatus.PermanentlySkipped);
+			Heartbeat.nCompleted = m_itemStatus.Count(kv => kv.Value == BatchItemStatus.Succeeded);
+			Heartbeat.nDownloaded = m_itemStatus.Count(kv => kv.Value == BatchItemStatus.Downloaded);
+			Heartbeat.nFailed = m_itemStatus.Count(kv => kv.Value == BatchItemStatus.Failed);
+			Heartbeat.nFailedLicense = m_itemStatus.Count(kv => kv.Value == BatchItemStatus.LicenseFailed);
+			Heartbeat.nDeclined = m_itemStatus.Count(kv => kv.Value == BatchItemStatus.UploadDeclined);
+		}
+	}
 }
