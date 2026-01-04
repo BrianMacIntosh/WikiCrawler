@@ -1271,7 +1271,7 @@ namespace NPGallery
 			// add unique ID
 			title += " (" + key + ")";
 
-			return new PageTitle(PageTitle.NS_File, title);
+			return PageTitle.ConstructAndSanitize(PageTitle.NS_File, title);
 		}
 	}
 }
