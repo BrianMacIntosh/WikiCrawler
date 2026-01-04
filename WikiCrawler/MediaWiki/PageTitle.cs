@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 
 namespace MediaWiki
 {
@@ -174,6 +175,7 @@ namespace MediaWiki
 		/// </summary>
 		public static PageTitle ConstructAndSanitize(string ns, string name)
 		{
+			name = WebUtility.HtmlDecode(name);
 			name = name.Replace('[', '(');
 			name = name.Replace(']', ')');
 			name = name.Replace('{', '(');
