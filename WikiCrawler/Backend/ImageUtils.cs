@@ -177,6 +177,10 @@ public static class ImageUtils
 		}
 		else
 		{
+			// clamp to jpeg blocks
+			left = ((int)Math.Ceiling(left / 8f)) * 8;
+			top = ((int)Math.Ceiling(top / 8f)) * 8;
+
 			return FreeImage.JPEGCrop(sourceFile, outFile, left, height - top, right, height - bottom);
 		}
 	}
