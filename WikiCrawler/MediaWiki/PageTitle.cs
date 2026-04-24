@@ -162,6 +162,7 @@ namespace MediaWiki
 		{
 			Namespace = ns;
 
+			name = name.Replace('_', ' ');
 			if (ContainsInvalidTitleCharacter(name))
 			{
 				throw new ArgumentException($"PageTitle name '{name}' contains an invalid character.");
