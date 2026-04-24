@@ -165,7 +165,10 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		try
 		{
 			metadata = ParseMetadata(content);
-			metadata["~DLTIME"] = DateTime.Now.ToString("s");
+			if (metadata != null)
+			{
+				metadata["~DLTIME"] = DateTime.Now.ToString("s");
+			}
 		}
 		catch (RedownloadException)
 		{
