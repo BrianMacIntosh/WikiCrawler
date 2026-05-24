@@ -196,6 +196,9 @@ namespace NPGallery
 
 		public override bool ShouldAttemptKey(Guid key)
 		{
+			if (!base.ShouldAttemptKey(key))
+				return false;
+
 			ShouldAttemptKeyQuery.Parameters.AddWithValue("id", key.ToString("N"));
 			return (long)ShouldAttemptKeyQuery.ExecuteScalar() != 0;
 		}

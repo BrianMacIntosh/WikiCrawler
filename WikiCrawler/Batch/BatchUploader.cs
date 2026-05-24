@@ -186,6 +186,11 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 
 	public virtual bool ShouldAttemptKey(KeyType key)
 	{
+		if (GetItemStatus(key) == BatchItemStatus.Succeeded)
+		{
+			return false;
+		}
+
 		return true;
 	}
 
