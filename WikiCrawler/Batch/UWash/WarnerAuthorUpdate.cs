@@ -20,9 +20,9 @@ namespace WikiCrawler
 		{
 			UWashUploader uploader = new UWashUploader("warner");
 
-			foreach (Article article in GlobalAPIs.Commons.FetchArticles(RebuildSuccesses.HarvestUploadedFiles(m_config.masterCategory, m_config.filenameSuffix)))
+			foreach (Article article in GlobalAPIs.Commons.FetchArticles(RebuildSuccesses<int>.HarvestUploadedFiles(m_config.masterCategory, m_config.filenameSuffix)))
 			{
-				string keystr = RebuildSuccesses.ExtractKeyFromTitle(article.title, m_config.filenameSuffix);
+				string keystr = RebuildSuccesses<int>.ExtractKeyFromTitle(article.title, m_config.filenameSuffix);
 				int key = int.Parse(keystr);
 
 				Dictionary<string, string> metadata = uploader.LoadMetadata(key);
