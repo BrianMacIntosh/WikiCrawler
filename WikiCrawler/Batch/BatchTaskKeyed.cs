@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Web.UI.WebControls;
 
 public enum BatchItemStatus
 {
@@ -107,7 +106,7 @@ public abstract class BatchTaskKeyed<KeyType> : BatchTask
 		base.SaveOut();
 	}
 
-	protected virtual KeyType StringToKey(string str)
+	public virtual KeyType StringToKey(string str)
 	{
 		return (KeyType)Convert.ChangeType(str, typeof(KeyType));
 	}

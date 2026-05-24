@@ -22,7 +22,7 @@ namespace NPGallery
 			AssetsDatabase.Open();
 		}
 
-		protected override Guid StringToKey(string str)
+		public override Guid StringToKey(string str)
 		{
 			return NPGallery.StringToKey(str);
 		}

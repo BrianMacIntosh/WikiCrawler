@@ -169,7 +169,7 @@ namespace NPGallery
 			s_unitCodeToCommonsLoc = JsonConvert.DeserializeObject<Dictionary<string, string[]>>(unitCodeLocsText);
 		}
 
-		protected override Guid StringToKey(string str)
+		public override Guid StringToKey(string str)
 		{
 			return NPGallery.StringToKey(str);
 		}
