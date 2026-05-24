@@ -29,7 +29,9 @@ public abstract class BatchTaskKeyed<KeyType> : BatchTask
 	/// <summary>
 	/// For each item, its status.
 	/// </summary>
-	protected Dictionary<KeyType, BatchItemStatus> m_itemStatus = new Dictionary<KeyType, BatchItemStatus>();
+	private Dictionary<KeyType, BatchItemStatus> m_itemStatus = new Dictionary<KeyType, BatchItemStatus>();
+
+	private int[] m_statusCounts = new int[(int)BatchItemStatus.COUNT];
 
 	public BatchTaskKeyed(string key)
 		: base(key)
@@ -41,7 +43,7 @@ public abstract class BatchTaskKeyed<KeyType> : BatchTask
 			if (File.Exists(statusFile))
 			{
 				m_itemStatus = JsonConvert.DeserializeObject<Dictionary<KeyType, BatchItemStatus>>(File.ReadAllText(statusFile, Encoding.UTF8));
-
+				RebuildStatusCounts();
 				return; // do not do any backwards-compat!
 			}
 
@@ -89,6 +91,8 @@ public abstract class BatchTaskKeyed<KeyType> : BatchTask
 
 				File.Move(failedFile, Path.Combine(Path.GetDirectoryName(failedFile), "permafailed_old.json"));
 			}
+
+			RebuildStatusCounts();
 		}
 	}
 
@@ -145,26 +149,42 @@ public abstract class BatchTaskKeyed<KeyType> : BatchTask
 		}
 	}
 
-	protected void RefreshHeartbeatData()
+	public void SetItemStatus(KeyType key, BatchItemStatus status)
 	{
-		int[] counts = new int[(int)BatchItemStatus.COUNT];
-		int total = 0;
+		if (m_itemStatus.TryGetValue(key, out BatchItemStatus oldStatus))
+		{
+			if (status == oldStatus) return;
+
+			m_statusCounts[(int)oldStatus]--;
+		}
+		m_itemStatus[key] = status;
+		m_statusCounts[(int)status]++;
+		RefreshHeartbeatData();
+	}
+
+	protected void RebuildStatusCounts()
+	{
+		m_statusCounts.Fill(0);
 		foreach (var kv in m_itemStatus)
 		{
-			if (kv.Value != BatchItemStatus.PermanentlySkipped)
-			{
-				total++;
-			}
-			counts[(int)kv.Value]++;
+			m_statusCounts[(int)kv.Value]++;
 		}
+		RefreshHeartbeatData();
+	}
+
+	protected void RefreshHeartbeatData()
+	{
+		// count total
+		int totalCount = m_statusCounts.Sum() - m_statusCounts[(int)BatchItemStatus.PermanentlySkipped];
+
 		lock (Heartbeat)
 		{
-			Heartbeat.nTotal		= total;
-			Heartbeat.nCompleted	= counts[(int)BatchItemStatus.Succeeded];
-			Heartbeat.nDownloaded	= counts[(int)BatchItemStatus.Downloaded];
-			Heartbeat.nFailed		= counts[(int)BatchItemStatus.Failed];
-			Heartbeat.nFailedLicense = counts[(int)BatchItemStatus.LicenseFailed];
-			Heartbeat.nDeclined		= counts[(int)BatchItemStatus.UploadDeclined];
+			Heartbeat.nTotal		= totalCount;
+			Heartbeat.nCompleted	= m_statusCounts[(int)BatchItemStatus.Succeeded];
+			Heartbeat.nDownloaded	= m_statusCounts[(int)BatchItemStatus.Downloaded];
+			Heartbeat.nFailed		= m_statusCounts[(int)BatchItemStatus.Failed];
+			Heartbeat.nFailedLicense = m_statusCounts[(int)BatchItemStatus.LicenseFailed];
+			Heartbeat.nDeclined		= m_statusCounts[(int)BatchItemStatus.UploadDeclined];
 		}
 	}
 }

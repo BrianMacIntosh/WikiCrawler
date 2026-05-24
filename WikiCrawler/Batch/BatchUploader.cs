@@ -91,7 +91,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		try
 		{
 			//TODO: uploader will not count Unknown items
-			RefreshHeartbeatData();
+			RebuildStatusCounts();
 			StartHeartbeat();
 
 			using (FileSystemWatcher fileWatcher = new FileSystemWatcher(Configuration.DataDirectory, "STOP"))
@@ -121,15 +121,15 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 
 						if (e is LicenseException)
 						{
-							m_itemStatus[key] = BatchItemStatus.LicenseFailed;
+							SetItemStatus(key, BatchItemStatus.LicenseFailed);
 						}
 						else if (e is UploadDeclinedException)
 						{
-							m_itemStatus[key] = BatchItemStatus.UploadDeclined;
+							SetItemStatus(key, BatchItemStatus.UploadDeclined);
 						}
 						else
 						{
-							m_itemStatus[key] = BatchItemStatus.Failed;
+							SetItemStatus(key, BatchItemStatus.Failed);
 
 							string failMessage = key.ToString().PadLeft(5) + "\t" + e.Message;
 							m_failMessages.Add(failMessage);
@@ -222,7 +222,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		if (ShouldSkipForever(key, metadata))
 		{
 			Console.WriteLine("Uploader requested PERMANENT skip.");
-			m_itemStatus[key] = BatchItemStatus.PermanentlySkipped;
+			SetItemStatus(key, BatchItemStatus.PermanentlySkipped);
 			DeleteCachedFiles(key, metadata);
 			return;
 		}
@@ -316,7 +316,7 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		if (uploadSuccess != SuccessType.Failed)
 		{
 			// failures in PostUpload will have to be fixed manually for now
-			m_itemStatus[key] = BatchItemStatus.Succeeded;
+			SetItemStatus(key, BatchItemStatus.Succeeded);
 
 			if (uploadSuccess == SuccessType.Succeeded)
 			{

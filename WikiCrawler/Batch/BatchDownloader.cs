@@ -31,10 +31,11 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		// retroactively mark status of downloaded items
 		foreach (KeyType itemKey in GetDownloadSucceededKeys())
 		{
-			if (GetItemStatus(itemKey) == BatchItemStatus.NotDownloaded
-				|| GetItemStatus(itemKey) == BatchItemStatus.Unknown)
+			BatchItemStatus currentStatus = GetItemStatus(itemKey);
+			if (currentStatus == BatchItemStatus.NotDownloaded
+				|| currentStatus == BatchItemStatus.Unknown)
 			{
-				m_itemStatus[itemKey] = BatchItemStatus.Downloaded;
+				SetItemStatus(itemKey, BatchItemStatus.Downloaded);
 			}
 		}
 	}
@@ -73,13 +74,13 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 			IEnumerable<KeyType> allKeys = GetKeys();
 			foreach (KeyType key in allKeys)
 			{
-				if (!m_itemStatus.ContainsKey(key))
+				if (GetItemStatus(key) == BatchItemStatus.Unknown)
 				{
-					m_itemStatus[key] = BatchItemStatus.NotDownloaded;
+					SetItemStatus(key, BatchItemStatus.NotDownloaded);
 				}
 			}
 
-			RefreshHeartbeatData();
+			RebuildStatusCounts();
 			StartHeartbeat();
 
 			// load metadata
@@ -90,11 +91,9 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 				Dictionary<string, string> metadata = Download(key);
 				if (metadata != null)
 				{
-					m_itemStatus[key] = BatchItemStatus.Downloaded;
+					SetItemStatus(key, BatchItemStatus.Downloaded);
 				}
 				saveOutTimer--;
-
-				RefreshHeartbeatData();
 				
 				if (File.Exists(stopFile))
 				{
@@ -157,7 +156,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		{
 			// downloader requested skip
 			Console.WriteLine("Downloader requested PERMANENT skip.");
-			m_itemStatus[key] = BatchItemStatus.PermanentlySkipped;
+			SetItemStatus(key, BatchItemStatus.PermanentlySkipped);
 			return null;
 		}
 
@@ -185,7 +184,7 @@ public abstract class BatchDownloader<KeyType> : BatchTaskKeyed<KeyType>, IBatch
 		if (metadata == null)
 		{
 			Console.WriteLine("Parser requested PERMANENT skip.");
-			m_itemStatus[key] = BatchItemStatus.PermanentlySkipped;
+			SetItemStatus(key, BatchItemStatus.PermanentlySkipped);
 		}
 		else if (cache)
 		{
