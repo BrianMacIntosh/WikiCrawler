@@ -298,11 +298,11 @@ namespace MediaWiki
 			int openTags = 0;
 			for (int i = 0; i < Math.Min(index, text.Length); ++i)
 			{
-				if (text.MatchAt("<nowiki>", i, true))
+				if (text.MatchAt("<nowiki>", i, CommonsStringComparison.IgnoreCase))
 				{
 					openTags++;
 				}
-				else if (text.MatchAt("</nowiki>", i, true))
+				else if (text.MatchAt("</nowiki>", i, CommonsStringComparison.IgnoreCase))
 				{
 					openTags = Math.Max(0, openTags - 1);
 				}
@@ -320,11 +320,11 @@ namespace MediaWiki
 			int openTags = 0;
 			for (int i = 0; i < Math.Min(index, text.Length); ++i)
 			{
-				if (text.MatchAt("<!--", i, true))
+				if (text.MatchAt("<!--", i))
 				{
 					openTags++;
 				}
-				else if (text.MatchAt("-->", i, true))
+				else if (text.MatchAt("-->", i))
 				{
 					openTags = Math.Max(0, openTags - 1);
 				}
@@ -669,7 +669,7 @@ namespace MediaWiki
 					//parameter name
 					if (nestingStack.Count == rootStackHeight)
 					{
-						if (text.MatchAt(param, c, true))
+						if (text.MatchAt(param, c, CommonsStringComparison.ConflateSpaceUnderscore | CommonsStringComparison.IgnoreCase))
 						{
 							c += param.Length;
 

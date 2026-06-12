@@ -1,6 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Text;
+
+[Flags]
+public enum CommonsStringComparison
+{
+	IgnoreCase = 1 << 0,
+	ConflateSpaceUnderscore = 1 << 1,
+}
 
 public static class StringUtility
 {
@@ -172,13 +180,22 @@ public static class StringUtility
 	/// </summary>
 	/// <param name="substring"></param>
 	/// <param name="index"></param>
-	public static bool MatchAt(this string str, string substring, int index, bool ignoreCase = false)
+	public static bool MatchAt(this string str, string substring, int index, CommonsStringComparison flags = 0)
 	{
+		bool ignoreCase = (flags & CommonsStringComparison.IgnoreCase) != 0;
+		bool conflateSpaceUnderscore = (flags & CommonsStringComparison.ConflateSpaceUnderscore) != 0;
 		for (int si = 0; si < substring.Length; ++si)
 		{
 			if (index + si >= str.Length)
 			{
 				return false;
+			}
+			else if (conflateSpaceUnderscore && (str[index + si] == ' ' || str[index + si] == '_'))
+			{
+				if (substring[si] != ' ' && substring[si] != '_')
+				{
+					return false;
+				}
 			}
 			else if (ignoreCase)
 			{
