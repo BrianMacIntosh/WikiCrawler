@@ -394,7 +394,10 @@ public abstract class BatchUploader<KeyType> : BatchTaskKeyed<KeyType>, IBatchUp
 		path = GetMetadataCacheFilename(key);
 		if (File.Exists(path))
 		{
-			File.Move(path, GetMetadataTrashFilename(key));
+			string trashFile = GetMetadataTrashFilename(key);
+			if (File.Exists(trashFile))
+				File.Delete(trashFile);
+			File.Move(path, trashFile);
 		}
 
 		path = GetPreviewFileFilename(key);
