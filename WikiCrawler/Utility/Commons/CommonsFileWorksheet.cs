@@ -1,4 +1,5 @@
 ﻿using MediaWiki;
+using System;
 
 /// <summary>
 /// Baked data from a <see cref="CommonsFileWorksheet"/>.
@@ -183,7 +184,7 @@ public class CommonsFileWorksheet : Worksheet
 			{
 				int localIndex;
 				string paramContent = WikiUtils.GetTemplateParameter(paramName, templateText, out localIndex);
-				if (!string.IsNullOrEmpty(paramContent))
+				if (localIndex != -1)
 				{
 					index = localIndex + templateSpan.start;
 					outParam = paramName;
@@ -195,5 +196,21 @@ public class CommonsFileWorksheet : Worksheet
 		index = -1;
 		outParam = "";
 		return "";
+	}
+
+	/// <summary>
+	/// Adds a new "other version" file to the template.
+	/// </summary>
+	public void AddOtherVersion(PageTitle title)
+	{
+		string otherVersions = GetInfoParam(new string[] { "other_versions" }, out string paramName, out int index);
+		if (string.IsNullOrWhiteSpace(otherVersions))
+		{
+			Text = Text.Substring(0, index) + "<gallery>" + title + "</gallery>" + Text.Substring(index);
+		}
+		else
+		{
+			throw new NotImplementedException();
+		}
 	}
 }
